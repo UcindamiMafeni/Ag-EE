@@ -16,16 +16,16 @@ global dirpath_raw "S:/Raw Data/PumpData"
 ************************************************
 *** load monthly billing data and save as dta file
 import delim using "$dirpath_raw/Data03212018/PGE_03222018_rn1765829728_1/PGE_03222018_rn1765829728_3.csv"
-save "$dirpath_data/pge/bill_data.dta", replace
+save "$dirpath_data/pge_raw/bill_data.dta", replace
 
 *** load customer data and save as dta file
 import excel "$dirpath_raw/Data03212018/PGE_03222018_rn1765829728_1/PGE_03222018_rn1765829728_2.xlsx", sheet("Sheet1") firstrow allstring clear
 *import delim using "$dirpath_raw/Data03212018/PGE_03222018_rn1765829728_1/PGE_03222018_rn1765829728_2.csv"
-save "$dirpath_data/pge/customer_data.dta", replace
+save "$dirpath_data/pge_raw/customer_data.dta", replace
 
 *** load interval data and save as dta file
 import delim using "$dirpath_raw/Data03212018/PGE_03222018_rn1765829728_1/PGE_03222018_rn1765829728_5.csv"
-save "$dirpath_data/pge/interval_data.dta", replace
+save "$dirpath_data/pge_raw/interval_data.dta", replace
 
 
 **** FIRST WAVE OF DATA -- NOT CURRENTLY BEING USED
