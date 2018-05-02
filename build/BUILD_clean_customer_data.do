@@ -9,7 +9,7 @@ set more off
 global dirpath "S:/Matt/ag_pump"
 global dirpath_data "$dirpath/data"
 
-** Loadaw PGE customer data
+** Load raw PGE customer data
 use "$dirpath_data/pge_raw/customer_data.dta", clear
 
 ** NAICS code
