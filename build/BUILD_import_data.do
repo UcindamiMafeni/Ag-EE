@@ -15,7 +15,8 @@ global dirpath_raw "S:/Raw Data/PumpData"
 
 ************************************************
 *** load monthly billing data and save as dta file
-import delim using "$dirpath_raw/Data03212018/PGE_03222018_rn1765829728_1/PGE_03222018_rn1765829728_3.csv"
+import delim "$dirpath_raw/Data03212018/PGE_03222018_rn1765829728_1/PGE_03222018_rn1765829728_3.csv", varn(1) stringc(_all) clear
+*import delim using "$dirpath_raw/Data03212018/PGE_03222018_rn1765829728_1/PGE_03222018_rn1765829728_3.csv"
 save "$dirpath_data/pge_raw/bill_data.dta", replace
 
 *** load customer data and save as dta file
