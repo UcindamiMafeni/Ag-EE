@@ -17,38 +17,32 @@ global dirpath_raw "S:/Raw Data/PumpData"
 
 
 *** load customer data and save as dta file
-import delim using "$dirpath_raw/Data03212018/PGE_03222018_rn1765829728_1/PGE_03222018_rn1765829728_2.csv", clear
-save "$dirpath_data/pge/customer_data.dta", replace
+import excel "$dirpath_raw/Data03212018/PGE_03222018_rn1765829728_1/PGE_03222018_rn1765829728_2.xlsx", sheet("Sheet1") firstrow allstring clear
+save "$dirpath_data/pge_raw/customer_data.dta", replace
 
 *** load monthly billing data and save as dta file
-import delim using "$dirpath_raw/Data03212018/PGE_03222018_rn1765829728_1/PGE_03222018_rn1765829728_3.csv", clear
-save "$dirpath_data/pge/bill_data.dta", replace
+import delim using "$dirpath_raw/Data03212018/PGE_03222018_rn1765829728_1/PGE_03222018_rn1765829728_3.csv", varn(1) stringc(_all) clear
+save "$dirpath_data/pge_raw/bill_data.dta", replace
 
 *** load energy efficiency data and save as dta file
-import excel using "$dirpath_raw/Data03212018/PGE_03222018_rn1765829728_1/PGE_03222018_rn1765829728_4.xlsx", firstrow clear
-save "$dirpath_data/pge/energy_efficiency_data.dta", replace
-
+import excel using "$dirpath_raw/Data03212018/PGE_03222018_rn1765829728_1/PGE_03222018_rn1765829728_4.xlsx", firstrow allstring clear
+save "$dirpath_data/pge_raw/energy_efficiency_data.dta", replace
 
 *** load interval data and save as dta file
 import delim using "$dirpath_raw/Data03212018/PGE_03222018_rn1765829728_1/PGE_03222018_rn1765829728_5.csv", clear
-save "$dirpath_data/pge/interval_data.dta", replace
-
+save "$dirpath_data/pge_raw/interval_data.dta", replace
 
 *** load pump test project data and save as dta file
 import excel using "$dirpath_raw/Data03212018/PGE_03222018_rn1765829728_1/PGE_03222018_rn1765829728_6.xlsx", cellrange(A16:J1038) firstrow clear
-save "$dirpath_data/pge/pump_test_project_data.dta", replace
-
-
+save "$dirpath_data/pge_raw/pump_test_project_data.dta", replace
 
 *** load badge number data and save as dta file
 import excel using "$dirpath_raw/Data03212018/PGE_03222018_rn1765829728_1/PGE_03222018_rn1765829728_7.xlsx", firstrow clear
-save "$dirpath_data/pge/meter_badge_number_data.dta", replace
-
-
+save "$dirpath_data/pge_raw/meter_badge_number_data.dta", replace
 
 *** load pump test data and save as dta file
 import excel using "$dirpath_raw/Data03212018/PGE_03222018_rn1765829728_1/APEPPumpTests Berkley excel.xlsx", firstrow clear
-save "$dirpath_data/pge/pump_test_data.dta", replace
+save "$dirpath_data/pge_raw/pump_test_data.dta", replace
 
 
 
