@@ -82,10 +82,30 @@ duplicates drop
 unique sa_uuid bill_start_dt bill_end_dt rt_sched_cd total_bill_kwh
 assert r(unique)==r(N)
 	
+** Duplicate bills (everything matches except bill amount and usage, and there's a zero)	
+duplicates t sa_uuid bill_start_dt bill_end rt_sched_cd, gen(dup)
+tab dup
+sort sa_uuid bill_start_dt bill_end_dt rt_sched_cd
+br if dup>0
+unique sa_uuid bill_start_dt bill_end_dt rt_sched_cd if dup>0 // 23814 dups
+unique sa_uuid bill_start_dt bill_end_dt rt_sched_cd if dup>0 & total_bill_kwh==0
+	// 2/3 of dups have a 0 kWh as at least 1 of the dups
+egen temp = max(total_bill_kwh==0), by(sa_uuid bill_start_dt bill_end_dt rt_sched_cd)
+foreach v of varlist total_bill_kwh total_bill_amount {
+	egen double temp2 = sum(`v'), by(sa_uuid bill_start_dt bill_end_dt rt_sched_cd)
+	replace `v' = temp2 if dup>0 & temp==1
+	drop temp2
+}
+foreach v of varlist max_demand peak_demand partial_peak_demand {
+	egen double temp2 = max(`v'), by(sa_uuid bill_start_dt bill_end_dt rt_sched_cd)
+	replace `v' = temp2 if dup>0 & temp==1
+	drop temp2
+}
+drop dup temp
+duplicates drop
 
-START HERE	
-	
-duplicates t sa_uuid bill_start_dt, gen(dup)
+
+
 sort sa_uuid bill_start_dt bill_end_dt 
 br if dup>0
 br if dup2>0
@@ -100,10 +120,12 @@ format %tm modate
 compress
 
 ** Potentially questionable choices
-// dups where everything's identical except $ amount, collapse to avg $ amount
+// Dups where everything's identical except $ amount: collapse to avg $ amount
+// Dups where everything's identical except $ amount and kWh, and 1 dup is 0 kWh: collapse and sum $ amount 
 
 
-
+** Pending
 // Deal with duplicates!
 // Deal with bill length > 34 days
 // Deal with bills with negative kWh
+// Monthify bills!
