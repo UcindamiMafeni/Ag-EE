@@ -70,7 +70,7 @@ la var peak_demand "Peak demand in bill period (kWh)"
 la var partial_peak_demand "Partial peak demand in bill period (kWh)"
 la var total_bill_amount "Total bill amount ($)"
 
-** Duplicate bills (everything matches except bill amount)
+** Duplicate bills: everything matches except bill amount
 duplicates t sa_uuid bill_start_dt bill_end_dt rt_sched_cd total_bill_kwh, gen(dup)
 foreach v of varlist total_bill_amount max_demand peak_demand partial_peak_demand {
 	egen double temp = mean(`v'), by(sa_uuid bill_start_dt bill_end_dt rt_sched_cd total_bill_kwh)
@@ -82,7 +82,7 @@ duplicates drop
 unique sa_uuid bill_start_dt bill_end_dt rt_sched_cd total_bill_kwh
 assert r(unique)==r(N)
 	
-** Duplicate bills (everything matches except bill amount and usage, and there's a zero)	
+** Duplicate bills: everything matches except bill amount and usage, and there's a zero	
 duplicates t sa_uuid bill_start_dt bill_end rt_sched_cd, gen(dup)
 tab dup
 sort sa_uuid bill_start_dt bill_end_dt rt_sched_cd
@@ -104,11 +104,44 @@ foreach v of varlist max_demand peak_demand partial_peak_demand {
 drop dup temp
 duplicates drop
 
-
-
-sort sa_uuid bill_start_dt bill_end_dt 
+** Duplicate bills: everything matches except bill amount and usage, and there's not a zero	
+duplicates t sa_uuid bill_start_dt bill_end rt_sched_cd, gen(dup)
+tab dup
+sort sa_uuid bill_start_dt bill_end_dt rt_sched_cd
 br if dup>0
-br if dup2>0
+unique sa_uuid bill_start_dt bill_end_dt rt_sched_cd if dup>0 // 7706 dups
+foreach v of varlist total_bill_kwh total_bill_amount {
+	egen double temp = sum(`v'), by(sa_uuid bill_start_dt bill_end_dt rt_sched_cd)
+	replace `v' = temp if dup>0
+	drop temp
+}
+foreach v of varlist max_demand peak_demand partial_peak_demand {
+	egen double temp = max(`v'), by(sa_uuid bill_start_dt bill_end_dt rt_sched_cd)
+	replace `v' = temp if dup>0 
+	drop temp
+}
+drop dup
+duplicates drop
+unique sa_uuid bill_start_dt bill_end_dt rt_sched_cd
+assert r(unique)==r(N)
+
+
+*************
+START HERE!!!
+*************
+
+
+** Duplicate bills: same account, start/end dates, different tariffs
+duplicates t sa_uuid bill_start_dt bill_end, gen(dup)
+tab dup
+sort sa_uuid bill_start_dt bill_end_dt
+br if dup>0
+
+** Duplicate bills: same account, start dates, different end dates
+
+** Duplicate bills: same account, overlapping bill periods
+
+
 
 gen month_st = month(bill_start_dt)
 gen year_st = year(bill_start_dt)
@@ -122,10 +155,10 @@ compress
 ** Potentially questionable choices
 // Dups where everything's identical except $ amount: collapse to avg $ amount
 // Dups where everything's identical except $ amount and kWh, and 1 dup is 0 kWh: collapse and sum $ amount 
-
+// Dups where everything's identical except $ amount and kWh, and there's not a zero: collapse and sum kWh and $ amount
 
 ** Pending
-// Deal with duplicates!
+// Finish dealing with duplicates!
 // Deal with bill length > 34 days
 // Deal with bills with negative kWh
 // Monthify bills!
