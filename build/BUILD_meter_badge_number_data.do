@@ -196,10 +196,10 @@ la var mtr_lapse_stop1 "Stop date of lapse 1 (when meter number wasn't listed as
 */
 
 ** NOT UNIQUE YET
-
-** Save
 duplicates r pge_badge_nbr
 duplicates r sp_uuid pge_badge_nbr
+
+** Save
 compress
 save "$dirpath_data/pge_cleaned/meter_badge_number_data.dta", replace	
 
