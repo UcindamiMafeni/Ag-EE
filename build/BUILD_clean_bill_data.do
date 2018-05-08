@@ -2,14 +2,14 @@ clear all
 version 13
 set more off
 
-*******************************************************************************
-**** Script to import and clean raw PGE data -- customer details file *********
-*******************************************************************************
+***************************************************************************
+**** Script to import and clean raw PGE data -- billing data file *********
+***************************************************************************
 
 global dirpath "S:/Matt/ag_pump"
 global dirpath_data "$dirpath/data"
 
-** Load raw PGE customer data
+** Load raw PGE billing data
 use "$dirpath_data/pge_raw/bill_data.dta", clear
 
 ** Service agreement ID
