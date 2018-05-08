@@ -57,7 +57,7 @@ compress
 save "$dirpath_data/pge_cleaned/interval_data_hourly.dta", replace	
 
 ** Collapse to daily level and save
-use  "$dirpath_data/pge_cleaned/interval_data_hourly.dta", clear
+use "$dirpath_data/pge_cleaned/interval_data_hourly.dta", clear
 egen double kwh_daily = sum(kwh), by(sa_uuid date)
 drop hour kwh
 rename kwh_daily kwh
@@ -65,14 +65,14 @@ la var kwh "kWh consumed in daily interval"
 duplicates drop
 sum kwh, detail
 count if kwh<0
-di r(N)/_N // ??? of daily observations are negative
+di r(N)/_N // 0.6% of daily observations are negative
 unique sa_uuid date
 assert r(unique)==r(N)
 compress
 save "$dirpath_data/pge_cleaned/interval_data_daily.dta", replace	
 
 ** Collapse to monthly level and save
-use  "$dirpath_data/pge_cleaned/interval_data_daily.dta", clear
+use "$dirpath_data/pge_cleaned/interval_data_daily.dta", clear
 gen modate = ym(year(date),month(date))
 format %tm modate
 egen double kwh_monthly = sum(kwh), by(sa_uuid modate)
@@ -82,7 +82,11 @@ la var kwh "kWh consumed in monthly interval"
 duplicates drop
 sum kwh, detail
 count if kwh<0
-di r(N)/_N // ??? of monthly observations are negative
+di r(N)/_N // 0.5% of monthly observations are negative
+preserve
+collapse (sum) kwh, by(modate)
+twoway line kwh modate
+restore
 unique sa_uuid modate
 assert r(unique)==r(N)
 compress
