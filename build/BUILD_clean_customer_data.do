@@ -19,6 +19,11 @@ assert substr(prsn_naics_cd,1,3)=="111"
 rename prsn_naics_cd prsn_naics
 la var prsn_naics "6-digit NAICS at customer level"
 tab prsn_naics
+rename prsn_naics naics
+merge m:1 naics using "$dirpath_data/misc/naics_descr.dta", keep(1 3)
+assert _merge==3
+drop _merge
+rename naics prsn_naics
 
 ** Customer ID
 assert prsn_uuid!=""
@@ -207,6 +212,7 @@ la var sa_sp_lapse_stop1 "Stop date of lapse 1 (when SA/SP was not listed as act
 la var sa_sp_lapse_start2 "Start date of lapse 2 (when SA/SP was not listed as active"
 la var sa_sp_lapse_stop2 "Stop date of lapse 2 (when SA/SP was not listed as active"
 order dr_ind, before(dr_program)
+order prsn_naics, before(naics_descr)
 
 ** Confirm uniqueness and save
 unique prsn_uuid sp_uuid sa_uuid
@@ -236,4 +242,3 @@ legend(off)
 // Assign missing climate zones
 // Crosscheck lat/lon against climate zone
 // Climate zone crosswalk
-// NAICS crosswalk
