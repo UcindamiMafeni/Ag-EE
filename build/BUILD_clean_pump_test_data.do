@@ -163,6 +163,75 @@ rename hp hp_numeric
 rename txt* *
 rename *after *_after
 
+******** CLEAN ACTUAL DATA
+
+** DROP ACREAGE DATA - MISSING ALMOST EVERYWHERE
+drop acreage acreageserved
+
+replace farmtype = lower(farmtype)
+replace farmtype = trim(farmtype)
+
+replace farmtype = "vineyard" if farmtype == "bin"
+replace farmtype = "cut flowers" if farmtype == "flowers"
+replace farmtype = "other" if farmtype == "food processor"
+replace farmtype = "fruit" if farmtype == "fui"
+replace farmtype = "" if farmtype == "g"
+replace farmtype = "general row crops" if strpos(farmtype, "general row") | farmtype == "genneral row crops"
+replace farmtype = "other" if farmtype == "ither" | farmtype == "misc"
+replace farmtype = "nuts" if farmtype == "nurts" | farmtype == "nut" | ///
+  farmtype == "nuts/citrus" | farmtype == "nuts/fruit" | farmtype == "nuts/row crop"
+  
+replace farmtype = "other" if farmtype == "open" | farmtype == "sod"
+replace farmtype = "trees" if strpos(farmtype, "tre")
+replace farmtype = "other" if strpos(farmtype, "vario")
+replace farmtype = "vineyard" if strpos(farmtype, "vin") | strpos(farmtype, "wine")
+replace farmtype = "other" if farmtype == "water"  
+
+** come back to me?
+replace crop = lower(crop)
+replace crop = trim(crop)
+
+replace waterenduse = lower(waterenduse)
+replace waterenduse = "" if waterenduse == "." | waterenduse == "1800"
+replace waterenduse = "agriculture" if strpos(waterenduse, "agri")
+replace waterenduse = "district" if strpos(waterenduse, "district")
+replace waterenduse = "irrigation" if strpos(waterenduse, "ir") 
+replace waterenduse = "" if waterenduse == "stock"
+
+
+split testdate, p("/")
+destring testdate1 testdate2 testdate3, replace
+gen date_stata = mdy(testdate1, testdate2, testdate3)
+ 
+drop testdate*
+
+replace mtrmake = lower(mtrmake)
+
+// motors don't have no amps or no volts, this is a function of the form
+replace mtrv = . if mtrv == 0 | mtrv > 4970
+replace mtra = . if mtra == 0
+replace mteff = . if mtreff == 0
+
+// consistent with cleaning in the customer file
+rename meterno pge_badge_nbr
+
+replace meterkh = . if meterkh == 0
+
+//not useful
+drop metertype metercon
+
+// COME BACK AND CLEAN THE RATE SCHEDULE
+
+replace avgcost = . if avgcost == 0
+
+replace testsectiondiameter = . if testsection == 0
+
+
+replace directreadkw = . if directreadkw == 0
+replace measuredpowerfactor = . if measuredpowerfactor ==.
+
+
+
 
 
 
