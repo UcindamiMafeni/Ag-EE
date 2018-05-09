@@ -214,6 +214,15 @@ la var sa_sp_lapse_stop2 "Stop date of lapse 2 (when SA/SP was not listed as act
 order dr_ind, before(dr_program)
 order prsn_naics, before(naics_descr)
 
+** Cross-check lat/lon vs. climate zone, using CA Climate Zones shapefile
+preserve
+keep sp_uuid prem_lat prem_lon climate_zone_cd
+duplicates drop
+drop if prem_lat==. | prem_lon==. // GIS can't get nowhere with missing lat/lon
+replace climate_zone_cd = "Z07" if climate_zone_cd=="" // an obviously wrong Climate Zone, so the R script won't break
+outsheet using "$dirpath_data/misc/pge_prem_coord_raw.txt", comma replace
+restore
+
 ** Confirm uniqueness and save
 unique prsn_uuid sp_uuid sa_uuid
 assert r(unique)==r(N)
