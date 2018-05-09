@@ -51,7 +51,7 @@ for (i in bad_czone) {
     }
   }
 }  
-
+prems$czone_poly_assign <- as.numeric(prems$czone_poly_assign)
 
 #Export results to CSV
 filename <- "pge_prem_coord_polygon.csv"
