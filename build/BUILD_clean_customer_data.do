@@ -215,6 +215,7 @@ order dr_ind, before(dr_program)
 order prsn_naics, before(naics_descr)
 
 ** Cross-check lat/lon vs. climate zone, using CA Climate Zones shapefile
+	// export coordinates and climate zones
 preserve
 keep sp_uuid prem_lat prem_lon climate_zone_cd
 duplicates drop
@@ -222,6 +223,48 @@ drop if prem_lat==. | prem_lon==. // GIS can't get nowhere with missing lat/lon
 replace climate_zone_cd = "Z07" if climate_zone_cd=="" // an obviously wrong Climate Zone, so the R script won't break
 outsheet using "$dirpath_data/misc/pge_prem_coord_raw.txt", comma replace
 restore
+	
+	// run auxilary GIS script "BUILD_gis_climate_zone.R"
+
+	// import results from GIS script
+preserve
+insheet using "$dirpath_data/misc/pge_prem_coord_polygon.csv", double comma clear
+drop prem_lat prem_lon longitude latitude czone
+replace czone_poly_assign = "" if czone_poly_assign=="NA"
+replace czone_poly_assign = "Z0" + czone_poly_assign if length(czone_poly_assign)==1
+replace czone_poly_assign = "Z" + czone_poly_assign if length(czone_poly_assign)==2
+gen climate_zone_cd_gis = climate_zone_cd
+replace climate_zone_cd_gis = czone_poly_assign if czone_poly==0
+assert czone_poly==0 if climate_zone_cd!=climate_zone_cd_gis 
+assert czone_poly==0 & climate_zone_cd!=climate_zone_cd_gis if climate_zone_cd=="Z07"
+gen bad_cz_flag = czone_poly==0 // GIS assigns different climate zone
+gen bad_cz_flag2 = czone_poly==0 & czone_poly_assign=="" // GIS cannot assign any climate zone
+keep sp_uuid climate_zone_cd_gis bad_cz_flag bad_cz_flag2
+tostring sp_uuid, replace
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+assert length(sp_uuid)==10
+tempfile gis_out
+save `gis_out'
+restore
+
+	// merge back into main dataset
+merge m:1 sp_uuid using `gis_out'	
+	
+	checks to make sure it worked
+	
+	scatter to see if the errors are the ones outside of california?
+	
+	// label new variables
+la var climate_zone_cd_gis "Climate zone, as assigned by GIS shapefile using lat/lon"
+la var bad_cz_flag "Flag for PGE-assigned climate zone that's contradicted by GIS"
+la var bad_cz_flag2 "Flag for ???"
+	
+	
+	
 
 ** Confirm uniqueness and save
 unique prsn_uuid sp_uuid sa_uuid
@@ -250,4 +293,3 @@ legend(off)
 // Deal with missing lat/lon
 // Assign missing climate zones
 // Crosscheck lat/lon against climate zone
-// Climate zone crosswalk
