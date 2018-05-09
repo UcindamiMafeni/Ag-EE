@@ -17,6 +17,8 @@ setwd("S:/Matt/ag_pump/data/misc")
 
 #Load CLimate Zones shapefile
 cz <- readOGR(dsn = "CEC_climate_zones", layer = "CA_Building_Standards_Climate_Zones")
+proj4string(cz)
+cz <- spTransform(cz, CRS("+proj=longlat +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0"))
 
 #Read PGE  coordinates and mine coordinates
 prems <- read.delim2("pge_prem_coord_raw.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
