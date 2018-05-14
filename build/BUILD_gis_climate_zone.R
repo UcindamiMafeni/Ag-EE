@@ -271,7 +271,7 @@ ggplot() +
 
 
 #########################
-### 3.  Climate ZOnes ###
+### 3.  Climate Zones ###
 #########################
 
 #Convert to SpatialPointsDataFrame
