@@ -8,6 +8,8 @@ set more off
 
 global dirpath "S:/Matt/ag_pump"
 global dirpath_data "$dirpath/data"
+global dirpath_code "S:/Louis/backup/AgEE/AgEE_code/build"
+global R_exe_path "C:/PROGRA~1/MIE74D~1/ROPEN~1/bin/x64/R"
 
 ** Load raw PGE customer data
 use "$dirpath_data/pge_raw/customer_data.dta", clear
@@ -220,26 +222,29 @@ preserve
 keep sp_uuid prem_lat prem_lon climate_zone_cd
 duplicates drop
 drop if prem_lat==. | prem_lon==. // GIS can't get nowhere with missing lat/lon
+unique sp_uuid
+assert r(unique)==r(N)
 replace climate_zone_cd = "Z07" if climate_zone_cd=="" // an obviously wrong Climate Zone, so the R script won't break
 outsheet using "$dirpath_data/misc/pge_prem_coord_raw.txt", comma replace
 restore
 	
 	// run auxilary GIS script "BUILD_gis_climate_zone.R"
-
+shell "${R_exe_path}" --vanilla <"${dirpath_code}/BUILD_gis_climate_zone.R"
+	
 	// import results from GIS script
 preserve
 insheet using "$dirpath_data/misc/pge_prem_coord_polygon.csv", double comma clear
-drop prem_lat prem_lon longitude latitude czone
-replace czone_poly_assign = "" if czone_poly_assign=="NA"
-replace czone_poly_assign = "Z0" + czone_poly_assign if length(czone_poly_assign)==1
-replace czone_poly_assign = "Z" + czone_poly_assign if length(czone_poly_assign)==2
-gen climate_zone_cd_gis = climate_zone_cd
-replace climate_zone_cd_gis = czone_poly_assign if czone_poly==0
-assert czone_poly==0 if climate_zone_cd!=climate_zone_cd_gis 
-assert czone_poly==0 & climate_zone_cd!=climate_zone_cd_gis if climate_zone_cd=="Z07"
-gen bad_cz_flag = czone_poly==0 // GIS assigns different climate zone
-gen bad_cz_flag2 = czone_poly==0 & czone_poly_assign=="" // GIS cannot assign any climate zone
-keep sp_uuid climate_zone_cd_gis bad_cz_flag bad_cz_flag2
+drop prem_lat prem_lon longitude latitude czone 
+replace czone_gis = "" if czone_gis=="NA"
+replace czone_gis = "Z0" + czone_gis if length(czone_gis)==1
+replace czone_gis = "Z" + czone_gis if length(czone_gis)==2
+rename czone_gis climate_zone_cd_gis
+rename pou pou_name
+replace pou_name = "" if pou_name=="NA"
+rename bad_geocode bad_geocode_flag
+gen bad_cz_flag = climate_zone_cd!=climate_zone_cd_gis  // GIS assigns different climate zone
+tab climate* if bad_cz_flag==1, missing
+drop climate_zone_cd
 tostring sp_uuid, replace
 replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
 replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
@@ -247,24 +252,32 @@ replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
 replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
 replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
 assert length(sp_uuid)==10
+unique sp_uuid
+assert r(unique)==r(N)
 tempfile gis_out
 save `gis_out'
 restore
 
 	// merge back into main dataset
 merge m:1 sp_uuid using `gis_out'	
-	
-	checks to make sure it worked
-	
-	scatter to see if the errors are the ones outside of california?
+assert _merge!=2 // confirm everything merges in
+assert _merge==1 if prem_lat==. | prem_lon==. // confirm nothing merges if it has missing lat/lon
+assert (prem_lat==. | prem_lon==.) if _merge==1	// confirm that all non-merges have missing lat/lon
+gen missing_geocode_flag = _merge==1
+drop _merge
+*twoway (scatter prem_lat prem_lon if bad_cz_flag==0, msize(tiny) color(black)) ///
+*	   (scatter prem_lat prem_lon if bad_cz_flag==1, msize(tiny) color(red))
 	
 	// label new variables
+la var in_calif	"Dummy=1 if lat/lon are within California"
+la var in_pge "Dummy=1 if lat/lon are within PGE service territory proper"
+la var in_pou "Dummy=1 if lat/lon are withiin PGE-enveloped POU territory"
+la var pou_name "Name of PGE-enveloped POU (or other notes)"
+la var bad_geocode "Lat/lon not in PGE territory, and not in PGE-enveloped POU"
 la var climate_zone_cd_gis "Climate zone, as assigned by GIS shapefile using lat/lon"
 la var bad_cz_flag "Flag for PGE-assigned climate zone that's contradicted by GIS"
-la var bad_cz_flag2 "Flag for ???"
-	
-	
-	
+la var missing_geocode_flag "PGE geocodes are missing"	
+
 
 ** Confirm uniqueness and save
 unique prsn_uuid sp_uuid sa_uuid
@@ -272,24 +285,6 @@ assert r(unique)==r(N)
 compress
 save "$dirpath_data/pge_cleaned/pge_cust_detail.dta", replace	
 
-/*
-twoway ///
-(scatter prem_lat prem_lon if cl=="Z01", msize(vsmall) mcolor(blue)) ///
-(scatter prem_lat prem_lon if cl=="Z02", msize(vsmall) mcolor(black)) ///
-(scatter prem_lat prem_lon if cl=="Z03", msize(vsmall) mcolor(orange)) ///
-(scatter prem_lat prem_lon if cl=="Z04", msize(vsmall) mcolor(green)) ///
-(scatter prem_lat prem_lon if cl=="Z05", msize(vsmall) mcolor(maroon)) ///
-(scatter prem_lat prem_lon if cl=="Z11", msize(vsmall) mcolor(magenta)) ///
-(scatter prem_lat prem_lon if cl=="Z12", msize(vsmall) mcolor(red)) ///
-(scatter prem_lat prem_lon if cl=="Z13", msize(vsmall) mcolor(yellow)) ///
-(scatter prem_lat prem_lon if cl=="Z16", msize(vsmall) mcolor(cyan)), ///
-legend(off)
-*/
-
 
 // PENDING TASKS
 // Deal with missing badge number and badge numbers shorter than 10 digits
-// Deal with bad lat/lon 
-// Deal with missing lat/lon
-// Assign missing climate zones
-// Crosscheck lat/lon against climate zone
