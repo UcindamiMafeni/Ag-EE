@@ -203,8 +203,8 @@ foreach v of varlist max_demand peak_demand partial_peak_demand total_bill_amoun
 	replace `v' = temp_`v' if dup>0 & temp_keep==1
 }
 	// flag observations with multiple tariffs
-gen multi_tariff_flag = temp_keep==1
-la var multi_tariff_flag "Flag for bills with duplicate (alternative) tariffs"
+gen flag_multi_tariff = temp_keep==1
+la var flag_multi_tariff "Flag for bills with duplicate (alternative) tariffs"
 
 	// clean up
 drop dup temp* rt_sched?
@@ -288,8 +288,8 @@ foreach v of varlist total_bill_kwh max_demand peak_demand partial_peak_demand t
 	replace `v' = temp_`v' if dup2>0 & temp_keep==1
 }
 	// flag observations with multiple tariffs
-gen bad_tariff_flag = temp_keep==1
-la var bad_tariff_flag "Flag for duplicate bills with multiple, unresolvable tariffs that are summed"
+gen flag_bad_tariff = temp_keep==1
+la var flag_bad_tariff "Flag for duplicate bills with multiple, unresolvable tariffs that are summed"
 
 	// clean up
 drop dup dup2 temp* rt_sched?
@@ -333,7 +333,7 @@ local uniq = r(unique)
 drop if dup>0 & abs(temp_date_min)>temp_date_min2 & dup==dup2 // where thre aren't multiple tariffs
 unique sa_uuid bill_start_dt
 assert r(unique)==`uniq'
-foreach v of varlist max_demand peak_demand partial_peak_demand multi_tariff_flag bad_tariff_flag total_bill_amount {
+foreach v of varlist max_demand peak_demand partial_peak_demand flag_multi_tariff flag_bad_tariff total_bill_amount {
 	replace `v' = temp_`v' if dup>0 & dup==dup2 & abs(temp_date_min)==temp_date_min2
 }
 
@@ -356,10 +356,10 @@ local uniq = r(unique)
 drop if dup>0 & abs(temp_date_min)>temp_date_min2 & dup!=dup2 // where thre aren't multiple tariffs
 unique sa_uuid bill_start_dt
 assert r(unique)==`uniq'
-foreach v of varlist max_demand peak_demand partial_peak_demand total_bill_amount bad_tariff_flag rt_sched_cd {
+foreach v of varlist max_demand peak_demand partial_peak_demand total_bill_amount flag_bad_tariff rt_sched_cd {
 	replace `v' = temp_`v' if dup>0 & dup!=dup2 & abs(temp_date_min)==temp_date_min2
 }
-replace multi_tariff_flag = 1 if dup>0 & abs(temp_date_min)==temp_date_min2 & dup!=dup2 // multiple tariffs
+replace flag_multi_tariff = 1 if dup>0 & abs(temp_date_min)==temp_date_min2 & dup!=dup2 // multiple tariffs
 
 	// remaining dups don't have a following month, so take end date with bill length closest to 30.4 days (365/12=30.4)
 duplicates t sa_uuid bill_start_dt total_bill_kwh, gen(dup3)
@@ -372,7 +372,7 @@ local uniq = r(unique)
 drop if temp_to_drop==1 // appear to be account closings
 unique sa_uuid bill_start_dt
 assert r(unique)==`uniq'
-foreach v of varlist max_demand peak_demand partial_peak_demand multi_tariff_flag bad_tariff_flag total_bill_amount {
+foreach v of varlist max_demand peak_demand partial_peak_demand flag_multi_tariff flag_bad_tariff total_bill_amount {
 	replace `v' = temp_`v' if dup3>0 & dup3==dup4 & temp_full_month==temp_full_month2
 }
 gen temp_to_drop2 = dup3>0 & temp_full_month>temp_full_month2 & dup3!=dup4
@@ -381,10 +381,10 @@ local uniq = r(unique)
 drop if temp_to_drop2 // where thre aren't multiple tariffs
 unique sa_uuid bill_start_dt
 assert r(unique)==`uniq'
-foreach v of varlist max_demand peak_demand partial_peak_demand total_bill_amount bad_tariff_flag rt_sched_cd {
+foreach v of varlist max_demand peak_demand partial_peak_demand total_bill_amount flag_bad_tariff rt_sched_cd {
 	replace `v' = temp_`v' if dup3>0 & dup3!=dup4 & temp_full_month==temp_full_month2
 }
-replace multi_tariff_flag = 1 if dup3>0 & temp_full_month==temp_full_month2 & dup3!=dup4 // multiple tariffs
+replace flag_multi_tariff = 1 if dup3>0 & temp_full_month==temp_full_month2 & dup3!=dup4 // multiple tariffs
 
 	// confirm uniqueness
 unique sa_uuid bill_start_dt total_bill_kwh
@@ -424,7 +424,7 @@ local uniq = r(unique)
 drop if dup>0 & abs(temp_date_min)>temp_date_min2 & dup==dup2 // where thre aren't multiple tariffs
 unique sa_uuid bill_end_dt
 assert r(unique)==`uniq'
-foreach v of varlist max_demand peak_demand partial_peak_demand multi_tariff_flag bad_tariff_flag total_bill_amount {
+foreach v of varlist max_demand peak_demand partial_peak_demand flag_multi_tariff flag_bad_tariff total_bill_amount {
 	replace `v' = temp_`v' if dup>0 & dup==dup2 & abs(temp_date_min)==temp_date_min2
 }
 
@@ -442,10 +442,10 @@ local uniq = r(unique)
 drop if dup>0 & abs(temp_date_min)>temp_date_min2 & dup!=dup2 // where thre aren't multiple tariffs
 unique sa_uuid bill_end_dt
 assert r(unique)==`uniq'
-foreach v of varlist max_demand peak_demand partial_peak_demand total_bill_amount bad_tariff_flag rt_sched_cd {
+foreach v of varlist max_demand peak_demand partial_peak_demand total_bill_amount flag_bad_tariff rt_sched_cd {
 	replace `v' = temp_`v' if dup>0 & dup!=dup2 & abs(temp_date_min)==temp_date_min2
 }
-replace multi_tariff_flag = 1 if dup>0 & abs(temp_date_min)==temp_date_min2 & dup!=dup2 // multiple tariffs
+replace flag_multi_tariff = 1 if dup>0 & abs(temp_date_min)==temp_date_min2 & dup!=dup2 // multiple tariffs
 
 	// remaining dups don't have a preceding month, so take end date with bill length closest to 30.4 days (365/12=30.4)
 duplicates t sa_uuid bill_end_dt total_bill_kwh, gen(dup3)
@@ -458,7 +458,7 @@ local uniq = r(unique)
 drop if temp_to_drop==1 // appear to be account closings
 unique sa_uuid bill_end_dt
 assert r(unique)==`uniq'
-foreach v of varlist max_demand peak_demand partial_peak_demand multi_tariff_flag bad_tariff_flag total_bill_amount {
+foreach v of varlist max_demand peak_demand partial_peak_demand flag_multi_tariff flag_bad_tariff total_bill_amount {
 	replace `v' = temp_`v' if dup3>0 & dup3==dup4 & temp_full_month==temp_full_month2
 }
 gen temp_to_drop2 = dup3>0 & temp_full_month>temp_full_month2 & dup3!=dup4
@@ -467,10 +467,10 @@ local uniq = r(unique)
 drop if temp_to_drop2 // where thre aren't multiple tariffs
 unique sa_uuid bill_end_dt
 assert r(unique)==`uniq'
-foreach v of varlist max_demand peak_demand partial_peak_demand total_bill_amount bad_tariff_flag rt_sched_cd {
+foreach v of varlist max_demand peak_demand partial_peak_demand total_bill_amount flag_bad_tariff rt_sched_cd {
 	replace `v' = temp_`v' if dup3>0 & dup3!=dup4 & temp_full_month==temp_full_month2
 }
-replace multi_tariff_flag = 1 if dup3>0 & temp_full_month==temp_full_month2 & dup3!=dup4 // multiple tariffs
+replace flag_multi_tariff = 1 if dup3>0 & temp_full_month==temp_full_month2 & dup3!=dup4 // multiple tariffs
 
 	// confirm uniqueness
 unique sa_uuid bill_end_dt total_bill_kwh
@@ -500,7 +500,7 @@ unique sa_uuid bill_start_dt
 assert r(unique)==`uniq'
 duplicates t sa_uuid bill_start_dt, gen(temp_zm_dup)
 gen flag_maybe_adjust_end_date = temp_zm_min<temp_zm_max & temp_zm_dup==0
-replace multi_tariff_flag = 1 if temp_zm_min<temp_zm_max & temp_zm_dup==0 & dup!=dup2
+replace flag_multi_tariff = 1 if temp_zm_min<temp_zm_max & temp_zm_dup==0 & dup!=dup2
 
 	// tag remaining dups
 duplicates t sa_uuid bill_start_dt, gen(dup3)	
@@ -550,7 +550,7 @@ unique sa_uuid bill_start_dt
 assert r(unique)==`uniq'
 
 	// circle back and flag rate conflicts
-replace multi_tariff_flag = 1 if (flag_dup_partial_overlap | flag_dup_double_overlap) & ///
+replace flag_multi_tariff = 1 if (flag_dup_partial_overlap | flag_dup_double_overlap) & ///
 	dup3!=dup4
 
 	// tag remaining dups
@@ -579,7 +579,7 @@ unique sa_uuid bill_start_dt
 assert r(unique)==`uniq'
 
 	// circle back and flag rate conflicts
-replace multi_tariff_flag = 1 if flag_dup_partial_overlap==2 & dup5!=dup6
+replace flag_multi_tariff = 1 if flag_dup_partial_overlap==2 & dup5!=dup6
 
 	// tag remaining dups
 duplicates t sa_uuid bill_start_dt, gen(dup7)	
@@ -613,7 +613,7 @@ unique sa_uuid bill_start_dt
 assert r(unique)==`uniq'
 	
 	// circle back and flag rate conflicts
-replace multi_tariff_flag = 1 if flag_dup_partial_overlap==3 & dup7!=dup8
+replace flag_multi_tariff = 1 if flag_dup_partial_overlap==3 & dup7!=dup8
 
 	// tag remaining dups
 duplicates t sa_uuid bill_start_dt, gen(dup9)	
@@ -641,7 +641,7 @@ unique sa_uuid bill_start_dt
 assert r(unique)==`uniq'
 
 	// circle back and flag rate conflicts
-replace multi_tariff_flag = 1 if flag_dup_partial_overlap==4 & dup9!=dup10
+replace flag_multi_tariff = 1 if flag_dup_partial_overlap==4 & dup9!=dup10
 
 	// tag remaining dups
 duplicates t sa_uuid bill_start_dt, gen(dup11)	
@@ -673,7 +673,7 @@ assert r(unique)==`uniq'
 gen flag_dup_bad_kwh = flag_dup_partial_overlap==5
 
 	// circle back and flag rate conflicts
-replace multi_tariff_flag = 1 if flag_dup_partial_overlap==5 & dup11!=dup12
+replace flag_multi_tariff = 1 if flag_dup_partial_overlap==5 & dup11!=dup12
 
 	// tag remaining dups
 duplicates t sa_uuid bill_start_dt, gen(dup13)	
@@ -707,7 +707,7 @@ assert r(unique)==`uniq'
 assert total_bill_kwh!=. if dup13>0
 
 	// circle back and flag rate conflicts
-replace multi_tariff_flag = 1 if (temp_dup_kwhmissing_min<temp_dup_kwhmissing_max | ///
+replace flag_multi_tariff = 1 if (temp_dup_kwhmissing_min<temp_dup_kwhmissing_max | ///
 	temp_dup_1day_min<temp_dup_1day_max) & dup13!=dup14
 
 	// tag remaining dups
@@ -730,7 +730,7 @@ assert r(unique)==`uniq'
 replace flag_dup_bad_kwh = 1 if dup15>0
 
 	// circle back and flag rate conflicts
-replace multi_tariff_flag = 1 if dup15>0 & dup15!=dup16
+replace flag_multi_tariff = 1 if dup15>0 & dup15!=dup16
 	
 	// confirm uniqueness, at long last
 unique sa_uuid bill_start_dt 
@@ -769,7 +769,7 @@ unique sa_uuid bill_end_dt
 assert r(unique)==`uniq'
 
 	// circle back and flag rate conflicts
-replace multi_tariff_flag = 1 if dup>0 & temp_to_drop_zero_squeeze_max==1 ///
+replace flag_multi_tariff = 1 if dup>0 & temp_to_drop_zero_squeeze_max==1 ///
 	& dup!=dup2
 
 	// tag remaining dups
@@ -796,7 +796,7 @@ unique sa_uuid bill_end_dt
 assert r(unique)==`uniq'
 
 	// circle back and flag rate conflicts
-replace multi_tariff_flag = 1 if dup3>0 & temp_to_drop_zero2_gap_max==1 ///
+replace flag_multi_tariff = 1 if dup3>0 & temp_to_drop_zero2_gap_max==1 ///
 	& dup3!=dup4
 	
 	// tag remaining dups
@@ -831,7 +831,7 @@ unique sa_uuid bill_end_dt
 assert r(unique)==`uniq'
 
 	// circle back and flag rate conflicts
-replace multi_tariff_flag = 1 if dup5>0 & flag_dup_partial_overlap==1 & dup5!=dup6 ///
+replace flag_multi_tariff = 1 if dup5>0 & flag_dup_partial_overlap==1 & dup5!=dup6 ///
 	& temp3[_n-1]==1 & !(sa_uuid==sa_uuid[_n+1] & bill_end_dt==bill_end_dt[_n+1])
 	
 	// tag remaining dups
@@ -871,7 +871,7 @@ replace flag_dup_double_overlap = 1 if temp_to_drop_gap304_max==1
 replace flag_dup_bad_kwh = 1 if temp_to_drop_gap304_max==1	
 
 	// circle back and flag rate conflicts
-replace multi_tariff_flag = 1 if dup7>0 & temp_to_drop_gap304_max==1 & dup7!=dup8
+replace flag_multi_tariff = 1 if dup7>0 & temp_to_drop_gap304_max==1 & dup7!=dup8
 	
 	// tag remaining dups
 duplicates t sa_uuid bill_end_dt, gen(dup9)	
@@ -908,7 +908,7 @@ replace flag_dup_double_overlap = 1 if temp_to_drop_gap_max==1
 replace flag_dup_bad_kwh = 1 if temp_to_drop_gap_max==1	
 	
 	// circle back and flag rate conflicts
-replace multi_tariff_flag = 1 if dup9>0 & temp_to_drop_gap_max==1 & dup9!=dup10
+replace flag_multi_tariff = 1 if dup9>0 & temp_to_drop_gap_max==1 & dup9!=dup10
 
 	// tag remaining dups
 duplicates t sa_uuid bill_end_dt, gen(dup11)	
@@ -930,7 +930,7 @@ assert r(unique)==`uniq'
 replace flag_dup_bad_kwh = 1 if dup11>0
 
 	// circle back and flag rate conflicts
-replace multi_tariff_flag = 1 if dup11>0 & dup11!=dup12
+replace flag_multi_tariff = 1 if dup11>0 & dup11!=dup12
 	
 	// confirm uniqueness, at long last
 unique sa_uuid bill_end_dt 
@@ -1072,9 +1072,9 @@ replace bill_end_dt = bill_end_dt[_n+1] if temp_to_collapse_id!=. & ///
 	temp_to_collapse_id==temp_to_collapse_id[_n+1]
 replace bill_length = bill_end_dt-bill_start_dt+1 if temp_to_collapse_id!=.
 egen temp_rt_sched_cd = mode(rt_sched_cd) if temp_to_collapse_id!=., by(temp_to_collapse_id)
-replace temp_multi_tariff_flag = 1 if temp_to_collapse_id!=. & temp_to_collapse_id==temp_to_collapse_id[_n+1] & ///
+replace temp_flag_multi_tariff = 1 if temp_to_collapse_id!=. & temp_to_collapse_id==temp_to_collapse_id[_n+1] & ///
 	(temp_rt_sched_cd!=rt_sched_cd | temp_rt_sched_cd!=rt_sched_cd[_n+1])
-replace temp_multi_tariff_flag = 1 if temp_to_collapse_id!=. & temp_to_collapse_id==temp_to_collapse_id[_n-1] & ///
+replace temp_flag_multi_tariff = 1 if temp_to_collapse_id!=. & temp_to_collapse_id==temp_to_collapse_id[_n-1] & ///
 	(temp_rt_sched_cd!=rt_sched_cd | temp_rt_sched_cd!=rt_sched_cd[_n-1])
 replace temp_rt_sched_cd = rt_sched_cd if temp_to_collapse_id!=. & temp_to_collapse_id==temp_to_collapse_id[_n+1] & ///
 	temp_rt_sched_cd=="" & rt_sched_cd==rt_sched_cd[_n-1] & sa_uuid==sa_uuid[_n-1] & ///
@@ -1222,8 +1222,8 @@ foreach v of varlist *flag* {
 egen temp_rt_sched_cd = mode(rt_sched_cd) if temp_to_collapse_id!=., by(temp_to_collapse_id)
 gen temp_rt_sched_cd_check = rt_sched_cd==temp_rt_sched_cd if temp_to_collapse_id!=.
 egen temp_rt_sched_cd_check2 = min(temp_rt_sched_cd_check) if temp_to_collapse_id!=., by(temp_to_collapse_id)
-replace multi_tariff_flag = 1 if temp_to_collapse_id!=. & (temp_rt_sched_cd_check2==0 | temp_rt_sched_cd=="")
-replace bad_tariff_flag = 1 if temp_to_collapse_id!=. & temp_rt_sched_cd==""
+replace flag_multi_tariff = 1 if temp_to_collapse_id!=. & (temp_rt_sched_cd_check2==0 | temp_rt_sched_cd=="")
+replace flag_bad_tariff = 1 if temp_to_collapse_id!=. & temp_rt_sched_cd==""
 replace temp_rt_sched_cd = rt_sched_cd[_n-1] if temp_rt_sched_cd=="" & temp_to_collapse_id!=. & ///
 	temp_to_collapse_id[_n-1]==.
 replace temp_rt_sched_cd = temp_rt_sched_cd[_n-1] if temp_rt_sched_cd=="" & ///
