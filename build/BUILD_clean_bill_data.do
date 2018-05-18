@@ -1420,5 +1420,4 @@ save "$dirpath_data/pge_cleaned/billing_data.dta", replace
 // Dups where bills overlap, still unresolved: collapse to a single observation, set everything to missing, flag as such
 
 ** Pending
-// Monthify bills!
 // Cross-check billing data with interval data
