@@ -108,7 +108,6 @@ replace temp8 = rt_sched_cd[_n+1] if rt_sched_cd=="" & rt_sched_cd[_n+1]!="" & /
 egen temp9 = mode(temp8), by(sa_uuid modate)
 replace flag_bad_tariff = 1 if rt_sched_cd==""
 replace rt_sched_cd = temp9 if temp9!="" & rt_sched_cd==""
-assert rt_sched_cd!=""
 drop temp*
 
 ** Collapse to SA-month level
@@ -116,6 +115,29 @@ drop date
 duplicates drop
 unique sa_uuid modate
 assert r(unique)==r(N)
+
+** Rename and relabel
+rename total_bill_kwh mnth_bill_kwh
+rename total_bill_amount mnth_bill_amount
+la var mnth_bill_kwh "Total billed kWh, monthified"
+la var mnth_bill_amount "Total billed charges ($), monthified"
+
+** Confirm that total monthified kWh and $ add up to the same as in billing data
+preserve
+collapse (sum) mnth_bill_kwh mnth_bill_amount, by(sa_uuid) fast
+tempfile monthified
+save `monthified' 
+use "$dirpath_data/pge_cleaned/billing_data.dta", clear
+collapse (sum) total_bill_kwh total_bill_amount, by(sa_uuid) fast
+merge 1:1 sa_uuid using `monthified'
+assert _merge==3
+gen pct_diff_kwh = (mnth_bill_kwh-total_bill_kwh)/total_bill_kwh 
+gen pct_diff_amount = (mnth_bill_amount-total_bill_amount)/total_bill_amount 
+sum pct_diff_kwh pct_diff_amount, detail
+restore
+
+** Drop months prior to Dec 2007
+drop if modate<ym(2007,12)
 
 ** Compress and save
 sort sa_uuid modate
