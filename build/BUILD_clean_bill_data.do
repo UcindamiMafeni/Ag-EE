@@ -322,7 +322,7 @@ replace temp_date_min = bill_end_dt-bill_start_dt[_n+3] if dup>0 & temp[_n+3]==1
 egen temp_date_min2 = min(abs(temp_date_min)), by(sa_uuid bill_start_dt total_bill_kwh)
 
 	// consolidate if kWh matches (averaging cost, picking end date closest to next start date)
- foreach v of varlist max_demand peak_demand partial_peak_demand *flag {
+ foreach v of varlist max_demand peak_demand partial_peak_demand flag* {
 	egen double temp_`v' = max(`v'), by(sa_uuid bill_start_dt total_bill_kwh)
 }
 foreach v of varlist total_bill_amount {
@@ -413,7 +413,7 @@ replace temp_date_min = bill_start_dt-bill_end_dt[_n-2] if dup>0 & temp[_n-2]==1
 egen temp_date_min2 = min(abs(temp_date_min)), by(sa_uuid bill_end_dt total_bill_kwh)
 
 	// consolidate if kWh matches (averaging cost, picking start date closest to previous end date)
- foreach v of varlist max_demand peak_demand partial_peak_demand *flag {
+ foreach v of varlist max_demand peak_demand partial_peak_demand flag* {
 	egen double temp_`v' = max(`v'), by(sa_uuid bill_end_dt total_bill_kwh)
 }
 foreach v of varlist total_bill_amount {
@@ -1024,7 +1024,7 @@ replace temp_to_collapse = 1 if temp_date_overlap4==1 & temp_date_overlap4[_n-2]
 	sa_uuid==sa_uuid[_n-1] & sa_uuid==sa_uuid[_n+1] & bill_start_dt[_n+1]-bill_end_dt<=3
 gen temp_to_collapse_id = _n if temp_to_collapse==1 & temp_to_collapse[_n-1]==0 & temp_to_collapse[_n+1]==1
 replace temp_to_collapse_id = _n-1 if temp_to_collapse==1 & temp_to_collapse[_n-1]==1 & temp_to_collapse[_n+1]==0
-foreach v of varlist *flag* max_demand peak_demand partial_peak_demand {
+foreach v of varlist flag* max_demand peak_demand partial_peak_demand {
 	egen double temp_`v' = max(`v') if temp_to_collapse_id!=., by(temp_to_collapse_id)
 	replace temp_`v' = `v' if temp_to_collapse_id==temp_to_collapse_id[_n+1] & total_bill_kwh!=. & ///
 		total_bill_kwh[_n+1]==. & temp_to_collapse_id!=.
@@ -1095,7 +1095,7 @@ replace temp_rt_sched_cd = rt_sched_cd[_n+1] if temp_to_collapse_id!=. & temp_to
 assert rt_sched_cd!="" if temp_to_collapse_id!=.
 
 	// collapse overlapping dups
-foreach v of varlist temp_*flag* temp_max_demand temp_peak_demand temp_partial_peak_demand temp_total_bill_kwh temp_total_bill_amount temp_rt_sched_cd {
+foreach v of varlist temp_flag* temp_max_demand temp_peak_demand temp_partial_peak_demand temp_total_bill_kwh temp_total_bill_amount temp_rt_sched_cd {
 	local v2 = subinstr("`v'","temp_","",1)
 	replace `v2' = `v' if temp_to_collapse_id!=.
 }	
@@ -1214,7 +1214,7 @@ assert temp_to_collapse_id!=. if temp_to_collapse==1
 foreach v of varlist total_bill_kwh max_demand peak_demand partial_peak_demand total_bill_amount {
 	replace `v' = . if temp_to_collapse_id!=.
 }
-foreach v of varlist *flag* {
+foreach v of varlist flag* {
 	egen temp = max(`v') if temp_to_collapse_id!=., by(temp_to_collapse_id)
 	replace `v' = temp if temp_to_collapse_id!=.
 	drop temp
