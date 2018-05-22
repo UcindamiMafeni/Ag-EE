@@ -48,13 +48,15 @@ foreach v of varlist total_bill_kwh total_bill_amount {
 }
 	
 ** Harmonize variables where temp_wt==0.5
-foreach v of varlist *flag* {
+foreach v of varlist flag* interval_bill_corr {
 	egen double temp = max(`v') if temp_wt==0.5, by(sa_uuid date)
 	replace `v' =  temp if temp_wt==0.5
 	drop temp
 }
-replace rt_sched_cd = rt_sched_cd[_n+1] if temp_wt==0.5 & temp_wt[_n+1]==0.5 & ///
-	sa_uuid==sa_uuid[_n+1] & temp_new==1 & temp_new[_n+1]==0 
+foreach v of varlist rt_sched_cd sp_uuid? {
+	replace `v' = `v'[_n+1] if temp_wt==0.5 & temp_wt[_n+1]==0.5 & ///
+		sa_uuid==sa_uuid[_n+1] & temp_new==1 & temp_new[_n+1]==0 
+}
 foreach v of varlist total_bill_kwh total_bill_amount {
 	egen double temp = sum(`v') if temp_wt==0.5, by(sa_uuid date)
 	replace `v' = temp if temp_wt==0.5
@@ -79,7 +81,7 @@ la var days "Number of days in month covered by a bill"
 order sa_uuid modate days	
 	
 ** Prepare to collapse to monthly level
-foreach v of varlist flag* {
+foreach v of varlist flag* interval_bill_corr {
 	egen double temp = max(`v'), by(sa_uuid modate)
 	replace `v' =  temp
 	drop temp
@@ -109,10 +111,27 @@ egen temp9 = mode(temp8), by(sa_uuid modate)
 replace flag_bad_tariff = 1 if rt_sched_cd==""
 replace rt_sched_cd = temp9 if temp9!="" & rt_sched_cd==""
 drop temp*
+foreach v of varlist sp_uuid? {
+	egen temp = mode(`v'), by(sa_uuid modate)
+	replace `v' = temp if temp!="" 
+	drop temp
+}
+assert sp_uuid1!=""
 
 ** Collapse to SA-month level
 drop date
 duplicates drop
+sort sa_uuid modate
+duplicates t sa_uuid modate, gen(dup) // 3 unresolved dups (all sp_uuid1 conflicts)
+gen temp_to_drop = 0
+replace temp_to_drop = 1 if dup>0 & sa_uuid==sa_uuid[_n+1] & sa_uuid==sa_uuid[_n+2] & ///
+	modate==modate[_n+1] & modate+1==modate[_n+2] & sp_uuid1!=sp_uuid1[_n+2] & ///
+	sp_uuid1[_n+1]==sp_uuid1[_n+2]	
+replace temp_to_drop = 1 if dup>0 & sa_uuid==sa_uuid[_n-1] & sa_uuid==sa_uuid[_n+1] & ///
+	modate==modate[_n-1] & modate+1==modate[_n+1] & sp_uuid1!=sp_uuid1[_n+1] & ///
+	sp_uuid1[_n-1]==sp_uuid1[_n+1]	
+drop if temp_to_drop==1
+drop dup temp_to_drop
 unique sa_uuid modate
 assert r(unique)==r(N)
 
