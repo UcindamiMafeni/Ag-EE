@@ -46,13 +46,16 @@ do "$dirpath_code/build/BUILD_compare_billing_customer.do"
 *** 10: CROSS-VALIDATE CUSTOMER VS. BILLING/INTERVAL DATA
 do "$dirpath_code/build/BUILD_compare_customer_usage.do"
 
-*** 11: MONTHIFY BILLING DATA
+*** 11: CROSS-VALIDATE CUSTOMER VS. EE MEASURE DATA
+do "$dirpath_code/build/BUILD_compare_customer_ee.do"
+
+*** 12: MONTHIFY BILLING DATA
 do "$dirpath_code/buld/BUILD_monthify_billing_data.do"
 
-*** 12: CLEAN PUMP TEST DATA
+*** 13: CLEAN PUMP TEST DATA
 do "$dirpath_code/build/BUILD_clean_pump_test_data.do"
 
-*** 13: CLEAN PGE Rate DATA
+*** 14: CLEAN PGE Rate DATA
 do "$dirpath_code/build/BUILD_clean_rate_data.do"
 
 
