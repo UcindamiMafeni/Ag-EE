@@ -47,7 +47,6 @@ la var mtr_install_hour "Meter install hour"
 la var mtr_remove_date "Meter remove date (if missing, never removed)"
 la var mtr_remove_hour "Meter remove hour (if missing, never removed)"
 
-/*
 ** Resolve duplicates (when the same meter starts in the same hour it just stopped)
 duplicates t sp_uuid pge_badge_nbr, gen(dup)
 sort sp_uuid pge_badge_nbr mtr_install_date mtr_install_hour mtr_remove_date mtr_remove_hour
@@ -193,11 +192,10 @@ assert mtr_lapse_stop1!=. if dup>0 & temp_first // no open-ended lapses
 drop dup temp_first start* stop*
 la var mtr_lapse_start1 "Start date of lapse 1 (when meter number wasn't listed as active)"
 la var mtr_lapse_stop1 "Stop date of lapse 1 (when meter number wasn't listed as active)"
-*/
 
-** NOT UNIQUE YET
-duplicates r pge_badge_nbr
-duplicates r sp_uuid pge_badge_nbr
+** Confirm uniqueness
+unique sp_uuid pge_badge_nbr
+assert r(unique)==r(N)
 
 ** Save
 compress
@@ -205,5 +203,4 @@ save "$dirpath_data/pge_cleaned/meter_badge_number_data.dta", replace
 
 
 // PENDING TASKS
-// Turn on code that converts duplicates to lapses, and makes unique?
 // Deal with dates (or sp_uuid & pge_badge_nbr pairs) that contradict customer data
