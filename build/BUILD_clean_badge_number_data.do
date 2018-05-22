@@ -201,6 +201,3 @@ assert r(unique)==r(N)
 compress
 save "$dirpath_data/pge_cleaned/meter_badge_number_data.dta", replace	
 
-
-// PENDING TASKS
-// Deal with dates (or sp_uuid & pge_badge_nbr pairs) that contradict customer data
