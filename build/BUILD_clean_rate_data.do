@@ -12,6 +12,7 @@ global dirpath "S:/Matt/ag_pump"
 global dirpath_data "$dirpath/data"
 global dirpath_data_temp "$dirpath/data/temp"
 global dirpath_data_pge_raw "$dirpath_data/pge_raw"
+global dirpath_data_pge_cleaned "$dirpath_data/pge_cleaned"
 
 ************************************************
 // all rates downloaded from https://www.pge.com/tariffs/electric.shtml on 5/8/18
@@ -46,10 +47,10 @@ foreach file in `files' {
  save "$dirpath_data_temp/`fname'.dta", replace 
 }
 
-*/
+
 
 **** LARGE AG RATES
-
+{
 
 **** BEGINNING THROUGH 100301-100430 
 foreach dates in "080101-080229" "080301-080430" "080501-080930" "081001-081231" ///
@@ -135,7 +136,6 @@ replace energycharge = "0" if energycharge == "-"
 
 destring customercharge metercharge demandcharge energycharge, replace
 
-replace rateschedule = upper(rateschedule)
 drop rownumber dupes
 
 // get the start & end date for the rates
@@ -160,7 +160,6 @@ replace tou = 1 if strpos(ratedesign, "time of use")
 
 drop ratedesign
 
-egen peaktype_group = group(otherchargeconditions)
 
 
 // create an indicator for peak, off peak, partial peak for each hour
@@ -184,139 +183,264 @@ gen offpeak = 0 if tou ==1 & timeofuseperiod != "maximum"
 gen partpeak = 0 if tou == 1 & timeofuseperiod != "maximum"
 gen peak = 0 if tou==1 & timeofuseperiod != "maximum"
 
-replace peaktype_group = . if tou == 0
 
 
 
-
-/* peak group 1:
-customer chooses summer peak period:  noon to 4:00 pm weekdays or 1:00 pm to 5:00 pm weekday
- s or 2:00 pm to 6:00 pm weekdays.  winter partial peak: 8:30 am to 9:30 pm weekdays.  all 
- other hours and holidays are off peak for both summer and winter.
+/* ag-r rates: (group 1: summer - 12 noon to 6p, mtw)
+ group 2: summer - 12 noon to 6 pm w th f
+ off peak all other days/hours
+ 
+ winter: partial peak 830a-930p m-f
+ off peak all other days/hours
 */
 
 // 2 == "possible peak"
 replace peak = 2 if timeofuseperiod == "max peak" & season == "summer" /// 
-  & peaktype_group == 1 & hour >= 12 & hour <= 18 ///
+  & (rateschedule == "ag-rb" | rateschedule == "ag-re")  & hour >= 12 & hour <= 18 ///
   & (dow_num >= 1 & dow_num <= 5) 
   
 replace peak = 2 if timeofuseperiod == "max peak" & season == "summer" /// 
-  & peaktype_group == 1 & hour >= 14 & hour <= 18 ///
+  & (rateschedule == "ag-rb" | rateschedule == "ag-re") & hour >= 14 & hour <= 18 ///
   & (dow_num >= 1 & dow_num <= 5) 
     
 replace partpeak = 1 if timeofuseperiod == "part-peak" /// 
-  & peaktype_group == 1 & hour >= 8 & hour <= 21 ///
+  & (rateschedule == "ag-rb" | rateschedule == "ag-re") & hour >= 8 & hour <= 21 ///
   & (dow_num >= 1 & dow_num <= 5) & season == "winter"
   
 replace partpeak = 0 if timeofuseperiod == "part-peak" /// 
-  & peaktype_group == 1 & hour == 8 & minute == 0 ///
+  & (rateschedule == "ag-rb" | rateschedule == "ag-re") & hour == 8 & minute == 0 ///
   & (dow_num >= 1 & dow_num <= 5) & season == "winter"
   
 replace partpeak = 0 if timeofuseperiod == "part-peak" /// 
-  & peaktype_group == 1 & hour == 21 & minute == 30 ///
+  & (rateschedule == "ag-rb" | rateschedule == "ag-re") & hour == 21 & minute == 30 ///
   & (dow_num >= 1 & dow_num <= 5) & season == "winter"
   
-replace offpeak = 1 if peak == 0 & partpeak ==0 & peaktype_group == 1
+replace offpeak = 1 if peak == 0 & partpeak ==0 & (rateschedule == "ag-rb" | rateschedule == "ag-re")
 
 
-** peak group 2:
-/*customer chooses summer peak periods: noon to 6:00 pm mtw, or noon to 6:00 pm wthf   winter 
- partial peak: 8:30 am to 9:30 pm weekdays.  all other hours and holidays are off peak for 
- both summer and winter.
+/* ag-v rates:
+AG-V Short-Peak Time-of-Use Periods						
+						
+	Summer  (May-October)					
+		Peak:*				
+			Group I		12:00 noon to 4:00 pm	Monday through Friday (except holidays)
+			Group II		1:00 pm to 5:00 pm	Monday through Friday (except holidays)
+			Group III		2:00 pm to 6:00 pm	Monday through Friday (except holidays)
+						
+		Off-Peak:			All Other Hours	Monday through Friday
+					All Day	Saturday, Sunday, Holidays
+						
+	Winter  (November-April)					
+		Partial Peak:			8:30 am to 9:30 pm	Monday through Friday (except holidays)
+						
+		Off-Peak:			All Other Hours	Monday through Friday
+					All Day	Saturday, Sunday, Holidays
 */
+
 
 // 2 == "possible peak"
 replace peak = 2 if timeofuseperiod == "max peak" /// 
-  & peaktype_group == 2 & hour >= 12 & hour <= 17 ///
-  & (dow_num == 1 | dow_num == 2 | dow_num == 3) & season == "summer"
+  & (rateschedule == "ag-vb" | rateschedule == "ag-ve") & hour >= 12 & hour <= 16 ///
+  & (dow_num >=1 & dow_num <= 5) & season == "summer"
   
 replace peak = 2 if timeofuseperiod == "max peak" /// 
-  & peaktype_group == 2 & hour >= 12 & hour <= 17 ///
-  & (dow_num == 3 | dow_num == 4 | dow_num == 5) & season == "summer"
+  & (rateschedule == "ag-vb" | rateschedule == "ag-ve") & hour >= 13 & hour <= 17 ///
+  & (dow_num >=1 & dow_num <= 5) & season == "summer"
   
 
+replace peak = 2 if timeofuseperiod == "max peak" /// 
+  &(rateschedule == "ag-vb" | rateschedule == "ag-ve") & hour >= 14 & hour <= 18 ///
+  & (dow_num >=1 & dow_num <= 5) & season == "summer"
+  
 replace partpeak = 1 if timeofuseperiod == "part-peak" /// 
-  & peaktype_group == 2 & hour >= 8 & hour <= 21 ///
+  & (rateschedule == "ag-vb" | rateschedule == "ag-ve") & hour >= 8 & hour <= 21 ///
   & (dow_num >= 1 & dow_num <= 5) & season == "winter"
   
 replace partpeak = 0 if timeofuseperiod == "part-peak" /// 
-  & peaktype_group == 2 & hour == 8 & minute == 0 ///
+  & (rateschedule == "ag-vb" | rateschedule == "ag-ve") & hour == 8 & minute == 0 ///
   & (dow_num >= 1 & dow_num <= 5) & season == "winter"
   
 replace partpeak = 0 if timeofuseperiod == "part-peak" /// 
-  & peaktype_group == 2 & hour == 21 & minute == 30 ///
+  & (rateschedule == "ag-vb" | rateschedule == "ag-ve") & hour == 21 & minute == 30 ///
   & (dow_num >= 1 & dow_num <= 5) & season == "winter"
   
-replace offpeak = 1 if peak == 0 & partpeak ==0 & peaktype_group == 2 
+replace offpeak = 1 if peak == 0 & partpeak ==0 & (rateschedule == "ag-vb" | rateschedule == "ag-ve") 
 
 
 
 
-/* peak group 3:
-summer peak: noon to 6:00 pm weekdays,  partial peak 8:30 am to noon; 6:00 pm to 9:30 pm  we
-> ekdays.  winter partial peak: 8:30 am to 9:30 pm weekdays.  all other hours and holidays a
-> re off peak for both summer and winter.
+/* 
+AG-4 Time-of-Use Periods						
+						
+	Summer  (May-October)					
+		For Rates A, B, D, and E				
+						
+			Peak:		12:00 noon to 6:00 pm	Monday through Friday (except holidays)
+						
+			Off-Peak:		All Other Hours	Monday through Friday
+					All Day	Saturday, Sunday, Holidays
+						
+		For Rates C and F				
+						
+			Peak:		12:00 noon to 6:00 pm	Monday through Friday (except holidays)
+						
+			Partial-Peak:		8:30 am to 12:00 pm	Monday through Friday (except holidays)
+					6:00 pm to 9:30 pm	Monday through Friday (except holidays)
+						
+			Off-Peak:		9:30 pm to 8:30 am	Monday through Friday 
+					All Day	Saturday, Sunday, Holidays
+						
+	Winter  (November-April)					
+		For Rates A, B, C, D, E, and F				
+						
+			Partial-Peak:		8:30 am to 9:30 pm	Monday through Friday (except holidays)
+						
+			Off-Peak:		All Other Hours	Monday through Friday 
+					All Day	Saturday, Sunday, Holidays
+						
+
 */
 
 replace peak = 1 if timeofuseperiod == "max peak" & season == "summer" /// 
-  & peaktype_group == 3 & hour >= 12 & hour <= 18 ///
+  & (rateschedule == "ag-4a" | rateschedule == "ag-4b" | /// 
+   rateschedule == "ag-4d" | rateschedule == "ag-4e")  ///
+  & hour >= 12 & hour <= 18 ///
   & (dow_num >= 1 & dow_num <= 5) 
-    
+
+  
+replace peak = 1 if timeofuseperiod == "max peak" & season == "summer" /// 
+  & (rateschedule == "ag-4c" | rateschedule == "ag-4f")  ///
+  & hour >= 12 & hour <= 18 ///
+  & (dow_num >= 1 & dow_num <= 5) 
+  
+  
 replace partpeak = 1 if timeofuseperiod == "part-peak" /// 
-  & peaktype_group == 3 & hour >= 8 & hour <= 12 ///
+  & (rateschedule == "ag-4c" | rateschedule == "ag-4f") & hour >= 8 & hour <= 12 ///
   & (dow_num >= 1 & dow_num <= 5) & season == "summer"
   
 replace partpeak = 1 if timeofuseperiod == "part-peak" /// 
-  & peaktype_group == 3 & hour >= 18 & hour <= 21 ///
+  & (rateschedule == "ag-4c" | rateschedule == "ag-4f") & hour >= 18 & hour <= 21 ///
   & (dow_num >= 1 & dow_num <= 5) & season == "summer"
   
 replace partpeak = 0 if timeofuseperiod == "part-peak" /// 
-  & peaktype_group == 3 & hour == 8 & minute == 0 ///
+  & (rateschedule == "ag-4c" | rateschedule == "ag-4f") & hour == 8 & minute == 0 ///
   & (dow_num >= 1 & dow_num <= 5) & season == "summer"
   
 replace partpeak = 0 if timeofuseperiod == "part-peak" /// 
-  & peaktype_group == 3 & hour == 21 & minute == 30 ///
+  & (rateschedule == "ag-4c" | rateschedule == "ag-4f") & hour == 21 & minute == 30 ///
   & (dow_num >= 1 & dow_num <= 5) & season == "summer"
 
 replace partpeak = 1 if timeofuseperiod == "part-peak" /// 
-  & peaktype_group == 3 & hour >= 8 & hour <= 21 ///
+  & (rateschedule == "ag-4c" | rateschedule == "ag-4f") & hour >= 8 & hour <= 21 ///
   & (dow_num >= 1 & dow_num <= 5) & season == "winter"
   
 replace partpeak = 0 if timeofuseperiod == "part-peak" /// 
-  & peaktype_group == 3 & hour == 8 & minute == 0 ///
+    & (rateschedule == "ag-4a" | rateschedule == "ag-4b" | /// 
+   rateschedule == "ag-4d" | rateschedule == "ag-4e")  ///
+ & hour == 8 & minute == 0 ///
   & (dow_num >= 1 & dow_num <= 5) & season == "winter"
   
 replace partpeak = 0 if timeofuseperiod == "part-peak" /// 
-  & peaktype_group == 3 & hour == 21 & minute == 30 ///
+    & (rateschedule == "ag-4a" | rateschedule == "ag-4b" | /// 
+   rateschedule == "ag-4d" | rateschedule == "ag-4e")  ///
+ & hour == 21 & minute == 30 ///
   & (dow_num >= 1 & dow_num <= 5) & season == "winter"
   
-replace offpeak = 1 if peak == 0 & partpeak ==0 & peaktype_group == 3 
+replace offpeak = 1 if peak == 0 & partpeak ==0 ///
+   & (rateschedule == "ag-4a" | rateschedule == "ag-4b" | /// 
+   rateschedule == "ag-4d" | rateschedule == "ag-4e")  ///
+ 
   
 
-/* peak group 4:
-summer peak: noon to 6:00 pm weekdays.  winter partial peak: 8:30 am to 9:30 pm weekdays.  a
-  ll other hours and holidays are off peak for both summer and winter.
+replace partpeak = 0 if timeofuseperiod == "part-peak" /// 
+    & (rateschedule == "ag-4c" | rateschedule == "ag-4f")  ///
+ & hour == 8 & minute == 0 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "winter"
+  
+replace partpeak = 0 if timeofuseperiod == "part-peak" /// 
+    & (rateschedule == "ag-4c" | rateschedule == "ag-4f")  ///
+ & hour == 21 & minute == 30 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "winter"
+  
+replace offpeak = 1 if peak == 0 & partpeak ==0 ///
+   & (rateschedule == "ag-4c" | rateschedule == "ag-4f")  ///
+
+   
+/* AG-5 Large Time-of-Use Periods						
+						
+	Summer  (May-October)					
+		For Rates A, B, D, and E				
+						
+			Peak:		12:00 noon to 6:00 pm	Monday through Friday (except holidays)
+						
+			Off-Peak:		All Other Hours	Monday through Friday
+					All Day	Saturday, Sunday, Holidays
+						
+		For Rates C and F				
+						
+			Peak:		12:00 noon to 6:00 pm	Monday through Friday (except holidays)
+						
+			Partial-Peak:		8:30 am to 12:00 pm	Monday through Friday (except holidays)
+					6:00 pm to 9:30 pm	Monday through Friday (except holidays)
+						
+			Off-Peak:		9:30 pm to 8:30 am	Monday through Friday 
+					All Day	Saturday, Sunday, Holidays
+						
+	Winter  (November-April)					
+		For Rates A, B, C, D, E, and F				
+						
+			Partial-Peak:		8:30 am to 9:30 pm	Monday through Friday (except holidays)
+						
+			Off-Peak:		All other hours	Monday through Friday 
+					All day	Saturday, Sunday, Holidays
+						
+
 */
 
 replace peak = 1 if timeofuseperiod == "max peak" & season == "summer" /// 
-  & peaktype_group == 4 & hour >= 12 & hour <= 18 ///
+  & (rateschedule == "ag-5a" | rateschedule == "ag-5b" | rateschedule == "ag-5c" | ///
+  rateschedule == "ag-5d" | rateschedule == "ag-5e" | rateschedule == "ag-5f") /// 
+  & hour >= 12 & hour <= 18 ///
   & (dow_num >= 1 & dow_num <= 5) 
 
     
 replace partpeak = 1 if timeofuseperiod == "part-peak" /// 
-  & peaktype_group == 4 & hour >= 8 & hour <= 21 ///
+  & (rateschedule == "ag-5c" | rateschedule == "ag-5f") & hour >= 8 & hour <= 12 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "summer"
+
+replace partpeak = 1 if timeofuseperiod == "part-peak" /// 
+  & (rateschedule == "ag-5c" | rateschedule == "ag-5f") & hour >= 18 & hour <= 21 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "summer"
+  
+replace partpeak = 0 if timeofuseperiod == "part-peak" /// 
+  & (rateschedule == "ag-5c" | rateschedule == "ag-5f") & hour == 8 & minute == 0 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "summer"
+  
+replace partpeak = 0 if timeofuseperiod == "part-peak" /// 
+  & (rateschedule == "ag-5c" | rateschedule == "ag-5f") & hour == 21 & minute == 30 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "summer"
+  
+
+replace partpeak = 1 if timeofuseperiod == "part-peak" /// 
+  & (rateschedule == "ag-5c" | rateschedule == "ag-5f") & hour >= 8 & hour <= 21 ///
   & (dow_num >= 1 & dow_num <= 5) & season == "winter"
   
 replace partpeak = 0 if timeofuseperiod == "part-peak" /// 
-  & peaktype_group == 4 & hour == 8 & minute == 0 ///
+    & (rateschedule == "ag-5a" | rateschedule == "ag-5b" | rateschedule == "ag-5c" | ///
+  rateschedule == "ag-5d" | rateschedule == "ag-5e" | rateschedule == "ag-5f") /// 
+ & hour == 8 & minute == 0 ///
   & (dow_num >= 1 & dow_num <= 5) & season == "winter"
   
 replace partpeak = 0 if timeofuseperiod == "part-peak" /// 
-  & peaktype_group == 4 & hour == 21 & minute == 30 ///
+    & (rateschedule == "ag-5a" | rateschedule == "ag-5b" | rateschedule == "ag-5c" | ///
+  rateschedule == "ag-5d" | rateschedule == "ag-5e" | rateschedule == "ag-5f") /// 
+ & hour == 21 & minute == 30 ///
   & (dow_num >= 1 & dow_num <= 5) & season == "winter"
   
 
-replace offpeak = 1 if peak == 0 & partpeak ==0 & peaktype_group == 4 
+replace offpeak = 1 if peak == 0 & partpeak ==0 /// 
+& (rateschedule == "ag-5a" | rateschedule == "ag-5b" | rateschedule == "ag-5c" | ///
+  rateschedule == "ag-5d" | rateschedule == "ag-5e" | rateschedule == "ag-5f")  
 
 // set up the energy charge for all hours of the day
 egen peakenergy_prelim = mean(energycharge) if timeofuse == "max peak", by(rateschedule season)
@@ -347,7 +471,7 @@ drop maxdemand
 
 drop if timeofuse == "maximum"
 
-drop otherchargeconditions peaktype_group 
+drop otherchargeconditions  
 
 // organize the dataset
 order rateschedule rate_start rate_end tou season  dow_num hour minute ///
@@ -357,6 +481,9 @@ drop averagetotalrate
 
 rename demandcharge3kw demandcharge
 rename energychargekwh energycharge
+
+replace rateschedule = upper(rateschedule)
+
 
 label variable rateschedule "rate name"
 label variable rate_start_date "rate period start date"
@@ -1367,5 +1494,16 @@ local files: dir . files "*.dta"
 foreach f in `files' {
  append using "`f'"
 }
+drop if rateschedule == ""
 
-  
+// drop off-peak observations when the peak or partial peak is on
+egen peakmean = mean(offpeak), by(rateschedule season dow hour minute)
+egen anychoice = max(peak), by(rateschedule season dow hour minute) 
+drop if peakmean <1  & offpeak == 1 & anychoice < 2
+
+replace hour = . if tou == 0
+replace minute = . if tou == 0
+replace dow_num = . if tou == 0
+
+save "$dirpath_data_pge_cleaned/large_ag_rates.dta", replace
+}
