@@ -86,8 +86,8 @@ tab measurement_accuracy_id, missing // 90% populated, 5 unique accuracy codes
 la var casgem_reading "Reading is a casgem submittal"
 tab casgem_reading, missing
 
-la var org_id "Monitoring enity agency code"
-la var org_name "Monitoring anity agency name"
+la var org_id "Monitoring agency code"
+la var org_name "Monitoring agency name"
 tab org_id, missing
 tab org_name, missing
 egen temp_group1 = group(org_id)
@@ -109,6 +109,20 @@ assert temp_group1==temp_group2 // confirms that agency names are clean!
 drop temp_group1 temp_group2
 assert coop_agency_org_id!=. & coop_org_name!=""
 rename coop_agency_org_id coorp_org_id
+
+** Merge in measurement accuracy
+preserve
+insheet using "$dirpath_data/groundwater/Statewide_GWL_Data_20170905/measurement_accuracy_type.csv", double comma clear
+keep measurement_accuracy_type_id measurement_accuracy_desc
+rename measurement_accuracy_type_id measurement_accuracy_id
+tempfile macc
+save `macc'
+restore
+merge m:1 measurement_accuracy_id using `macc', keep(1 3)
+assert _merge==3 | measurement_accuracy_id==.
+drop _merge
+la var measurement_accuracy_desc "Measurement accuracy description"
+order measurement_accuracy_desc, after(measurement_accuracy_id)
 
 ** Save
 compress
@@ -255,7 +269,7 @@ twoway ///
 	xtitle("Longitude", size(small)) ytitle("Latitude", size(small)) ///
 	title("Groundwater stations by region", size(medium) color(black)) ///
 	graphregion(lcolor(white) fcolor(white) lstyle(none)) plotregion(fcolor(white) lcolor(white))
-
+order basin_region*, after(basin_desc)
 
 ** Save
 compress
