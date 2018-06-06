@@ -20,7 +20,7 @@ global dirpath_data "$dirpath/data"
 ** Import GWL file
 insheet using "$dirpath_data/groundwater/Statewide_GWL_Data_20170905/gwl_file.csv", double comma clear
 
-** Clean and label
+** Clean and label identifiers and dates
 la var casgem_station_id "Station identifier"
 tostring casgem_station_id, replace
 replace casgem_station_id = "0" + casgem_station_id if length(casgem_station_id)<5
@@ -50,15 +50,21 @@ la var date "Measurement date"
 gen year = year(date)
 la var year "Measurement year"
 order year, after(date)
-hist year
-hist year if inrange(year,2000,2018)
-hist date if inrange(year,2000,2018)
+*hist year
+*hist year if inrange(year,2000,2018)
+*hist date if inrange(year,2000,2018)
+egen temp_min = min(year), by(site_code)
+egen temp_max = max(year), by(site_code)
+tab temp_min
+tab temp_max // 43% of all sites continue into 2017
+drop temp*
 
-la var rp_elevation "Reference point elevation (feet)"
+** Clean, label, and process surface and groundwater measurements
+la var rp_elevation "Reference point elevation (feet above sea level)"
 assert rp_elevation!=.
 sum rp_elevation, detail
 
-la var gs_elevation "Ground surface elevation (feet)"
+la var gs_elevation "Ground surface elevation (ground feet above sea level)"
 count if gs_elevation==. // 46 missings out of 1.6M
 sum gs_elevation, detail
 correlate rp_elevation gs_elevation
@@ -66,14 +72,67 @@ gen temp = gs_elevation-rp_elevation
 sum temp, detail // very close for almost all observations
 drop temp
 
-la var ws_reading "Water surface reading (feet)"
-sum ws_reading, detail // mostly zeros???
-count if ws_reading==. // 149107 missings out of 1.6M
-
-la var rp_reading "Reference point reading (feet)"
+la var rp_reading "Reference point reading (water feet below surface)"
 sum rp_reading, detail
 coun if rp_reading==. // 150708 missings out of 1.6M
 
+la var ws_reading "Water surface reading (correction to water feet below surface)"
+sum ws_reading, detail // mostly zeros???
+count if ws_reading==. // 149107 missings out of 1.6M
+
+	// These variables are TERRIBLY labeled in the README document, but I think I've
+	// finally decoded what they mean:
+	
+	// "rp_reading" is the length of the tape that they drop down the well, from the 
+	// reference point elevation ("rp_elevation", which is a bit above the surface elvation)
+	// to the water surface. bigger "rp_reading" <==> lower water table
+	
+	// "ws_reading" is 99% missing/zero, and i've deduced (by comparing individual readings
+	// for wells where it's non-missing/non-zero) that this is a correction factor. 
+	// 86% of non-missing/non-zero "ws_reading" values are for the steel-tape measurement
+	// method, which represnts only 5% of overall depth readings since 2005
+	
+	// "ws_reading" DGP: someone drops a tape from the reference point into the well, 
+	// and measures the length of tape dropped in. but, they might drop the tape too far!
+	// "rp_reading" is the full length of the tape dropped , and "ws_reading" is what 
+	// you need to subtract off that full tape length to get to the length of tape that 
+	// would have exactly hit the water
+	
+	// make better labels to reflect what these variables actually mean
+la var rp_reading "Reference point reading (water depth from reference point)"
+la var ws_reading "Correction to subtract from reference point reading (feet)"
+
+	// make water depth correction
+gen rp_ws_depth = rp_reading
+replace rp_ws_depth = rp_ws_depth - ws_reading if ws_reading!=. & ws_reading!=0
+la var rp_ws_depth "Water depth (feet) below reference point, corrected"
+
+	// water depth below surface
+gen gs_ws_depth = rp_ws_depth - (rp_elevation-gs_elevation)	
+la var gs_ws_depth "Water depth (feet) below ground surface, corrected"
+
+	// water surface elevation w/r/t sea level
+gen ws_elevation = gs_elevation - gs_ws_depth
+la var ws_elevation "Water surface elevation (feet) above sea level"	
+
+	// reorder variables
+order rp_elevation gs_elevation rp_reading ws_reading rp_ws_depth gs_ws_depth ///
+	ws_elevation, after(year)
+
+	// deal with crazy outliers
+count if gs_ws_depth<0 & year>=2005 
+local rN = r(N)
+count if year>=2005
+di `rN'/r(N) // 0.6% of observations have negative water depth
+br if gs_ws_depth<0	
+br if gs_ws_depth<0	& year>=2005 & measurement_issue_id==.
+gen neg_depth = gs_ws_depth<0
+egen temp = max(neg_depth) if year>=2005, by(site_code)
+egen neg_depth_ever = mean(temp), by(site_code)
+la var neg_depth "Readings report water surface ABOVE ground surface"
+la var neg_depth_ever "Site where water is ever (post-2005) reported to have negative depth"
+
+** Clean and label remaining variables
 la var measurement_issue_id "Measurement problem code"
 tab measurement_issue_id, missing // 17% populated, 26 unique issues!
 
@@ -138,6 +197,7 @@ merge m:1 measurement_issue_id using `miss', keep(1 3)
 assert _merge==3 | measurement_issue_id==.
 drop _merge
 assert inlist(measurement_issue_class,"Q","N","")
+assert rp_reading!=. if measurement_issue_class!="N"
 la var measurement_issue_desc "Measurement issue description"
 la var measurement_issue_class "Q = questionable, N = no measurement"
 order measurement_issue_desc measurement_issue_class, after(measurement_issue_id)
