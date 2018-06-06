@@ -169,11 +169,12 @@ drop temp_group1 temp_group2
 assert coop_agency_org_id!=. & coop_org_name!=""
 rename coop_agency_org_id coorp_org_id
 
-** Merge in measurement accuracy descriptions
+** Merge in measurement accuracy descriptions 
 preserve
-insheet using "$dirpath_data/groundwater/Statewide_GWL_Data_20170905/measurement_accuracy_type.csv", double comma clear
-keep measurement_accuracy_type_id measurement_accuracy_desc
-rename measurement_accuracy_type_id measurement_accuracy_id
+insheet using "$dirpath_data/groundwater/Statewide_GWL_Data_20170905/elevation_accuracy_type.csv", double comma clear
+keep elevation_accuracy_type_id elevation_accuracy_cd
+rename elevation_accuracy_type_id measurement_accuracy_id
+rename elevation_accuracy_cd measurement_accuracy_desc
 tempfile macc
 save `macc'
 restore
@@ -182,6 +183,21 @@ assert _merge==3 | measurement_accuracy_id==.
 drop _merge
 la var measurement_accuracy_desc "Measurement accuracy description"
 order measurement_accuracy_desc, after(measurement_accuracy_id)
+
+** Merge in measurement method descriptions 
+preserve
+insheet using "$dirpath_data/groundwater/Statewide_GWL_Data_20170905/elevation_measure_method_type.csv", double comma clear
+keep elev_measure_method_type_id elev_measure_method_desc
+rename elev_measure_method_type_id measurement_method_id
+rename elev_measure_method_desc measurement_method_desc
+tempfile mmeth
+save `mmeth'
+restore
+merge m:1 measurement_method_id using `mmeth', keep(1 3)
+assert _merge==3 | measurement_method_id==.
+drop _merge
+la var measurement_method_desc "Measurement method description"
+order measurement_method_desc, after(measurement_method_id)
 
 ** Merge in measurement issue descriptions
 preserve
@@ -201,8 +217,10 @@ assert rp_reading!=. if measurement_issue_class!="N"
 la var measurement_issue_desc "Measurement issue description"
 la var measurement_issue_class "Q = questionable, N = no measurement"
 order measurement_issue_desc measurement_issue_class, after(measurement_issue_id)
+drop comments // lots of overlap with issue descriptions
 
 ** Save
+sort site_code date
 compress
 save "$dirpath_data/groundwater/ca_dwr_gwl.dta", replace
 }
@@ -361,5 +379,4 @@ save "$dirpath_data/groundwater/ca_dwr_gst.dta", replace
 
 // PENDING
 	
-	* incorproate measurement accuracy codes, etc
 	* supplement with county-specific data pulls from CA DWR, if necessary???
