@@ -336,6 +336,7 @@ drop _merge
 	// label
 la var basin_region_id "Groundwater basin region code"
 la var basin_region_desc "Groundwater basin region description"
+order basin_region*, after(basin_name)
 	// plot
 twoway ///
 	(scatter latitude longitude if basin_region_id==0, mcolor(red)) ///
@@ -365,7 +366,6 @@ twoway ///
 	xtitle("Longitude", size(small)) ytitle("Latitude", size(small)) ///
 	title("Groundwater stations by region", size(medium) color(black)) ///
 	graphregion(lcolor(white) fcolor(white) lstyle(none)) plotregion(fcolor(white) lcolor(white))
-order basin_region*, after(basin_desc)
 
 ** Save
 compress
