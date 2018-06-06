@@ -131,6 +131,7 @@ egen temp = max(neg_depth) if year>=2005, by(site_code)
 egen neg_depth_ever = mean(temp), by(site_code)
 la var neg_depth "Readings report water surface ABOVE ground surface"
 la var neg_depth_ever "Site where water is ever (post-2005) reported to have negative depth"
+drop temp
 
 ** Clean and label remaining variables
 la var measurement_issue_id "Measurement problem code"
@@ -375,7 +376,18 @@ save "$dirpath_data/groundwater/ca_dwr_gst.dta", replace
 *******************************************************************************
 *******************************************************************************
 
-** 3. Add in 
+** 3. Merge groundwater datasets (GWL and GST), and save working dataset 
+{
+use "$dirpath_data/groundwater/ca_dwr_gwl.dta", clear
+merge m:1 casgem_station_id site_code using "$dirpath_data/groundwater/ca_dwr_gst.dta"
+egen temp_tag = tag(casgem_station_id site_code)
+tab _merge if temp_tag // 87% of wells inn GWL data match into GST data
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
 
 // PENDING
 	
