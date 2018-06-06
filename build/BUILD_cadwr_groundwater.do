@@ -110,7 +110,7 @@ drop temp_group1 temp_group2
 assert coop_agency_org_id!=. & coop_org_name!=""
 rename coop_agency_org_id coorp_org_id
 
-** Merge in measurement accuracy
+** Merge in measurement accuracy descriptions
 preserve
 insheet using "$dirpath_data/groundwater/Statewide_GWL_Data_20170905/measurement_accuracy_type.csv", double comma clear
 keep measurement_accuracy_type_id measurement_accuracy_desc
@@ -123,6 +123,24 @@ assert _merge==3 | measurement_accuracy_id==.
 drop _merge
 la var measurement_accuracy_desc "Measurement accuracy description"
 order measurement_accuracy_desc, after(measurement_accuracy_id)
+
+** Merge in measurement issue descriptions
+preserve
+insheet using "$dirpath_data/groundwater/Statewide_GWL_Data_20170905/measurement_issue_type.csv", double comma clear
+keep measurement_issue_type_id measurement_issue_type_desc measurement_issue_type_class
+rename measurement_issue_type_id measurement_issue_id
+rename measurement_issue_type_desc measurement_issue_desc
+rename measurement_issue_type_class measurement_issue_class
+tempfile miss
+save `miss'
+restore
+merge m:1 measurement_issue_id using `miss', keep(1 3)
+assert _merge==3 | measurement_issue_id==.
+drop _merge
+assert inlist(measurement_issue_class,"Q","N","")
+la var measurement_issue_desc "Measurement issue description"
+la var measurement_issue_class "Q = questionable, N = no measurement"
+order measurement_issue_desc measurement_issue_class, after(measurement_issue_id)
 
 ** Save
 compress
