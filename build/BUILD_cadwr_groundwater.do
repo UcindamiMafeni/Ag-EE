@@ -377,6 +377,17 @@ twoway ///
 	title("Groundwater stations by region", size(medium) color(black)) ///
 	graphregion(lcolor(white) fcolor(white) lstyle(none)) plotregion(fcolor(white) lcolor(white))
 	
+** Extract lat/lon from site_code
+gen lat = substr(site_code,1,6)
+gen lon = substr(site_code,8,7)
+destring lat lon, replace
+replace lat = lat/10000
+replace lon = -lon/10000
+gen temp_lat = abs(latitude-lat)
+gen temp_lon = abs(longitude-lon)
+sum temp_lat temp_lon, detail // the VAST majority are identical, save significant figures
+drop temp* lat lon
+	
 ** Save
 compress
 save "$dirpath_data/groundwater/ca_dwr_gst.dta", replace
