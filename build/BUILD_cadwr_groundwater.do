@@ -168,7 +168,7 @@ egen temp_group2 = group(org_id org_name)
 assert temp_group1==temp_group2 // confirms that agency names are clean!
 drop temp_group1 temp_group2
 assert coop_agency_org_id!=. & coop_org_name!=""
-rename coop_agency_org_id coorp_org_id
+rename coop_agency_org_id coop_org_id
 
 ** Merge in measurement accuracy descriptions 
 preserve
@@ -410,9 +410,11 @@ egen temp_max = max(year), by(casgem_station_id site_code)
 gen temp_diff = temp_max-temp_min
 sum temp_diff if _merge==1, detail
 sum temp_diff if _merge==3, detail // unmerged wells tend to have shorter tenures
+drop temp_min temp_max temp_diff
 
 	// attempt to resolve non=-merged using geodist
-*preserve
+/*
+preserve
 keep if temp_tag & _merge<3
 drop temp_tag
 sort casgem_station_id site_code
@@ -440,6 +442,20 @@ foreach id in `levs' {
 }
 sum temp_nearest_dist, detail // VERY few are right on top of each other! 5th pctile id 3.5 miles!
 restore // this was a failure
+*/
+
+** Drop non-merged stations and flag non-merged GWL readings 
+drop if _merge==2
+gen flag_gwl_unmerged = _merge==1
+replace latitude = lat if _merge==1 & latitude==.
+replace longitude = lon if _merge==1 & longitude==. 
+drop temp_tag _merge lat lon
+la var flag_gwl_unmerged "GWL readings at stations missing from GST dataset"
+
+** Drop variables we won't use
+drop elevation_id casgem_reading org_id org_name coop_org_id coop_org_name state_well_number ///
+	local_well_designation is_voluntary_reporting completion_rpt_nbr
+
 
 }
 
