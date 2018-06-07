@@ -220,6 +220,15 @@ la var measurement_issue_class "Q = questionable, N = no measurement"
 order measurement_issue_desc measurement_issue_class, after(measurement_issue_id)
 drop comments // lots of overlap with issue descriptions
 
+** Extract lat/lon from site_code
+gen lat = substr(site_code,1,6)
+gen lon = substr(site_code,8,7)
+destring lat lon, replace
+replace lat = lat/10000
+replace lon = -lon/10000
+la var lat "Site latitude (extracted from site_code)"
+la var lon "Site longitude (extracted from site_code)"
+
 ** Save
 sort site_code date
 compress
@@ -367,7 +376,7 @@ twoway ///
 	xtitle("Longitude", size(small)) ytitle("Latitude", size(small)) ///
 	title("Groundwater stations by region", size(medium) color(black)) ///
 	graphregion(lcolor(white) fcolor(white) lstyle(none)) plotregion(fcolor(white) lcolor(white))
-
+	
 ** Save
 compress
 save "$dirpath_data/groundwater/ca_dwr_gst.dta", replace
@@ -382,6 +391,15 @@ use "$dirpath_data/groundwater/ca_dwr_gwl.dta", clear
 merge m:1 casgem_station_id site_code using "$dirpath_data/groundwater/ca_dwr_gst.dta"
 egen temp_tag = tag(casgem_station_id site_code)
 tab _merge if temp_tag // 87% of wells inn GWL data match into GST data
+
+	//diagnose non-merges
+egen temp_min = min(year), by(casgem_station_id site_code)
+egen temp_max = max(year), by(casgem_station_id site_code)
+sort casgem_station_id site_code
+br casgem_station_id site_code temp_min temp_max _merge if _merge<3 & temp_tag
+gen temp_diff = temp_max-temp_min
+sum temp_diff if _merge==1, detail
+sum temp_diff if _merge==3, detail // unmerged wells tend to have shorter tenures
 
 }
 
