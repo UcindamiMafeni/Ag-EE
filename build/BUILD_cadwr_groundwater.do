@@ -456,6 +456,9 @@ la var flag_gwl_unmerged "GWL readings at stations missing from GST dataset"
 drop elevation_id casgem_reading org_id org_name coop_org_id coop_org_name state_well_number ///
 	local_well_designation is_voluntary_reporting completion_rpt_nbr
 
+** Save
+compress
+save "$dirpath_data/groundwater/ca_dwr_gwl_merged.dta", replace
 
 }
 
