@@ -396,21 +396,50 @@ save "$dirpath_data/groundwater/ca_dwr_gst.dta", replace
 *******************************************************************************
 *******************************************************************************
 
-** 3. Merge groundwater datasets (GWL and GST), and save working dataset 
+** 3. Merge groundwater datasets (GWL and GST), and save working dataset of all wells
 {
+** Execute merge
 use "$dirpath_data/groundwater/ca_dwr_gwl.dta", clear
 merge m:1 casgem_station_id site_code using "$dirpath_data/groundwater/ca_dwr_gst.dta"
 egen temp_tag = tag(casgem_station_id site_code)
 tab _merge if temp_tag // 87% of wells inn GWL data match into GST data
 
-	//diagnose non-merges
+	// diagnose non-merges
 egen temp_min = min(year), by(casgem_station_id site_code)
 egen temp_max = max(year), by(casgem_station_id site_code)
-sort casgem_station_id site_code
-br casgem_station_id site_code temp_min temp_max _merge if _merge<3 & temp_tag
 gen temp_diff = temp_max-temp_min
 sum temp_diff if _merge==1, detail
 sum temp_diff if _merge==3, detail // unmerged wells tend to have shorter tenures
+
+	// attempt to resolve non=-merged using geodist
+*preserve
+keep if temp_tag & _merge<3
+drop temp_tag
+sort casgem_station_id site_code
+egen temp_group1 = group(casgem_station_id site_code) if _merge==1
+egen temp_group2 = group(casgem_station_id site_code) if _merge==2
+unique temp_group1 temp_group2
+assert r(unique)==r(N)
+gen temp_nearest_id = .
+gen temp_nearest_dist = .
+levelsof temp_group1, local(levs)
+foreach id in `levs' {
+	qui sum lat if temp_group1==`id'
+	local lat = r(mean)
+	qui sum lon if temp_group1==`id'
+	local lon = r(mean)
+	di `id' "  " `lat' "  " `lon'
+	qui geodist `lat' `lon' latitude longitude, gen(temp_dist) miles
+	qui sum temp_dist
+	local minD = r(min)
+	qui sum temp_group2 if temp_dist==`minD'
+	local minID = r(min)
+	qui replace temp_nearest_dist = `minD' if temp_group1==`id'
+	qui replace temp_nearest_id = `minID' if temp_group1==`id'
+	drop temp_dist
+}
+sum temp_nearest_dist, detail // VERY few are right on top of each other! 5th pctile id 3.5 miles!
+restore // this was a failure
 
 }
 
