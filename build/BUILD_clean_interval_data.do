@@ -27,8 +27,11 @@ la var date "Date"
 assert hr_ending!=.
 assert inrange(hr_ending,0,23)
 assert round(hr_ending)==hr_ending
-la var hr_ending "Hour (at end of interval)"
+replace hr_ending = hr_ending-1 // shift everything to the START of the hourly interval
 rename hr_ending hour
+replace hour = 23 if hour==-1
+replace date = date-1 if hour==23
+la var hour "Hour (at start of interval)"
 
 ** Service agreement ID (to string)
 assert sa_uuid!=.
