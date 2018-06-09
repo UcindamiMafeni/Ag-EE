@@ -8,6 +8,7 @@ set more off
 
 global dirpath "S:/Matt/ag_pump"
 global dirpath_code "S:/Fiona/backup/Ag-EE"
+global dirpath_code "S:/Louis/backup/AgEE/AgEE_code"
 
 ** additional directory paths
 global dirpath_data "$dirpath/data"
@@ -46,18 +47,26 @@ do "$dirpath_code/build/BUILD_compare_billing_customer.do"
 *** 10: CROSS-VALIDATE CUSTOMER VS. BILLING/INTERVAL DATA
 do "$dirpath_code/build/BUILD_compare_customer_usage.do"
 
-*** 11: CROSS-VALIDATE CUSTOMER VS. METER HISTORY DATA, CREATE XWALK
+*** 11: CROSS-VALIDATE CUSTOMER VS. EE DATA
+do "$dirpath_code/build/BUILD_compare_customer_ee.do"
+
+*** 12: CROSS-VALIDATE CUSTOMER VS. METER HISTORY DATA, CREATE XWALK
 do "$dirpath_code/build/BUILD_compare_customer_meter.do"
 
-*** 12: MONTHIFY BILLING DATA
-do "$dirpath_code/buld/BUILD_monthify_billing_data.do"
+*** 13: MONTHIFY BILLING DATA
+do "$dirpath_code/build/BUILD_monthify_billing_data.do"
 
-*** 13: CLEAN PUMP TEST DATA
+*** 14: CLEAN PUMP TEST DATA
 do "$dirpath_code/build/BUILD_clean_pump_test_data.do"
 
-*** 14: CLEAN PGE Rate DATA
+*** 15: CLEAN PGE RATE DATA
 do "$dirpath_code/build/BUILD_clean_rate_data.do"
 
+*** 16: CROSS-VALIDATE BILLING/INTERVAL DATA WITH RATE DATA
+do "$dirpath_code/build/BUILD_compare_bills_rate_data.do"
+
+*** 17: CLEAN CA DWR GROUNDWATER DATA
+do "$dirpath_code/build/BUILD_clean_cadwr_groundwater.do"
 
 
 
