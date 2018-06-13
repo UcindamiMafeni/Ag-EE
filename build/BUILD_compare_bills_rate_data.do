@@ -95,11 +95,13 @@ merge m:1 date using "$dirpath_data/pge_cleaned/event_days.dta"
 assert _merge!=2
 drop _merge
 
+/*
 ** Drop groups for now (COME BACK AND FIX THIS)
 egen temp_min = min(group), by(rateschedule date)
 egen temp_max = max(group), by(rateschedule date)
 drop if temp_min<temp_max
 drop temp*
+*/
 	
 ** Drop pre-2011 rates
 drop if date<date("01jan2011","DMY")	
@@ -109,7 +111,7 @@ drop if date>date("01nov2017","DMY")
 	
 ** Save as working file
 rename rateschedule rt_sched_cd
-unique rt_sched_cd date hour
+unique rt_sched_cd group date hour
 assert r(unique)==r(N)
 compress
 save "$dirpath_data/pge_cleaned/ag_rates_for_merge.dta", replace
@@ -122,27 +124,24 @@ save "$dirpath_data/pge_cleaned/ag_rates_for_merge.dta", replace
 ** 2. Merge in billing/interval data, looping over rates
 {
 
-** Globals of all tariffs
-global rates1 = " AG-1A AG-1B AG-4A AG-4B AG-4C AG-4D AG-4E AG-4F "
-global rates2 = " AG-5A AG-5B AG-5C AG-5D AG-5E AG-5F AG-ICE "
-global rates3 = " AG-RA AG-RB AG-RD AG-RE AG-VA AG-VB AG-VD AG-VE "
+** Loop over months of sample
+local YM_min = ym(2011,1)
+local YM_max = ym(2017,9)
+local YM = 650
 
-local AG = "AG-5A"
 ** Load cleaned PGE bililng data
 use "$dirpath_data/pge_cleaned/billing_data.dta", clear
 
 ** Prep for merge into rate schedule data
 replace rt_sched_cd = subinstr(rt_sched_cd,"H","",1) if substr(rt_sched_cd,1,1)=="H"
 replace rt_sched_cd = subinstr(rt_sched_cd,"AG","AG-",1) if substr(rt_sched_cd,1,2)=="AG"
-
-** Keep ony 1 rate at a time (since the data are too large)
-keep if rt_sched_cd=="`AG'" 
-
-** Drop observations prior to 2011 (before avaiable smart-meter data)
-drop if bill_start_dt<date("01jan2011","DMY")
+drop if substr(rt_sched_cd,1,2)!="AG"
 
 ** Drop observations without good interval data (for purposes of corroborating dollar amounts)
 keep if flag_interval_merge==1
+
+** Keep if in month
+keep if `YM'==ym(year(bill_start_dt),month(bill_start_dt))
 
 ** Drop flags
 drop flag* sp_uuid? interval_bill_corr
@@ -177,13 +176,46 @@ replace temp_wt = 0.5 if date==date[_n-1] & date==bill_end_dt[_n-1] & ///
 assert date==bill_end_dt | date==bill_start_dt if temp_wt==0.5
 drop if temp_wt==0.5 & date==bill_end_dt
 drop temp_new temp_wt
+
+** Store min and max date, for narrowing down the two subsequent merges
+sum date
+local dmin = r(min)
+local dmax = r(max)
 	
 ** Merge in hourly interval data
-merge 1:m sa_uuid date using "$dirpath_data/pge_cleaned/interval_data_hourly.dta", keep(3) nogen
+preserve
+clear
+use "$dirpath_data/pge_cleaned/interval_data_hourly.dta" if inrange(date,`dmin',`dmax')
+tempfile temp_interval
+save `temp_interval'
+restore
+merge 1:m sa_uuid date using `temp_interval', keep(1 3)
+assert _merge==3
+drop _merge
 
 ** Merge in rate data by hour
-merge m:1 rt_sched_cd date hour using "$dirpath_data/pge_cleaned/ag_rates_for_merge.dta", ///
-	keep(1 3)
+preserve
+clear
+use "$dirpath_data/pge_cleaned/ag_rates_for_merge.dta" if inrange(date,`dmin',`dmax')
+tempfile temp_rates
+save `temp_rates'
+restore
+joinby rt_sched_cd date hour using `temp_rates', unmatched(master)
+assert _merge==3 | (_merge==1 & rt_sched_cd=="AG-ICE")
+drop if _merge==1
+drop _merge
+
+** Assign marginal price
+
+
+
+
+
+
+
+
+
+
 
 ** Save as working file
 compress
