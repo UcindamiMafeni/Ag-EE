@@ -119,37 +119,33 @@ save "$dirpath_data/pge_cleaned/ag_rates_for_merge.dta", replace
 *******************************************************************************
 *******************************************************************************
 
-** 2. Merge rate data into (subset of) billing data
+** 2. Merge in billing/interval data, looping over rates
 {
+
+** Globals of all tariffs
+global rates1 = " AG-1A AG-1B AG-4A AG-4B AG-4C AG-4D AG-4E AG-4F "
+global rates2 = " AG-5A AG-5B AG-5C AG-5D AG-5E AG-5F AG-ICE "
+global rates3 = " AG-RA AG-RB AG-RD AG-RE AG-VA AG-VB AG-VD AG-VE "
+
+local AG = "AG-5A"
 ** Load cleaned PGE bililng data
 use "$dirpath_data/pge_cleaned/billing_data.dta", clear
+
+** Prep for merge into rate schedule data
+replace rt_sched_cd = subinstr(rt_sched_cd,"H","",1) if substr(rt_sched_cd,1,1)=="H"
+replace rt_sched_cd = subinstr(rt_sched_cd,"AG","AG-",1) if substr(rt_sched_cd,1,2)=="AG"
+
+** Keep ony 1 rate at a time (since the data are too large)
+keep if rt_sched_cd=="`AG'" 
 
 ** Drop observations prior to 2011 (before avaiable smart-meter data)
 drop if bill_start_dt<date("01jan2011","DMY")
 
 ** Drop observations without good interval data (for purposes of corroborating dollar amounts)
 keep if flag_interval_merge==1
-drop if flag_interval_disp20==1
-
-** Drop NEM customers (for purpsoes of corroborating dollar amounts)
-drop if flag_nem==1
-
-** Drop first bills, last bills, long bills, short bills
-drop if flag_first_bill==1
-drop if flag_last_bill==1
-drop if flag_long_bill==1
-drop if flag_short_bill==1
-
-** Drop bills with multiple/bad tariffs, or with overlapping windows, or bad kwh
-drop if flag_multi_tariff==1
-drop if flag_bad_tariff==1
-drop if flag_dup_partial_overlap>0
-drop if flag_dup_double_overlap==1
-drop if flag_dup_bad_kwh==1
-drop if flag_dup_overlap_missing==1
 
 ** Drop flags
-drop flag* sp_uuid?
+drop flag* sp_uuid? interval_bill_corr
 
 ** Expand whole dataset by bill length variable
 expand bill_length, gen(temp_new)
@@ -182,20 +178,16 @@ assert date==bill_end_dt | date==bill_start_dt if temp_wt==0.5
 drop if temp_wt==0.5 & date==bill_end_dt
 drop temp_new temp_wt
 	
-** Prep for merge into rate schedule data
-replace rt_sched_cd = subinstr(rt_sched_cd,"H","",1) if substr(rt_sched_cd,1,1)=="H"
-replace rt_sched_cd = subinstr(rt_sched_cd,"AG","AG-",1) if substr(rt_sched_cd,1,2)=="AG"
-
 ** Merge in hourly interval data
 merge 1:m sa_uuid date using "$dirpath_data/pge_cleaned/interval_data_hourly.dta", keep(3) nogen
 
+** Merge in rate data by hour
+merge m:1 rt_sched_cd date hour using "$dirpath_data/pge_cleaned/ag_rates_for_merge.dta", ///
+	keep(1 3)
+
 ** Save as working file
-unique sa_uuid date
-assert r(unique)==r(N)
 compress
 save "$dirpath_data/pge_cleaned/bills_hourly_for_rate_merge.dta", replace
-
-
 	
 }
 
@@ -205,9 +197,6 @@ save "$dirpath_data/pge_cleaned/bills_hourly_for_rate_merge.dta", replace
 
 
 
-** Merge rates into billing/interval data
-merge m:1 rt_sched_cd date hour using "$dirpath_data/pge_cleaned/ag_rates_for_merge.dta", ///
-	keep(1 3)
 
 
 	***** COME BACK AND FIX THIS LATER TO:
