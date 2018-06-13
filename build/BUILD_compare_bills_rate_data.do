@@ -76,7 +76,7 @@ drop temp_dow temp_dow_match dow_num
 sort rateschedule tou group date hour	
 *br rateschedule tou group rate_start_date rate_end_date date hour temp_new
 	
-	// Expand and assign hours for non-TOU rates (where hour is missing)
+** Expand and assign hours for non-TOU rates (where hour is missing)
 expand 24 if tou==0 & hour==., gen(temp_new2)	
 sort rateschedule tou group date hour temp_new2
 replace hour = 0 if hour==. & tou==0 & temp_new2==0
@@ -85,29 +85,29 @@ replace hour = hour[_n-1]+1 if hour==. & tou==0 & temp_new2==1 & ///
 	group==group[_n-1]
 tab hour
 	
-	// Confirm uniqueness of dates
+** Confirm uniqueness of dates
 unique rateschedule tou group date hour	
 assert r(unique)==r(N)
 drop rate_start_date rate_end_date rate_length year temp_new*
 
-	// Merge in Event Days
+** Merge in Event Days
 merge m:1 date using "$dirpath_data/pge_cleaned/event_days.dta"
 assert _merge!=2
 drop _merge
 
-	// Drop groups for now (COME BACK AND FIX THIS)
+** Drop groups for now (COME BACK AND FIX THIS)
 egen temp_min = min(group), by(rateschedule date)
 egen temp_max = max(group), by(rateschedule date)
 drop if temp_min<temp_max
 drop temp*
 	
-	// Drop pre-2011 rates
-drop if rate_end_date<date("01jan2011","DMY")	
+** Drop pre-2011 rates
+drop if date<date("01jan2011","DMY")	
 
-	// Drop post-2017 rates
-drop if rate_start_date>date("01nov2017","DMY")	
+** Drop post-2017 rates
+drop if date>date("01nov2017","DMY")	
 	
-	// Save as working file
+** Save as working file
 rename rateschedule rt_sched_cd
 unique rt_sched_cd date hour
 assert r(unique)==r(N)
@@ -119,7 +119,7 @@ save "$dirpath_data/pge_cleaned/ag_rates_for_merge.dta", replace
 *******************************************************************************
 *******************************************************************************
 
-** 2. Merge rate data into (subset of) billing/interval data
+** 2. Merge rate data into (subset of) billing data
 {
 ** Load cleaned PGE bililng data
 use "$dirpath_data/pge_cleaned/billing_data.dta", clear
@@ -182,17 +182,18 @@ assert date==bill_end_dt | date==bill_start_dt if temp_wt==0.5
 drop if temp_wt==0.5 & date==bill_end_dt
 drop temp_new temp_wt
 	
-** Merge in hourly interval data
-merge 1:m sa_uuid date using "$dirpath_data/pge_cleaned/interval_data_hourly.dta", keep(3) nogen
-
 ** Prep for merge into rate schedule data
 replace rt_sched_cd = subinstr(rt_sched_cd,"H","",1) if substr(rt_sched_cd,1,1)=="H"
 replace rt_sched_cd = subinstr(rt_sched_cd,"AG","AG-",1) if substr(rt_sched_cd,1,2)=="AG"
 
-** Merge rates into billing/interval data
-merge m:1 rt_sched_cd date hour using "$dirpath_data/pge_cleaned/ag_rates_for_merge.dta", ///
-	keep(1 3)
+** Merge in hourly interval data
+merge 1:m sa_uuid date using "$dirpath_data/pge_cleaned/interval_data_hourly.dta", keep(3) nogen
 
+** Save as working file
+unique sa_uuid date
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/pge_cleaned/bills_hourly_for_rate_merge.dta", replace
 
 
 	
@@ -203,6 +204,10 @@ merge m:1 rt_sched_cd date hour using "$dirpath_data/pge_cleaned/ag_rates_for_me
 *******************************************************************************
 
 
+
+** Merge rates into billing/interval data
+merge m:1 rt_sched_cd date hour using "$dirpath_data/pge_cleaned/ag_rates_for_merge.dta", ///
+	keep(1 3)
 
 
 	***** COME BACK AND FIX THIS LATER TO:
