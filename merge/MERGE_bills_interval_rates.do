@@ -226,8 +226,7 @@ forvalues YM = `YM_min'/`YM_max' {
 	keep sa_uuid date hour kwh p_kwh bill_start_dt group
 	la var p_kwh "Hourly (avg) marginal price ($/kWh)"
 	compress
-	cap append using "$dirpath_data/merged/hourly_with_prices.dta"
-	save "$dirpath_data/merged/hourly_with_prices.dta", replace
+	save "$dirpath_data/merged/hourly_with_prices_`YM'.dta", replace
 	restore	
 		
 	** Check if max kW is missing anywhere where we need it
@@ -339,12 +338,51 @@ forvalues YM = `YM_min'/`YM_max' {
 
 	** Save monthly data of constructed bill components
 	compress
-	cap append using "$dirpath_data/merged/bills_rates_constructed.dta"
-	save "$dirpath_data/merged/bills_rates_constructed.dta", replace
+	save "$dirpath_data/merged/bills_rates_constructed_`YM'.dta", replace
 	
 	}
 	
 	di %tm `YM' "  " c(current_time)
+}
+
+** Append monthly files (hourly)
+clear 
+cd "$dirpath_data/merged"
+local files_hourly : dir . "hourly_with_prices_*.dta"
+foreach `f' in `files_hourly {
+	append using `f'
+}
+sort sa_uuid date hour group
+unique sa_uuid date hour group
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/merged/hourly_with_prices.dta", replace
+
+** Append monthly files (hourly)
+clear 
+cd "$dirpath_data/merged"
+local files_hourly : dir . "bills_rates_constructed_*.dta"
+foreach `f' in `files_hourly {
+	append using `f'
+}
+sort sa_uuid bill_start_dt group
+unique as_uuid bill_start_dt group
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/merged/bills_rates_constructed.dta", replace
+
+** Delete monthly files (hourly)
+cd "$dirpath_data/merged"
+local files_hourly : dir . "hourly_with_prices_*.dta"
+foreach `f' in `files_hourly {
+	erase `f'
+}
+
+** Delete monthly files (hourly)
+cd "$dirpath_data/merged"
+local files_hourly : dir . "bills_rates_constructed_*.dta"
+foreach `f' in `files_hourly {
+	erase using `f'
 }
 
 }
