@@ -65,19 +65,15 @@ do "$dirpath_code/build/BUILD_clean_rate_data.do"
 *** 16: BUILD EVENT DAY DATASET
 do "$dirpath_code/build/BUILD_event_days.do"
 
-*** 17: CROSS-VALIDATE BILLING/INTERVAL DATA WITH RATE DATA
-do "$dirpath_code/build/BUILD_compare_bills_rate_data.do"
-
-*** 18: CLEAN CA DWR GROUNDWATER DATA
+*** 17: CLEAN CA DWR GROUNDWATER DATA
 do "$dirpath_code/build/BUILD_clean_cadwr_groundwater.do"
 
 
 
-
-
-
-
 *************** MERGE ****************
+
+*** 1: MERGE BILLING/INTERVAL DATA WITH RATE DATA
+do "$dirpath_code/merge/MERGE_bills_intervals_rates.do"
 
 
 
