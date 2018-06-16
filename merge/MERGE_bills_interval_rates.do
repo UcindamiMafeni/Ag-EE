@@ -329,6 +329,14 @@ forvalues YM = `YM_min'/`YM_max' {
 	drop offpeak partpeak peak demandcharge maxdemandcharge customercharge metercharge pdpcredit
 	duplicates drop
 	unique sa_uuid bill_start_dt group
+	if r(unique)!=r(N) { // to fix a weird glitch where total_bill_fixed wasn't unique
+		duplicates t sa_uuid bill_start_dt group, gen(temp_dup)
+		egen double temp = max(total_bill_fixed), by(sa_uuid bill_start_dt group)
+		replace total_bill_fixed = temp if temp_dup>0
+		drop temp temp_dup
+		duplicates drop
+	}
+	unique sa_uuid bill_start_dt group
 	assert r(unique)==r(N)
 
 	** Add up bill components to get to total estimated bill amount
