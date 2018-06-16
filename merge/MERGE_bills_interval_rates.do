@@ -404,3 +404,5 @@ foreach `f' in `files_hourly {
 
 	***** COME BACK AND FIX THIS LATER TO:
 	***** 1. Assign SAs to groups!
+	***** 2. For flags on peak and partpeak, differentiate between "missing and needed
+	*****    to calculate bill" vs. "missing but not relevant"
