@@ -356,41 +356,48 @@ forvalues YM = `YM_min'/`YM_max' {
 ** Append monthly files (hourly)
 clear 
 cd "$dirpath_data/merged"
-local files_hourly : dir . "hourly_with_prices_*.dta"
-foreach `f' in `files_hourly {
-	append using `f'
+local files_hourly : dir "." files "hourly_with_prices_*.dta"
+foreach f in `files_hourly' {
+	append using "`f'"
 }
-sort sa_uuid date hour group
+duplicates drop // for some reason there are a small number of dups...
+sort sa_uuid date hour group bill_start_dt
+duplicates t sa_uuid date hour group, gen(dup) // dups occur on that span months bill cusp dates
+assert inlist(dup,0,1)
+drop if dup==1 & dup[_n+1]==1 & sa_uuid==sa_uuid[_n+1] & date==date[_n+1] & hour==hour[_n+1] & ///
+	 group==group[_n+1] & bill_start_dt<bill_start_dt[_n+1] // keep later bill date (everything else is identical)
+drop dup
 unique sa_uuid date hour group
 assert r(unique)==r(N)
 compress
 save "$dirpath_data/merged/hourly_with_prices.dta", replace
 
-** Append monthly files (hourly)
+** Append monthly files (bills)
 clear 
 cd "$dirpath_data/merged"
-local files_hourly : dir . "bills_rates_constructed_*.dta"
-foreach `f' in `files_hourly {
-	append using `f'
+local files_bills : dir "." files "bills_rates_constructed_*.dta"
+foreach f in `files_bills' {
+	append using "`f'"
 }
+duplicates drop
 sort sa_uuid bill_start_dt group
-unique as_uuid bill_start_dt group
+unique sa_uuid bill_start_dt group
 assert r(unique)==r(N)
 compress
 save "$dirpath_data/merged/bills_rates_constructed.dta", replace
 
 ** Delete monthly files (hourly)
 cd "$dirpath_data/merged"
-local files_hourly : dir . "hourly_with_prices_*.dta"
-foreach `f' in `files_hourly {
-	erase `f'
+local files_hourly : dir "." files "hourly_with_prices_*.dta"
+foreach f in `files_hourly' {
+	erase "`f'"
 }
 
-** Delete monthly files (hourly)
+** Delete monthly files (bills)
 cd "$dirpath_data/merged"
-local files_hourly : dir . "bills_rates_constructed_*.dta"
-foreach `f' in `files_hourly {
-	erase using `f'
+local files_bills : dir "." files "bills_rates_constructed_*.dta"
+foreach f in `files_bills' {
+	erase "`f'"
 }
 
 }
