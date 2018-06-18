@@ -36,6 +36,7 @@ la var date_proj_finish "Date of project finish"
 la var date_test_pre "Date of pre-project pump test (for project)"
 la var date_test_post "Date of post-project pump test (for project)"
 la var date_test_subs "Date of subsidized pump test"
+format %td date*
 
 count if date_test_pre>date_test_post // 3, which seems wrong
 count if date_test_pre>date_proj_finish // 9, which seems wrong
@@ -58,10 +59,10 @@ sort *
 ** Savings and subsidy
 rename gross est_savings_kwh_yr 
 la var est_savings_kwh_yr "Engineering estimate(?) of gross kWh savings in first year"
-rename incentive subsidy 
-la var subsidy "Subsidy offered for project"
+rename incentive subsidy_proj 
+la var subsidy_proj "Subsidy offered for project"
 assert est_savings_kwh_yr!=.
-assert subsidy!=.
+assert subsidy_proj!=.
 
 ** Is well?
 tab iswell
@@ -73,6 +74,43 @@ tab run
 assert run!=.
 la var run "Run number"
 
+** Merge into full APEP dataset
+preserve
+use "$dirpath_data/pge_cleaned/pump_test_data.dta", clear
+gen idU = _n
+keep idU test_date_stata pge_badge_nbr subsidy
+tempfile temp
+save `temp'
+restore
+gen idM = _n
+joinby pge_badge_nbr using `temp', unmatched(both)
+
+unique pge_badge_nbr if _merge==1 // 11 meters with projects don't merge
+unique pge_badge_nbr if _merge==2 // 14496 tested meters don't have projects
+unique pge_badge_nbr if _merge==3 // 709 meters with projects merge
+
+duplicates t idU, gen(dup)
+assert _merge==3 if dup>0 & idU!=.
+br id* pge_badge_nbr *date* dup if dup>0 & idU!=.
+
+gen temp_date_match = test_date_stata==date_test_pre | test_date_stata==date_test_post ///
+	| test_date_stata==date_test_subs 
+egen temp_match_max = max(temp_date_match), by(idM)	
+tab temp_date_match temp_match_max if _merge==3
+br id* pge_badge_nbr *date* dup temp_date_match temp_match_max subsidy* ///
+	if dup>0 & idU!=. & temp_match_max==0
+
+	// Flag observations that either don't merge, or don't have the right date
+gen flag_apep_mismatch = _merge==1 | temp_match_max==0
+la var flag_apep_mismatch "Flag for project meters that (i) don't match to APEP, or (ii) match at wrong date"
+
+keep if idM!=.
+drop _merge dup temp* idU test_date_stata pge_badge_nbr subsidy
+duplicates drop
+unique idM
+assert r(unique)==r(N)
+drop idM
+	
 ** Save
 compress
 save "$dirpath_data/pge_cleaned/pump_test_projectdata.dta", replace
