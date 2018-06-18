@@ -59,13 +59,16 @@ do "$dirpath_code/build/BUILD_monthify_billing_data.do"
 *** 14: CLEAN PUMP TEST DATA
 do "$dirpath_code/build/BUILD_clean_pump_test_data.do"
 
-*** 15: CLEAN PGE RATE DATA
+*** 15: CLEAN PUMP TEST PROJECT DATA
+do "$dirpath_code/build/BUILD_clean_pump_test_project_data.do"
+
+*** 16: CLEAN PGE RATE DATA
 do "$dirpath_code/build/BUILD_clean_rate_data.do"
 
-*** 16: BUILD EVENT DAY DATASET
+*** 17: BUILD EVENT DAY DATASET
 do "$dirpath_code/build/BUILD_event_days.do"
 
-*** 17: CLEAN CA DWR GROUNDWATER DATA
+*** 18: CLEAN CA DWR GROUNDWATER DATA
 do "$dirpath_code/build/BUILD_clean_cadwr_groundwater.do"
 
 
