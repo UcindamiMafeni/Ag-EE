@@ -14,7 +14,7 @@ global dirpath_data "$dirpath/data"
 *******************************************************************************
 *******************************************************************************
 
-** 1. Merge together billing, customer, and meter datasets
+** 1. Merge together billing, customer, meter, and APEP datasets
 {
 
 ** Load cleaned PGE bililng data
@@ -108,13 +108,22 @@ unique sp_uuid if _merge==3
 di r(unique)/`uniq'
 unique sp_uuid if _merge==3 & merge_customer_meter==3
 di r(unique)/`uniq'
-rename _merge merge_apep
+rename _merge merge_apep_test
 	
 ** Merge in APEP project data
 joinby pge_badge_nbr using "$dirpath_data/pge_cleaned/pump_test_project_data.dta", ///
 	unmatched(both)
+unique sp_uuid
+local uniq = r(unique)
+unique sp_uuid if _merge==3 & merge_apep_test==3 & merge_customer_meter==3
+di r(unique)/`uniq'
+rename _merge merge_apep_proj
 
-	
+** Save whole messy temporary file 
+duplicates drop
+compress
+save "$dirpath_data/merged/temp_big_merge.dta", replace
+
 }
 
 *******************************************************************************
