@@ -118,5 +118,5 @@ la var apep_proj_id "APEP project identifier"
 	
 ** Save
 compress
-save "$dirpath_data/pge_cleaned/pump_test_projectdata.dta", replace
+save "$dirpath_data/pge_cleaned/pump_test_project_data.dta", replace
 
