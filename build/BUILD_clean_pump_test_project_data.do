@@ -105,7 +105,7 @@ gen flag_apep_mismatch = _merge==1 | temp_match_max==0
 la var flag_apep_mismatch "Flag for project meters that (i) don't match to APEP, or (ii) match at wrong date"
 
 keep if idM!=.
-drop _merge dup temp* idU test_date_stata pge_badge_nbr subsidy
+drop _merge dup temp* idU test_date_stata subsidy
 duplicates drop
 unique idM
 assert r(unique)==r(N)
