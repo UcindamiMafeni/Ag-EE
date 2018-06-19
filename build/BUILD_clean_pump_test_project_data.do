@@ -111,6 +111,11 @@ unique idM
 assert r(unique)==r(N)
 drop idM
 	
+	// Pump test project id
+gen apep_proj_id = _n
+order apep_proj_id	
+la var apep_proj_id "APEP project identifier"
+	
 ** Save
 compress
 save "$dirpath_data/pge_cleaned/pump_test_projectdata.dta", replace
