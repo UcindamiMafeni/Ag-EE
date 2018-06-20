@@ -14,13 +14,18 @@ set more off
 
 ** This script assigns min/max/average prices to ALL bills, not by merging into
 ** AMI data or taking averages. Rather, it takes prices *directly* from rate
-** data and applies them equally to all bills, without differentiating b
+** data and applies them equally to all bills, without differentiating between
+** bills that also have AMI data and bills that don't. A major shortcoming of this
+** approach is taking unweighted averages across hours.
 
 global dirpath "S:/Matt/ag_pump"
 global dirpath_data "$dirpath/data"
 
 **********************************************************************
 **********************************************************************
+
+** 1. Create daily panel of average prices by rate
+{
 
 ** Load rates for both large and small farms
 use "$dirpath_data/pge_cleaned/large_ag_rates.dta", clear
@@ -161,6 +166,14 @@ duplicates drop
 unique rateschedule date
 assert r(unique)==r(N)
 	
+** Label 
+la var mean_p_kwh "Avg daily marginal price ($/kWh) for rate (weighting hours equally)"
+la var min_p_kwh "Min daily marginal price ($/kWh) for rate"
+la var max_p_kwh "Max daily marginal price ($/kWh) for rate"
+la var mean_p_kw_max "Avg max demand charge ($/kW) for rate"
+la var mean_p_kw_peak "Avg peak demand charge ($/kW) for rate"	
+la var mean_p_kw_partpeak "Avg partial peak demand charge ($/kW) for rate"
+	
 ** Save
 rename rateschedule rt_sched_cd
 compress
@@ -168,5 +181,75 @@ save "$dirpath_data/merged/ag_rates_avg_by_day.dta", replace
 
 }
 
+**********************************************************************
+**********************************************************************
+
+** 2. Merge average prices by rate into billing data
+{
+use "$dirpath_data/pge_cleaned/billing_data.dta", clear
+
+** Prep for merge into rate schedule data
+replace rt_sched_cd = subinstr(rt_sched_cd,"H","",1) if substr(rt_sched_cd,1,1)=="H"
+replace rt_sched_cd = subinstr(rt_sched_cd,"AG","AG-",1) if substr(rt_sched_cd,1,2)=="AG"
+drop if substr(rt_sched_cd,1,2)!="AG"
+
+** Keep only essential variables (for purposes of this script)
+keep sa_uuid bill_start_dt bill_end_dt bill_length rt_sched_cd
+
+** Expand whole dataset by bill length variable
+expand bill_length, gen(temp_new)
+sort sa_uuid bill_start_dt temp_new
+tab temp_new
+
+** Construct date variable (duplicated at each bill change-over)
+gen date = bill_start_dt if temp_new==0
+format %td date
+replace date = date[_n-1]+1 if temp_new==1
+assert date==bill_start_dt if temp_new==0
+assert date==bill_end_dt if temp_new[_n+1]==0
+assert date!=.
+unique sa_uuid bill_start_dt date
+assert r(unique)==r(N)
+
+** Flag duplicate account-dates (bill changeover dates where end=start)
+gen temp_wt = 1
+replace temp_wt = 0.5 if date==date[_n+1] & date==bill_end_dt & ///
+	bill_end_dt==bill_start_dt[_n+1] & temp_new==1 & temp_new[_n+1]==0 & ///
+	sa_uuid==sa_uuid[_n+1]
+replace temp_wt = 0.5 if date==date[_n-1] & date==bill_end_dt[_n-1] & ///
+	bill_end_dt[_n-1]==bill_start_dt & temp_new[_n-1]==1 & temp_new==0 & ///
+	sa_uuid==sa_uuid[_n-1]
+	// this assigns 50% weight to days that are shared by two bills (i.e. the
+	// end_date of the previous bill and the start_date of the current bill)
+
+** Collapse down to 1 day on cusps (keep start date over end date)
+assert date==bill_end_dt | date==bill_start_dt if temp_wt==0.5
+drop if temp_wt==0.5 & date==bill_end_dt
+drop temp_new temp_wt
+
+** Merge into averge daily rates data
+merge m:1 rt_sched_cd date using "$dirpath_data/merged/ag_rates_avg_by_day.dta"
+assert date>date("01sep2017","DMY") if _merge==2
+drop if _merge==2
+
+** Collapse back to bills
+foreach v of varlist *_p_* {
+	local fxn = subinstr(substr("`v'",1,4),"_","",1)
+	egen double temp = `fxn'(`v'), by(sa_uuid bill_start_dt)
+	replace `v' = temp
+	drop temp
+}
+drop date _merge
+duplicates drop
+
+** Confirm uniqueness
+unique sa_uuid bill_start_dt
+assert r(unique)==r(N)
+
+** Save
+compress
+save "$dirpath_data/merged/bills_avg_prices_nomerge.dta", replace
+
+}
 **********************************************************************
 **********************************************************************
