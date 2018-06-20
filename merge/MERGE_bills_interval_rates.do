@@ -13,6 +13,15 @@ set more off
 global dirpath "S:/Matt/ag_pump"
 global dirpath_data "$dirpath/data"
 
+	***** COME BACK AND FIX THIS STUFF LATER:
+	***** 1. Assign SAs to groups in step 2!
+	***** 2. For flags on peak and partpeak, differentiate between "missing and needed
+	*****    to calculate bill" vs. "missing but not relevant"
+	***** 3. Fix rate AG-4B!!
+	***** 4. Get AG-ICE rates
+	***** 5. DOUBLE CHECK LIST OF EVENT DAYS
+	***** 6. Keep prices per kW in final dataset
+
 *******************************************************************************
 *******************************************************************************
 
@@ -275,7 +284,7 @@ forvalues YM = `YM_min'/`YM_max' {
 	** Calculate total volumetric portion of bill
 	gen temp = kwh*p_kwh
 	egen double total_bill_volumetric = sum(kwh*p_kwh), by(sa_uuid bill_start_dt group)
-	la var total_bill_volumetric "Total $ of volumetric charges on bill ($/kWh * kWh)"
+	la var total_bill_volumetric "Total $ of volumetric charges on bill ($/kWh * kWh, constructed)"
 	drop temp
 
 	** Collapse down from hourly observations, to expedite the next few steps
@@ -309,7 +318,7 @@ forvalues YM = `YM_min'/`YM_max' {
 	replace total_bill_kw = total_bill_kw + temp_pdp_peak2 if temp_pdp_peak2!=.
 	replace total_bill_kw = total_bill_kw + temp_pdp_partpeak2 if temp_pdp_partpeak2!=.
 	drop temp*
-	la var total_bill_kw "Total $ of per-kW charges on bill ($/kW * max_kW)"
+	la var total_bill_kw "Total $ of per-kW charges on bill ($/kW * max_kW, constructed)"
 
 	** Calculate fixed charge per day, for whole bill
 	assert customercharge!=. & metercharge!=.
@@ -317,7 +326,7 @@ forvalues YM = `YM_min'/`YM_max' {
 		// I'm assuming that relevant bill length is end_dt-start_dt, not end_dt-start_dt+1
 		// Nearly all normal bills have end_dt that matches the next start date, which would
 		// mean the billing days by end_dt-start_dt+1 would double-count the cusp day
-	la var total_bill_fixed "Total $ of fixed per-day charges on bill"
+	la var total_bill_fixed "Total $ of fixed per-day charges on bill ($/day * days, constructed)"
 		
 	** Collapse to the SA-bill-group level
 	foreach v of varlist *max_demand* *peak_demand* partial_peak_demand {
@@ -405,11 +414,253 @@ foreach f in `files_bills' {
 *******************************************************************************
 *******************************************************************************
 
-*** USE CORRELATION TO ASSIGN GROUPS
+** 3. Diagnostics on billing data, and using correlations to resolve rate groups
+{
+use "$dirpath_data/merged/bills_rates_constructed.dta", clear
 
+** Check flags for peak/partial peak demand that were constructed (because missing for bill)
+gen month = month(bill_start_dt)
+tab flag_max_demand_constr, missing // missing for 54%, which means it was never created in the first place
+replace flag_max_demand_constr = 0 if flag_max_demand_constr==.
+tab month flag_peak_demand_constr, missing // missing for winter bills where NO bills starting in that month extended into summer
+replace flag_peak_demand_constr = 0 if flag_peak_demand_constr==.
+tab month flag_partpeak_demand_constr, missing
+assert flag_partpeak_demand_constr!=.
+drop month
 
+** Resolve rates with multiple groups, using within-SA correlations
+egen temp_group_sd = sd(group), by(sa_uuid rt_sched_cd) 
+tab rt_sched_cd group if temp_group_sd==0 | temp_group_sd==.
+tab rt_sched_cd group if temp_group_sd>0 & temp_group_sd!=.
+preserve
+keep if temp_group_sd>0 & temp_group_sd!=. // keep only SA-rates with groups that need resolving
+sort sa_uuid rt_sched_cd group bill_start_dt
+egen temp_corr_group = corr(total_bill_amount total_bill_amount_constr), ///
+	by(sa_uuid rt_sched_cd group)
+egen temp_corr_group_max = max(temp_corr_group), by(sa_uuid rt_sched_cd)
+egen temp_corr_group_min = min(temp_corr_group), by(sa_uuid rt_sched_cd)
+gen temp_corr_diff = temp_corr_group_max - temp_corr_group_min
+egen temp_tag = tag(sa_uuid rt_sched_cd)
+sum temp_corr_diff if temp_tag==1, detail
 
-	***** COME BACK AND FIX THIS LATER TO:
-	***** 1. Assign SAs to groups!
-	***** 2. For flags on peak and partpeak, differentiate between "missing and needed
-	*****    to calculate bill" vs. "missing but not relevant"
+	// Keep the group with the highest correlation coefficient
+unique sa_uuid bill_start_dt rt_sched 
+local uniq = r(unique)
+drop if temp_corr_group<temp_corr_group_max
+unique sa_uuid bill_start_dt rt_sched
+assert `uniq'==r(unique)
+
+	// Resolve remaining dups by randomly picking a group
+duplicates t sa_uuid bill_start_dt rt_sched, gen(temp_dup)
+br sa_uuid bill_start_dt rt_sched group total_bill_kwh total_bill_amount* temp_corr* if temp_dup>0	
+	// the vast majority are accounts with (close to) zero consumption
+gen temp_random = uniform()	
+egen temp_random_max = max(temp_random), by(sa_uuid rt_sched)
+gen temp_random_group = group if temp_random==temp_random_max
+egen temp_random_group_max = max(temp_random_group), by(sa_uuid rt_sched)
+assert temp_random_group_max!=.
+unique sa_uuid bill_start_dt rt_sched 
+local uniq = r(unique)
+drop if temp_dup>0 & group!=temp_random_group_max
+unique sa_uuid bill_start_dt rt_sched
+assert `uniq'==r(unique)
+assert r(unique)==r(N)
+	// Save IDs as temp file to merge back into main dataset
+keep sa_uuid bill_start_dt rt_sched_cd group
+tempfile groups
+save `groups'	
+restore
+
+	// Merge in tempfile and drop dups
+merge 1:1 sa_uuid bill_start_dt rt_sched_cd group using `groups'
+assert _merge!=2
+egen temp_merge_max = max(_merge), by(sa_uuid bill_start_dt rt_sched_cd)
+unique sa_uuid bill_start_dt rt_sched
+local uniq = r(unique)
+drop if temp_merge_max==3 & _merge==1
+unique sa_uuid bill_start_dt rt_sched
+assert `uniq'==r(unique)
+assert r(unique)==r(N)
+drop _merge temp*
+
+** Merge in other variables from billing data
+merge 1:1 sa_uuid bill_start_dt using "$dirpath_data/pge_cleaned/billing_data.dta"
+assert _merge!=1
+assert _merge==3 if flag_interval_merge==1 & regexm(rt_sched_cd,"AG")==1 & ///
+	regexm(rt_sched_cd,"AGICE")==0
+keep if _merge==3 // keep only bills with interval data (for this merge file)
+drop _merge
+
+** Diagnostics
+gen temp_bad_bill_match = total_bill_amount==. | total_bill_amount_constr==. | ///
+	total_bill_amount/total_bill_amount_constr > 5 | ///
+	total_bill_amount_constr/total_bill_amount > 5 
+tab temp_bad_bill_match // 3.38% (not great, not terrible)
+tab temp_bad_bill_match if flag_interval_merge==1 & flag_interval_disp20==0 // 3.02%
+tab temp_bad_bill_match if flag_interval_merge==1 & flag_interval_disp20==0  & ///
+	flag_nem==0 // 2.97%
+tab temp_bad_bill_match if flag_interval_merge==1 & flag_interval_disp20==0  & ///
+	flag_nem==0 & flag_bad_tariff==0 // 2.97% (these basically all got dropped in interval merge)
+tab temp_bad_bill_match if flag_interval_merge==1 & flag_interval_disp20==0  & ///
+	flag_nem==0 & flag_bad_tariff==0 & flag_multi_tariff==0 // 2.97% (5x threshold too big to matter here)
+tab temp_bad_bill_match if flag_interval_merge==1 & flag_interval_disp20==0  & ///
+	flag_nem==0 & flag_bad_tariff==0 & flag_multi_tariff==0 & flag_dup_bad_kwh ==0 & ///
+	flag_dup_double_overlap==0 & flag_dup_partial_overlap==0 & flag_dup_overlap_missing==0 
+	// 2.97% (very few obs meet these added criteria after interval merge)
+tab temp_bad_bill_match if flag_interval_merge==1 & flag_interval_disp20==0  & ///
+	flag_nem==0 & flag_bad_tariff==0 & flag_multi_tariff==0 & flag_dup_bad_kwh ==0 & ///
+	flag_dup_double_overlap==0 & flag_dup_partial_overlap==0 & flag_dup_overlap_missing==0 & ///
+	flag_max_demand_constr+flag_peak_demand_const+flag_partpeak_demand_constr==0 // 3.59% (this is surprising!)
+tab temp_bad_bill_match if flag_interval_merge==1 & flag_interval_disp20==0  & ///
+	flag_nem==0 & flag_bad_tariff==0 & flag_multi_tariff==0 & flag_dup_bad_kwh ==0 & ///
+	flag_dup_double_overlap==0 & flag_dup_partial_overlap==0 & flag_dup_overlap_missing==0 & ///
+	flag_max_demand_constr+flag_peak_demand_const+flag_partpeak_demand_constr==0 & ///
+	flag_short_bill==0 & flag_long_bill==0 // 3.53% (not much difference)
+tab temp_bad_bill_match if flag_interval_merge==1 & flag_interval_disp20==0  & ///
+	flag_nem==0 & flag_bad_tariff==0 & flag_multi_tariff==0 & flag_dup_bad_kwh ==0 & ///
+	flag_dup_double_overlap==0 & flag_dup_partial_overlap==0 & flag_dup_overlap_missing==0 & ///
+	flag_max_demand_constr+flag_peak_demand_const+flag_partpeak_demand_constr==0  & ///
+	flag_short_bill==0 & flag_long_bill==0 & flag_first_bill==0 & flag_last_bill==0 
+	// 3.53% (not much difference)
+tab temp_bad_bill_match if flag_interval_merge==1 & flag_interval_disp20==0  & ///
+	flag_nem==0 & flag_bad_tariff==0 & flag_multi_tariff==0 & flag_dup_bad_kwh ==0 & ///
+	flag_dup_double_overlap==0 & flag_dup_partial_overlap==0 & flag_dup_overlap_missing==0 & ///
+	flag_max_demand_constr+flag_peak_demand_const+flag_partpeak_demand_constr==0  & ///
+	flag_short_bill==0 & flag_long_bill==0 & flag_first_bill==0 & flag_last_bill==0 & ///
+	total_bill_kwh>0 & total_bill_kwh!=. // 1.06% (zero kWh bills are most of the problem!)
+
+gen temp_regular_bill = flag_interval_merge==1 & flag_interval_disp20==0  & ///
+	flag_nem==0 & flag_bad_tariff==0 & flag_multi_tariff==0 & flag_dup_bad_kwh ==0 & ///
+	flag_dup_double_overlap==0 & flag_dup_partial_overlap==0 & flag_dup_overlap_missing==0 & ///
+	flag_max_demand_constr+flag_peak_demand_const+flag_partpeak_demand_constr==0  & ///
+	flag_short_bill==0 & flag_long_bill==0 & flag_first_bill==0 & flag_last_bill==0 
+tab temp_regular_bill // 70% have no reason to suspect a problem
+gen temp_year = year(bill_start_dt)
+tabstat temp_bad_bill_match, by(temp_year) 
+tabstat temp_bad_bill_match if temp_regular_bill==1, by(temp_year) 
+tabstat temp_bad_bill_match, by(rt_sched_cd) s(mean count)
+tabstat temp_bad_bill_match if temp_regular_bill==1, by(rt_sched_cd) s(mean count)
+tabstat temp_bad_bill_match if temp_regular_bill==1 & total_bill_kwh>0, by(rt_sched_cd) s(mean count)
+	
+twoway (scatter total_bill_amount_constr  total_bill_amount if temp_regular_bill==1 & total_bill_kwh!=0 ///
+			& total_bill_kwh!=., msize(tiny)) ///
+	(line total_bill_amount total_bill_amount if temp_regular_bill==1 & total_bill_kwh!=0 & total_bill_kwh!=.)
+
+gen temp_regular_bill2 = flag_interval_merge==1 & flag_interval_disp20==0  & ///
+	flag_nem==0 & flag_bad_tariff==0 & flag_multi_tariff==0 & flag_dup_bad_kwh ==0 & ///
+	flag_dup_double_overlap==0 & flag_dup_partial_overlap==0 & flag_dup_overlap_missing==0 & ///
+	flag_short_bill==0 & flag_long_bill==0 & flag_first_bill==0 & flag_last_bill==0 
+	// same as the other flag, but allowing for constructed max/peak/partpeak demand
+	
+/*
+levelsof rt_sched_cd, local(levs)
+foreach rt in `levs' {
+	twoway (scatter total_bill_amount_constr total_bill_amount ///
+			if temp_regular_bill==1 & total_bill_kwh!=0 & total_bill_kwh!=. & rt_sched_cd=="`rt'", msize(tiny)) ///
+		(line total_bill_amount total_bill_amount if temp_regular_bill==1 & total_bill_kwh!=0 & total_bill_kwh!=. ///
+			& rt_sched_cd=="`rt'", msize(tiny)), ///
+		title("`rt'")	
+	sleep 5000 // the problem is "AG-4B"!!
+}
+
+correlate total_bill_amount_constr total_bill_amount if ///
+	temp_regular_bill2==1 & total_bill_kwh!=0 & total_bill_kwh!=. & rt_sched_cd!="AG-4B"
+correlate total_bill_amount_constr total_bill_amount if ///
+	temp_regular_bill==1 & total_bill_kwh!=0 & total_bill_kwh!=. & rt_sched_cd!="AG-4B"
+local corr = string(r(rho),"%9.3f")	
+twoway (scatter total_bill_amount_constr total_bill_amount if temp_regular_bill==1 & total_bill_kwh!=0 ///
+		& total_bill_kwh!=. & rt_sched_cd!="AG-4B", msize(vsmall)) ///
+	(line total_bill_amount total_bill_amount if temp_regular_bill==1 & total_bill_kwh!=0 & total_bill_kwh!=. ///
+		& rt_sched_cd!="AG-4B", msize(tiny)), ///
+	title("All rates except AG-4B (rho = `corr')") ytitle("Constructed bill amount ($)") legend(off)
+
+correlate total_bill_amount_constr total_bill_amount if ///
+	temp_regular_bill2==1 & total_bill_kwh!=0 & total_bill_kwh!=. & rt_sched_cd!="AG-4B" & total_bill_amount<60000 & total_bill_amount_constr<60000
+correlate total_bill_amount_constr total_bill_amount if ///
+	temp_regular_bill==1 & total_bill_kwh!=0 & total_bill_kwh!=. & rt_sched_cd!="AG-4B" & total_bill_amount<60000 & total_bill_amount_constr<60000
+local corr = string(r(rho),"%9.3f")	
+twoway (scatter total_bill_amount_constr total_bill_amount if temp_regular_bill==1 & total_bill_kwh!=0 ///
+		& total_bill_kwh!=. & rt_sched_cd!="AG-4B" & total_bill_amount<60000 & total_bill_amount_constr<60000, msize(vsmall)) ///
+	(line total_bill_amount total_bill_amount if temp_regular_bill==1 & total_bill_kwh!=0 & total_bill_kwh!=. ///
+		& rt_sched_cd!="AG-4B" & total_bill_amount<60000, msize(tiny)), ///
+	title("All rates except AG-4B (rho = `corr')") ytitle("Constructed bill amount ($)") legend(off)
+ 
+correlate total_bill_amount_constr total_bill_amount if ///
+	temp_regular_bill2==1 & total_bill_kwh!=0 & total_bill_kwh!=. & rt_sched_cd=="AG-4B"
+correlate total_bill_amount_constr total_bill_amount if ///
+	temp_regular_bill==1 & total_bill_kwh!=0 & total_bill_kwh!=. & rt_sched_cd=="AG-4B"
+local corr = string(r(rho),"%9.3f")	
+twoway (scatter total_bill_amount_constr total_bill_amount ///
+		if temp_regular_bill==1 & total_bill_kwh!=0 & total_bill_kwh!=. & rt_sched_cd=="AG-4B", msize(vsmall)) ///
+	(line total_bill_amount total_bill_amount if temp_regular_bill==1 & total_bill_kwh!=0 & total_bill_kwh!=. ///
+		& rt_sched_cd=="AG-4B", msize(tiny)), ///
+	title("Rate AG-4B (rho = `corr')") ytitle("Constructed bill amount ($)") legend(off)	
+ 
+forvalues y = 2011/2017 {
+	twoway (scatter total_bill_amount_constr total_bill_amount ///
+			if temp_regular_bill==1 & total_bill_kwh!=0 & total_bill_kwh!=. & rt_sched_cd=="AG-4B" ///
+			& year(bill_start_dt)==`y', msize(vsmall)) ///
+		/// (line total_bill_amount total_bill_amount if temp_regular_bill==1 & total_bill_kwh!=0 & total_bill_kwh!=. ///
+		///	& rt_sched_cd=="AG-4B" & year(bill_start_dt==`y'), msize(vsmall))///
+		, ///
+		title("AG-4B, Year = `y'")	
+	sleep 5000 
+}
+twoway (scatter total_bill_amount_constr total_bill_amount ///
+		if temp_regular_bill==1 & total_bill_kwh!=0 & total_bill_kwh!=. & rt_sched_cd=="AG-4E" ///
+		& inlist(month(bill_start_dt),5,6,7,8,9,10) & inrange(year(bill_start_dt),2011,2015), msize(vsmall)) ///
+	/// (line total_bill_amount total_bill_amount if temp_regular_bill==1 & total_bill_kwh!=0 & total_bill_kwh!=. ///
+	///	& rt_sched_cd=="AG-4B" & year(bill_start_dt==`y'), msize(vsmall))///
+	, ///
+	title("AG-4E, Summer")	
+	
+twoway (scatter total_bill_amount_constr total_bill_amount ///
+		if temp_regular_bill==1 & total_bill_kwh!=0 & total_bill_kwh!=. & rt_sched_cd=="AG-4B" ///
+		& inlist(month(bill_start_dt),11,12,1,2) & inrange(year(bill_start_dt),2011,2015), msize(vsmall)) ///
+	/// (line total_bill_amount total_bill_amount if temp_regular_bill==1 & total_bill_kwh!=0 & total_bill_kwh!=. ///
+	///	& rt_sched_cd=="AG-4B" & year(bill_start_dt==`y'), msize(vsmall))///
+	, ///
+	title("AG-4B, Winter")	
+*/
+ 
+** Create flag for non-zero bills that are off by more than 100% 
+gen flag_bill_constr_error100 = total_bill_kwh>0 & total_bill_kwh!=. & ///
+	(total_bill_amount/total_bill_amount_constr>2 | total_bill_amount_constr/total_bill_amount>2)
+tab flag_bill_constr_error100
+tab flag_bill_constr_error100 if temp_regular_bill==1
+tab flag_bill_constr_error100 if temp_regular_bill==1 & rt_sched_cd!="AG_4B" 
+la var flag_bill_constr_error100 "Flag = 1 for non-zero kWh bills with 100% discrepancy btw $ and $hat"
+
+** Save
+drop temp*
+sort sa_uuid bill_start_dt
+unique sa_uuid bill_start_dt
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/merged/bills_rates_constructed.dta", replace
+ 
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 4. Remove unmatched rate groups from hourly dataset
+{
+use "$dirpath_data/merged/bills_rates_constructed.dta", clear
+keep sa_uuid bill_start_dt group
+merge 1:m sa_uuid bill_start_dt group using "$dirpath_data/merged/hourly_with_prices.dta"
+assert _merge!=1
+unique sa_uuid date hour
+local uniq = r(unique)
+drop if _merge==2
+drop _merge
+unique sa_uuid date hour
+assert r(unique)==`uniq'
+compress
+duplicates drop sa_uuid date hour, force // for some reason there are still a few dups?
+save "$dirpath_data/merged/hourly_with_prices.dta", replace
+}
+
+*******************************************************************************
+*******************************************************************************
+
