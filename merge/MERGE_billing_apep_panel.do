@@ -169,11 +169,10 @@ unique pge_badge_nbr if (test_date_stata!=. | apep_proj_id!=.) & sp_uuid!="" ///
 	& length(pge_badge_nbr)==10 
 di r(unique)/`uniq' //  74% of matched APEP meters have 10 digits
 
+preserve
 gen temp = (test_date_stata!=. | apep_proj_id!=.) & sp_uuid==""
 egen temp_min = min(temp), by(pge_badge_nbr)
 unique pge_badge_nbr if temp_min==1 // 6259 unmached APEP meters
-
-preserve
 keep if temp_min==1
 assert sp_uuid=="" 
 assert merge_customer_meter==.
@@ -201,10 +200,10 @@ outsheet using "$dirpath_data/misc/missing_meters.csv", comma replace
 restore
 
 	// Flag cross-sectional units that ever matchto a pump test/project
-egen MATCH_max_pge_badge_nbr = max(MATCH), by(pge_badge_nbr)
-egen MATCH_max_sa_uuid = max(MATCH), by(sa_uuid)
-egen MATCH_max_sp_uuid = max(MATCH), by(sp_uuid)
-egen MATCH_max_prsn_uuid = max(MATCH), by(prsn_uuid)
+foreach v of varlist pge_badge_nbr sa_uuid sp_uuid prsn_uuid {
+	egen MATCH_max_`v' = max(MATCH), by(`v')
+	replace MATCH_max_`v' = 0 if mi(`v')
+}
 
 	// Drop units that never match, which we have no way of knowing if they even do pumping
 drop if MATCH_max_pge_badge_nbr==0 & MATCH_max_sa_uuid==0 & ///
@@ -220,9 +219,13 @@ tab MATCH_max_pge_badge_nbr
 tab MATCH_max_sa_uuid
 tab MATCH_max_sp_uuid // 99.93% of remaming observations have an SP that matches
 
-
-	
-
+	// Drop any SPs that are missing from the billing data
+FOR NOW
+drop bill_start_dt-merge_billing_customer
+duplicates drop	
+sort sp_uuid
+br sp_uuid sa_uuid pge_badge_nbr sa_sp_start sa_sp_stop in_billing mtr_install_date ///
+	mtr_remove_date merge_apep_test test_date_stata merge_apep_proj MATCH*
 
 }
 
