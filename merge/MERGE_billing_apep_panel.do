@@ -129,3 +129,102 @@ save "$dirpath_data/merged/temp_big_merge.dta", replace
 *******************************************************************************
 *******************************************************************************
 
+** 2. De-dupification of the big merged dataset
+{
+use "$dirpath_data/merged/temp_big_merge.dta", clear
+
+	// First item of business: identify SAs/SPs/persons/meters that ever match to a pump test/project
+gen MATCH = merge_apep_proj==3 | (merge_apep_test==3 & sp_uuid!="")
+
+unique pge_badge_nbr if merge_customer_meter==3
+local uniq = r(unique)
+unique pge_badge_nbr if merge_customer_meter==3 & MATCH==1
+di r(unique)/`uniq' // 8,802 meters (6.1%)
+
+unique sa_uuid if merge_customer_meter==3
+local uniq = r(unique)
+unique sa_uuid if merge_customer_meter==3 & MATCH==1
+di r(unique)/`uniq' // 13,293 SAs (8.2%)
+
+unique sp_uuid if merge_customer_meter==3
+local uniq = r(unique)
+unique sp_uuid if merge_customer_meter==3 & MATCH==1
+di r(unique)/`uniq' // 7,670 SPs (10.6%)
+
+unique prsn_uuid if merge_customer_meter==3
+local uniq = r(unique)
+unique prsn_uuid if merge_customer_meter==3 & MATCH==1
+di r(unique)/`uniq' // 2,667 persons (8.3%)
+
+	// Create list of missing meters to send back to PGE
+unique pge_badge_nbr if (test_date_stata!=. | apep_proj_id!=.) 
+local uniq = r(unique) // 15216 total APEP meters
+unique pge_badge_nbr if (test_date_stata!=. | apep_proj_id!=.) ///
+	& length(pge_badge_nbr)==10 
+di r(unique)/`uniq' //  76% of all APEP meters have 10 digits
+	
+unique pge_badge_nbr if (test_date_stata!=. | apep_proj_id!=.) & sp_uuid!=""
+local uniq = r(unique) // 8957 matched APEP meters
+unique pge_badge_nbr if (test_date_stata!=. | apep_proj_id!=.) & sp_uuid!="" ///
+	& length(pge_badge_nbr)==10 
+di r(unique)/`uniq' //  74% of matched APEP meters have 10 digits
+
+gen temp = (test_date_stata!=. | apep_proj_id!=.) & sp_uuid==""
+egen temp_min = min(temp), by(pge_badge_nbr)
+unique pge_badge_nbr if temp_min==1 // 6259 unmached APEP meters
+
+preserve
+keep if temp_min==1
+assert sp_uuid=="" 
+assert merge_customer_meter==.
+assert merge_apep_test==2 | merge_apep_test==.
+keep pge_badge_nbr apep_proj_id apeptestid customertype farmtype waterenduse test_date_stata
+tab waterenduse customertype, missing
+gen len = length(p)
+gen year = year(test_date_stata)
+tab year len
+drop apeptestid test_date_stata apep_proj_id
+duplicates drop
+tab waterenduse customertype, missing
+unique pge_badge_nbr
+drop farmtype
+duplicates drop
+unique pge_badge_nbr
+duplicates t pge_badge_nbr, gen(dup)
+sort pge_badge_nbr
+br if dup>0
+keep pge_badge_nbr len
+duplicates drop
+sort len pge_badge_nbr
+drop len
+outsheet using "$dirpath_data/misc/missing_meters.csv", comma replace
+restore
+
+	// Flag cross-sectional units that ever matchto a pump test/project
+egen MATCH_max_pge_badge_nbr = max(MATCH), by(pge_badge_nbr)
+egen MATCH_max_sa_uuid = max(MATCH), by(sa_uuid)
+egen MATCH_max_sp_uuid = max(MATCH), by(sp_uuid)
+egen MATCH_max_prsn_uuid = max(MATCH), by(prsn_uuid)
+
+	// Drop units that never match, which we have no way of knowing if they even do pumping
+drop if MATCH_max_pge_badge_nbr==0 & MATCH_max_sa_uuid==0 & ///
+	MATCH_max_sp_uuid==0 & MATCH_max_prsn_uuid==0
+count if MATCH_max_pge_badge_nbr==0 & MATCH_max_sa_uuid==0 & ///
+	MATCH_max_sp_uuid==0 & MATCH_max_prsn_uuid==1
+di r(N)/_N  // 56% of obs are for a *person* who has *different* a SA/SP/meter that matches
+
+	// Drop SP/SA/meters that never match, which we have no way of knowing if they ever pump
+drop if MATCH_max_pge_badge_nbr==0 & MATCH_max_sa_uuid==0 & ///
+	MATCH_max_sp_uuid==0
+tab MATCH_max_pge_badge_nbr
+tab MATCH_max_sa_uuid
+tab MATCH_max_sp_uuid // 99.93% of remaming observations have an SP that matches
+
+
+	
+
+
+}
+
+*******************************************************************************
+*******************************************************************************
