@@ -76,9 +76,15 @@ assert r(unique)==r(N)
 gen modate = ym(year(date),month(date))
 format %tm modate	
 egen days = count(date), by(sa_uuid modate)
+gen day = day(date)
+egen day_first = min(day), by(sa_uuid modate)
+egen day_last = max(day), by(sa_uuid modate)
+drop day
 la var modate "Month-Year"
 la var days "Number of days in month covered by a bill"
-order sa_uuid modate days	
+la var day_first "First day of month covered by a bill"
+la var day_last "Last day of month covered by a bill"
+order sa_uuid modate days day_first day_last
 	
 ** Prepare to collapse to monthly level
 foreach v of varlist flag* interval_bill_corr {
