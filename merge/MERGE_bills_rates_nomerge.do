@@ -11,6 +11,7 @@ set more off
 	***** 2. Fix rate AG-4B!!
 	***** 3. Get AG-ICE rates
 	***** 4. DOUBLE CHECK LIST OF EVENT DAYS
+	***** 5. Fix monthified to expand to the correct *days* within a month
 
 ** This script assigns min/max/average prices to ALL bills, not by merging into
 ** AMI data or taking averages. Rather, it takes prices *directly* from rate
@@ -249,6 +250,66 @@ assert r(unique)==r(N)
 ** Save
 compress
 save "$dirpath_data/merged/bills_avg_prices_nomerge.dta", replace
+
+}
+**********************************************************************
+**********************************************************************
+
+** 3. Merge average prices by rate into monthified billing data
+{
+use "$dirpath_data/pge_cleaned/billing_data_monthified.dta", clear
+
+** Prep for merge into rate schedule data
+replace rt_sched_cd = subinstr(rt_sched_cd,"H","",1) if substr(rt_sched_cd,1,1)=="H"
+replace rt_sched_cd = subinstr(rt_sched_cd,"AG","AG-",1) if substr(rt_sched_cd,1,2)=="AG"
+drop if substr(rt_sched_cd,1,2)!="AG"
+
+** Keep only essential variables (for purposes of this script)
+keep sa_uuid modate days day_first day_last rt_sched_cd
+
+** Create flag for the (very few) months where there's a gap
+gen flag_date_gap = (day_last-day_first+1)!=days
+tab flag_date_gap // 113 out of 5.3M
+la var flag_date_gap "Flag for SA-months where expanding by day is fuzzy"
+
+** Expand whole dataset by bill length variable
+expand days, gen(temp_new)
+sort sa_uuid modate temp_new
+tab temp_new
+
+** Construct date variable (duplicated at each bill change-over)
+gen date = date(substr(string(modate,"%tm"),6,2) + "/" + string(day_first) + ///
+	"/" + substr(string(modate,"%tm"),1,4),"MDY") if temp_new==0
+format %td date
+replace date = date[_n-1]+1 if temp_new==1
+assert day(date)==day_first if temp_new==0
+assert day(date)==day_last if temp_new[_n+1]==0 & flag_date_gap==0
+assert date!=.
+unique sa_uuid modate date
+assert r(unique)==r(N)
+
+** Merge into averge daily rates data
+merge m:1 rt_sched_cd date using "$dirpath_data/merged/ag_rates_avg_by_day.dta"
+assert date>date("01sep2017","DMY") if _merge==2
+drop if _merge==2
+
+** Collapse back to bills
+foreach v of varlist *_p_* {
+	local fxn = subinstr(substr("`v'",1,4),"_","",1)
+	egen double temp = `fxn'(`v'), by(sa_uuid modate)
+	replace `v' = temp
+	drop temp
+}
+drop date _merge day_first day_last days temp_new
+duplicates drop
+
+** Confirm uniqueness
+unique sa_uuid modate
+assert r(unique)==r(N)
+
+** Save
+compress
+save "$dirpath_data/merged/monthified_avg_prices_nomerge.dta", replace
 
 }
 **********************************************************************
