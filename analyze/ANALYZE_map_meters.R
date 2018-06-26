@@ -91,11 +91,8 @@ caDF <- mapToDF(ca)
 pgeDF <- filter(utilityDF, id == 3, piece == 1)
 
 
-# read in customer lat/lons
-customerDF <- read_dta(paste(dataDir, "/pge/customer_data.dta", sep = "")) %>%
-  filter(prem_long < -118) %>%
-  mutate(dontplot = ifelse(climate_zone_cd == "Z13" & prem_lat > 38, 1, 0)) %>%
-  filter(dontplot == 0)
+customerDF <- read_dta(paste(dataDir, "/pge_cleaned/pge_cust_detail.dta", sep = "")) %>%
+  filter(in_pge == 1)
 
 
 ################################################################
