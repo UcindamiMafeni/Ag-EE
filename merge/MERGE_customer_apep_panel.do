@@ -373,8 +373,78 @@ unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
 assert r(unique)==r(N)
 unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj 
 assert r(unique)==r(N)
-unique sp_uuid  test_date_stata date_proj_finish subsidy_proj 
+
+
+** Resolve 41 dups where a single pump test merges to multiple SPs (don't know what's going on here...)
+duplicates t apeptestid test_date_stata customertype farmtype waterenduse, gen(dup)
+sort apeptestid test_date_stata
+br sp_uuid sa_uuid bill_dt_first bill_dt_last pge_badge_nbr test_date_stata ///
+	customertype farmtype waterenduse apeptestid apeptestid_uniq ///
+	if dup>0
+preserve
+keep if dup>0
+keep sp_uuid pge_badge_nbr test_date_stata	
+duplicates drop
+joinby sp_uuid pge_badge_nbr using "$dirpath_data/pge_cleaned/xwalk_sp_meter_date.dta", ///
+	unmatched(master)
+sort sp_uuid pge_badge_nbr test_date_stata
+drop if test_date_stata<mtr_install_date | test_date_stata>mtr_remove_date
+keep sp_uuid pge_badge_nbr test_date_stata
+duplicates drop
+unique sp_uuid pge_badge_nbr test_date_stata
 assert r(unique)==r(N)
+tempfile sps
+save `sps'
+restore	
+merge m:1 sp_uuid pge_badge_nbr test_date_stata using `sps'
+egen temp_max_merge = max(_merge), by(apeptestid test_date_stata customertype farmtype waterenduse)
+unique apeptestid test_date_stata customertype farmtype waterenduse
+local uniq = r(unique)
+drop if _merge==1 & temp_max_merge==3
+unique apeptestid test_date_stata customertype farmtype waterenduse
+assert `uniq'==r(unique)
+drop dup temp* _merge
+
+	// Remaining dups: 2 are SPs where 1 SA started and stops on same date (drop)
+duplicates t apeptestid test_date_stata customertype farmtype waterenduse, gen(dup)
+sort apeptestid test_date_stata
+br sp_uuid sa_uuid bill_dt_first bill_dt_last pge_badge_nbr test_date_stata ///
+	customertype farmtype waterenduse apeptestid apeptestid_uniq ///
+	if dup>0
+gen temp = sa_sp_stop - sa_sp_start
+egen temp_max = max(temp), by( apeptestid test_date_stata customertype farmtype waterenduse)
+unique apeptestid test_date_stata customertype farmtype waterenduse
+local uniq = r(unique)
+drop if temp==0 & temp_max>0
+unique apeptestid test_date_stata customertype farmtype waterenduse
+assert `uniq'==r(unique)
+drop dup temp* 
+
+	// Remaining dups are multiple APEP projects!!
+	
+** Merge in relevant APEP test variables, and collapse tests on same SP-date
+joinby apeptestid test_date_stata customertype farmtype waterenduse ///
+	using "$dirpath_data/pge_cleaned/pump_test_data.dta", unmatched(master)	
+assert _merge==3
+drop _merge
+	
+***** FOR WHEN WE END UP USING THESE VARIABLES, WE'LL NEED TO PICK UP THE CODE HERE AND 
+***** FIGURE OUT A PROPER UNIT OF ANALYSIS, AND THEN MAKE UNIQUE BY THAT
+
+** Add back in SPs that got dropped (weirdly, but don't think this matters for the resulting dataset)
+assert test_date_stata!=.
+merge m:1 sp_uuid sa_uuid sa_sp_start sa_sp_stop using "$dirpath_data/pge_cleaned/pge_cust_detail.dta"
+assert _merge!=1
+egen temp_max_merge = max(_merge), by(sp_uuid)
+keep if temp_max_merge==3
+drop temp* _merge
+
+
+** Save messy but finalized (for now) dataset of SPs-tests-projects
+duplicates drop
+compress
+save "$dirpath_data/merged/sp_apep_merged_notunique.dta"
+
 
 }
 
