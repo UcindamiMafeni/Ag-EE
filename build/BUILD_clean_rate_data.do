@@ -1854,32 +1854,70 @@ AG-4 Time-of-Use Periods
 */
 
 replace peak = 1 if  season == "summer" /// 
-  & (rateschedule == "ag-4a" | rateschedule == "ag-4d" )  ///
+  & (rateschedule == "ag-4a" | rateschedule == "ag-4b" | /// 
+   rateschedule == "ag-4d" | rateschedule == "ag-4e")  ///
   & hour >= 12 & hour < 18 ///
   & (dow_num >= 1 & dow_num <= 5) 
 
   
-  
-replace partpeak = 1 if  season == "winter" /// 
-  & (rateschedule == "ag-4a" | rateschedule == "ag-4d" )  ///
-  & hour >= 8 & hour <= 21 ///
+replace peak = 1 if  season == "summer" /// 
+  & (rateschedule == "ag-4c" | rateschedule == "ag-4f")  ///
+  & hour >= 12 & hour < 18 ///
   & (dow_num >= 1 & dow_num <= 5) 
   
-    
-replace partpeak = 0 if /// 
-     (rateschedule == "ag-4a" | rateschedule == "ag-4d")  ///
+  
+replace partpeak = 1 if  /// 
+   (rateschedule == "ag-4c" | rateschedule == "ag-4f") & hour >= 8 & hour < 12 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "summer"
+  
+replace partpeak = 1 if  /// 
+   (rateschedule == "ag-4c" | rateschedule == "ag-4f") & hour >= 18 & hour <= 21 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "summer"
+  
+replace partpeak = 0 if  /// 
+   (rateschedule == "ag-4c" | rateschedule == "ag-4f") & hour == 8 & minute == 0 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "summer"
+  
+replace partpeak = 0 if  /// 
+   (rateschedule == "ag-4c" | rateschedule == "ag-4f") & hour == 21 & minute == 30 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "summer"
+
+replace partpeak = 1 if /// 
+   (rateschedule == "ag-4c" | rateschedule == "ag-4f") & hour >= 8 & hour <= 21 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "winter"
+  
+replace partpeak = 0 if  /// 
+     (rateschedule == "ag-4a" | rateschedule == "ag-4b" | /// 
+   rateschedule == "ag-4d" | rateschedule == "ag-4e")  ///
  & hour == 8 & minute == 0 ///
   & (dow_num >= 1 & dow_num <= 5) & season == "winter"
   
-replace partpeak = 0 if /// 
-     (rateschedule == "ag-4a" | rateschedule == "ag-4d")  ///
+replace partpeak = 0 if  /// 
+     (rateschedule == "ag-4a" | rateschedule == "ag-4b" | /// 
+   rateschedule == "ag-4d" | rateschedule == "ag-4e")  ///
  & hour == 21 & minute == 30 ///
   & (dow_num >= 1 & dow_num <= 5) & season == "winter"
   
 replace offpeak = 1 if peak == 0 & partpeak ==0 ///
-   & (rateschedule == "ag-4a" | rateschedule == "ag-4d")  ///
+   & (rateschedule == "ag-4a" | rateschedule == "ag-4b" | /// 
+   rateschedule == "ag-4d" | rateschedule == "ag-4e")  ///
  
   
+
+replace partpeak = 0 if  /// 
+     (rateschedule == "ag-4c" | rateschedule == "ag-4f")  ///
+ & hour == 8 & minute == 0 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "winter"
+  
+replace partpeak = 0 if /// 
+     (rateschedule == "ag-4c" | rateschedule == "ag-4f")  ///
+ & hour == 21 & minute == 30 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "winter"
+  
+replace offpeak = 1 if peak == 0 & partpeak ==0 ///
+   & (rateschedule == "ag-4c" | rateschedule == "ag-4f")  ///
+
+   
 
    
 /* AG-5 Large Time-of-Use Periods						
@@ -2308,30 +2346,70 @@ AG-4 Time-of-Use Periods
 */
 
 replace peak = 1 if  season == "summer" /// 
-  & (rateschedule == "ag-4a" | rateschedule == "ag-4d" )  ///
+  & (rateschedule == "ag-4a" | rateschedule == "ag-4b" | /// 
+   rateschedule == "ag-4d" | rateschedule == "ag-4e")  ///
   & hour >= 12 & hour < 18 ///
   & (dow_num >= 1 & dow_num <= 5) 
 
   
-  
-replace partpeak = 1 if  season == "winter" /// 
-  & (rateschedule == "ag-4a" | rateschedule == "ag-4d" )  ///
-  & hour >= 8 & hour <= 21 ///
+replace peak = 1 if  season == "summer" /// 
+  & (rateschedule == "ag-4c" | rateschedule == "ag-4f")  ///
+  & hour >= 12 & hour < 18 ///
   & (dow_num >= 1 & dow_num <= 5) 
   
-    
-replace partpeak = 0 if /// 
-     (rateschedule == "ag-4a" | rateschedule == "ag-4d")  ///
+  
+replace partpeak = 1 if  /// 
+   (rateschedule == "ag-4c" | rateschedule == "ag-4f") & hour >= 8 & hour < 12 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "summer"
+  
+replace partpeak = 1 if  /// 
+   (rateschedule == "ag-4c" | rateschedule == "ag-4f") & hour >= 18 & hour <= 21 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "summer"
+  
+replace partpeak = 0 if  /// 
+   (rateschedule == "ag-4c" | rateschedule == "ag-4f") & hour == 8 & minute == 0 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "summer"
+  
+replace partpeak = 0 if  /// 
+   (rateschedule == "ag-4c" | rateschedule == "ag-4f") & hour == 21 & minute == 30 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "summer"
+
+replace partpeak = 1 if /// 
+   (rateschedule == "ag-4c" | rateschedule == "ag-4f") & hour >= 8 & hour <= 21 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "winter"
+  
+replace partpeak = 0 if  /// 
+     (rateschedule == "ag-4a" | rateschedule == "ag-4b" | /// 
+   rateschedule == "ag-4d" | rateschedule == "ag-4e")  ///
  & hour == 8 & minute == 0 ///
   & (dow_num >= 1 & dow_num <= 5) & season == "winter"
   
-replace partpeak = 0 if /// 
-     (rateschedule == "ag-4a" | rateschedule == "ag-4d")  ///
+replace partpeak = 0 if  /// 
+     (rateschedule == "ag-4a" | rateschedule == "ag-4b" | /// 
+   rateschedule == "ag-4d" | rateschedule == "ag-4e")  ///
  & hour == 21 & minute == 30 ///
   & (dow_num >= 1 & dow_num <= 5) & season == "winter"
   
 replace offpeak = 1 if peak == 0 & partpeak ==0 ///
-   & (rateschedule == "ag-4a" | rateschedule == "ag-4d")  ///
+   & (rateschedule == "ag-4a" | rateschedule == "ag-4b" | /// 
+   rateschedule == "ag-4d" | rateschedule == "ag-4e")  ///
+ 
+  
+
+replace partpeak = 0 if  /// 
+     (rateschedule == "ag-4c" | rateschedule == "ag-4f")  ///
+ & hour == 8 & minute == 0 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "winter"
+  
+replace partpeak = 0 if /// 
+     (rateschedule == "ag-4c" | rateschedule == "ag-4f")  ///
+ & hour == 21 & minute == 30 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "winter"
+  
+replace offpeak = 1 if peak == 0 & partpeak ==0 ///
+   & (rateschedule == "ag-4c" | rateschedule == "ag-4f")  ///
+
+   
  
   
 
@@ -2764,31 +2842,70 @@ AG-4 Time-of-Use Periods
 */
 
 replace peak = 1 if  season == "summer" /// 
-  & (rateschedule == "ag-4a" | rateschedule == "ag-4d" )  ///
+  & (rateschedule == "ag-4a" | rateschedule == "ag-4b" | /// 
+   rateschedule == "ag-4d" | rateschedule == "ag-4e")  ///
   & hour >= 12 & hour < 18 ///
   & (dow_num >= 1 & dow_num <= 5) 
 
   
-  
-replace partpeak = 1 if  season == "winter" /// 
-  & (rateschedule == "ag-4a" | rateschedule == "ag-4d" )  ///
-  & hour >= 8 & hour <= 21 ///
+replace peak = 1 if  season == "summer" /// 
+  & (rateschedule == "ag-4c" | rateschedule == "ag-4f")  ///
+  & hour >= 12 & hour < 18 ///
   & (dow_num >= 1 & dow_num <= 5) 
   
-    
-replace partpeak = 0 if /// 
-     (rateschedule == "ag-4a" | rateschedule == "ag-4d")  ///
+  
+replace partpeak = 1 if  /// 
+   (rateschedule == "ag-4c" | rateschedule == "ag-4f") & hour >= 8 & hour < 12 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "summer"
+  
+replace partpeak = 1 if  /// 
+   (rateschedule == "ag-4c" | rateschedule == "ag-4f") & hour >= 18 & hour <= 21 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "summer"
+  
+replace partpeak = 0 if  /// 
+   (rateschedule == "ag-4c" | rateschedule == "ag-4f") & hour == 8 & minute == 0 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "summer"
+  
+replace partpeak = 0 if  /// 
+   (rateschedule == "ag-4c" | rateschedule == "ag-4f") & hour == 21 & minute == 30 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "summer"
+
+replace partpeak = 1 if /// 
+   (rateschedule == "ag-4c" | rateschedule == "ag-4f") & hour >= 8 & hour <= 21 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "winter"
+  
+replace partpeak = 0 if  /// 
+     (rateschedule == "ag-4a" | rateschedule == "ag-4b" | /// 
+   rateschedule == "ag-4d" | rateschedule == "ag-4e")  ///
  & hour == 8 & minute == 0 ///
   & (dow_num >= 1 & dow_num <= 5) & season == "winter"
   
-replace partpeak = 0 if /// 
-     (rateschedule == "ag-4a" | rateschedule == "ag-4d")  ///
+replace partpeak = 0 if  /// 
+     (rateschedule == "ag-4a" | rateschedule == "ag-4b" | /// 
+   rateschedule == "ag-4d" | rateschedule == "ag-4e")  ///
  & hour == 21 & minute == 30 ///
   & (dow_num >= 1 & dow_num <= 5) & season == "winter"
   
 replace offpeak = 1 if peak == 0 & partpeak ==0 ///
-   & (rateschedule == "ag-4a" | rateschedule == "ag-4d")  ///
+   & (rateschedule == "ag-4a" | rateschedule == "ag-4b" | /// 
+   rateschedule == "ag-4d" | rateschedule == "ag-4e")  ///
  
+  
+
+replace partpeak = 0 if  /// 
+     (rateschedule == "ag-4c" | rateschedule == "ag-4f")  ///
+ & hour == 8 & minute == 0 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "winter"
+  
+replace partpeak = 0 if /// 
+     (rateschedule == "ag-4c" | rateschedule == "ag-4f")  ///
+ & hour == 21 & minute == 30 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "winter"
+  
+replace offpeak = 1 if peak == 0 & partpeak ==0 ///
+   & (rateschedule == "ag-4c" | rateschedule == "ag-4f")  ///
+
+   
   
 
    
