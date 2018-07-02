@@ -19,7 +19,8 @@ spatialDir <- paste(dataDir, "/spatial", sep = "")
 spatialDirState <- paste(spatialDir, "/State", sep = "")
 # iou shapefile directory
 spatialDirIOU <- paste(spatialDir, "/Service territories", sep = "")
-
+# output directory
+mapsDir <- paste(getwd(), "/output", sep = "")
 
 ### PACKAGES
 library(GISTools)
@@ -105,11 +106,13 @@ meterMap <- ggplot() +
   geom_polygon(data = caDF, aes(x = long, y = lat, group = group),
                color = 'black', fill = 'NA') +
   geom_point(data = customerDF, aes(x = prem_long, y = prem_lat),
-             size = 0.5, color = myBlue, shape = 21, alpha = 0.5)  +
+             size = 0.05, color = myBlue, shape = 21)  +
   coord_fixed(ratio = 1.25) +
   guides(colour = guide_legend(""),
          shape = guide_legend("")) +
   myThemeStuff
 
-
 meterMap
+ggsave(paste0(mapsDir,"/customer_map.eps"), width=127, units = "mm")
+ggsave(paste0(mapsDir,"/customer_map.pdf"), width=127, units = "mm")
+
