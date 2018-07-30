@@ -26,8 +26,8 @@ dropmiss, obs force
 ** Drop descriptions (too much information)
 drop Description
 
-** Keep only NAICS 111
-keep if substr(Code,1,3)=="111"
+//** Keep only NAICS 111
+//keep if substr(Code,1,3)=="111"
 
 ** Clean up NAICS titles and compress
 replace Title = substr(Title,1,length(Title)-1) if substr(Title,-1,1)=="T"
@@ -38,6 +38,7 @@ replace Code = Code + "0" if length(Code)<6
 replace Code = Code + "0" if length(Code)<6
 replace Code = Code + "0" if length(Code)<6
 duplicates drop
+duplicates drop Code, force
 unique Code
 assert r(unique)==r(N)
 
