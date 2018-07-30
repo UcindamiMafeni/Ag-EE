@@ -3,15 +3,18 @@
 #       data, based on (repoted) CA climate zones     #
 ####################################################### 
 rm(list = ls())
-library(ggmap)
-library(ggplot2)
-library(gstat)
-library(sp)
-library(maptools)
-library(rgdal)
-library(rgeos)
-library(raster)
-library(SDMTools)
+
+#libP <- "C:/Program Files/Microsoft/R Open/R-3.4.4/library"
+
+library(ggmap) #, lib.loc=libP)
+library(ggplot2) #, lib.loc=libP)
+library(gstat) #, lib.loc=libP)
+library(sp) #, lib.loc=libP)
+library(maptools) #, lib.loc=libP)
+library(rgdal) #, lib.loc=libP)
+library(rgeos) #, lib.loc=libP)
+library(raster) #, lib.loc=libP)
+library(SDMTools) #, lib.loc=libP)
 
 
 ##########################################
@@ -89,7 +92,7 @@ ggplot() +
 
 #Read PGE coordinates
 setwd("S:/Matt/ag_pump/data/misc")
-prems <- read.delim2("pge_prem_coord_raw.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
+prems <- read.delim2("pge_prem_coord_raw_20180719.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
 prems$longitude <- as.numeric(prems$prem_lon)
 prems$latitude <- as.numeric(prems$prem_lat)
 prems$czone <- as.numeric(substr(prems$climate_zone_cd,2,3))
@@ -288,7 +291,7 @@ prems <- as.data.frame(prems)
 names(prems)[13] <- "czone_gis"
 
 #Export results to CSV
-filename <- "pge_prem_coord_polygon.csv"
-write.csv(prems, file=filename , row.names=FALSE, col.names=TRUE, sep=",", quote=FALSE)
+filename <- "pge_prem_coord_polygon_20180719.csv"
+write.csv(prems, file=filename , row.names=FALSE, col.names=TRUE, sep=",", quote=FALSE, append=FALSE)
 
 
