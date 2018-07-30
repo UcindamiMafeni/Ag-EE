@@ -584,3 +584,56 @@ save "$dirpath_data/pge_cleaned/pge_cust_detail_20180719.dta", replace
 *******************************************************************************
 *******************************************************************************
 
+** 3. Compare March 2018 vs July 2018
+{
+
+** Append the two datasets
+use "$dirpath_data/pge_cleaned/pge_cust_detail_20180322.dta", clear
+gen temp_old = 1
+append using "$dirpath_data/pge_cleaned/pge_cust_detail_20180719.dta"
+replace temp_old = 0 if temp_old==.
+unique sp_uuid sa_uuid temp_old
+assert r(unique)==r(N)
+
+** Check duplicates
+duplicates r
+duplicates r prsn_uuid sp_uuid sa_uuid
+duplicates r sp_uuid sa_uuid
+duplicates t prsn_uuid-missing_geocode_flag, gen(dup_all)
+duplicates t sp_uuid sa_uuid, gen(dup_spsa)
+tab dup_all dup_spsa
+sort sp_uuid sa_uuid temp_old
+br if dup_spsa!=dup_all // many discrepancies are badge number only (a variable that's not coded properly!)
+
+order pge_badge_nbr, last
+duplicates t prsn_uuid-missing_geocode_flag, gen(dup_all2)
+tab dup_all2 dup_spsa
+br if dup_spsa!=dup_all2 // many discrepancies in naics (another variable that's coded badly!)
+
+order prsn_naics naics_descr, last
+duplicates t prsn_uuid-missing_geocode_flag, gen(dup_all3)
+tab dup_all3 dup_spsa
+br if dup_spsa!=dup_all3 // many discrepancies in end dates after Feb 2018
+
+order sa_sp_stop, last
+duplicates t prsn_uuid-missing_geocode_flag, gen(dup_all4)
+tab dup_all4 dup_spsa
+br if dup_spsa!=dup_all4 // many discrepancies in NEM and DR
+
+order net_mtr_ind dr_ind dr_program, last
+duplicates t prsn_uuid-missing_geocode_flag, gen(dup_all5)
+tab dup_all5 dup_spsa
+br if dup_spsa!=dup_all5 // a few discrepancies in prsn_uuid
+
+order prsn_uuid, last
+duplicates t sp_uuid-missing_geocode_flag, gen(dup_all6)
+tab dup_all6 dup_spsa
+br if dup_spsa!=dup_all6 // 8 SPs with lat/lon discrepancies (17 SP/SA observations)
+
+
+
+
+
+
+*******************************************************************************
+*******************************************************************************
