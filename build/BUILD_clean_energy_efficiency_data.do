@@ -13,7 +13,7 @@ global dirpath_data "$dirpath/data"
 *******************************************************************************
 
 ** 1. March 2018 data pull
-{
+if 1==0{
 
 ** Load raw PGE customer data
 use "$dirpath_data/pge_raw/energy_efficiency_data_20180322.dta", clear
