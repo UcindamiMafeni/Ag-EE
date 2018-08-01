@@ -24,7 +24,8 @@ do "$dirpath_code/build/BUILD_naics_descr.do"
 
 *** 3: CLEAN CUSTOMER DATA
 do "$dirpath_code/build/BUILD_clean_customer_data.do"
-	// calls auxilary GIS script "BUILD_gis_climate_zone.R"
+	// calls auxilary GIS scripts "BUILD_gis_climate_zone_20180322.R" 
+	//                        and "BUILD_gis_climate_zone_20180719.R"
 
 *** 4: CLEAN BILLING DATA
 do "$dirpath_code/build/BUILD_clean_bill_data.do"
@@ -39,7 +40,7 @@ do "$dirpath_code/build/BUILD_clean_interval_data.do"
 do "$dirpath_code/build/BUILD_clean_badge_number_data.do"
 
 *** 8: CROSS-VALIDATE BILLING VS. INTERVAL DATA
-do "$dirpath_code/build/BUILD_compare_billing_interval.do"
+do "$dirpath_code/build/BUILD_compare_billing_interval.do" 
 
 *** 9: CROSS-VALIDATE BILLING VS. CUSTOMER DATA
 do "$dirpath_code/build/BUILD_compare_billing_customer.do"
