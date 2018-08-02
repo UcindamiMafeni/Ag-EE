@@ -1429,11 +1429,12 @@ save "$dirpath_data/pge_cleaned/billing_data_20180322.dta", replace
 *******************************************************************************
 *******************************************************************************
 
-** 2. July 2018 data pull
+** 2. July 2018 data pull (which for this data file is actually the August 2018 pull)
 {
 
-** Load raw PGE billing data
+** Load raw PGE billing data (truncated July 19, 2018 file)
 use "$dirpath_data/pge_raw/bill_data_20180719.dta", clear
+gen aug2 = 0 
 
 ** Service agreement ID
 assert sa_uuid!=""
@@ -1492,6 +1493,89 @@ la var max_demand "Max demand in bill period (kWh)"
 la var peak_demand "Peak demand in bill period (kWh)"
 la var partial_peak_demand "Partial peak demand in bill period (kWh)"
 la var total_bill_amount "Total bill amount ($)"
+
+** Save as temp file
+tempfile bills_july
+save `bills_july'
+
+** Load raw PGE billing data (August 2, 2018 file)
+use "$dirpath_data/pge_raw/bill_data_20180802.dta", clear
+gen aug2 = 1
+
+** Service agreement ID
+assert sa_uuid!=""
+assert length(sa_uuid)==10
+unique sa_uuid // 32636 unique service agreements
+unique sa_uuid bseg_start_dt // 1346282 unique customer-service point-service aggrements
+duplicates r sa_uuid bseg_start_dt
+duplicates t sa_uuid bseg_start_dt, gen(dup)
+*br if dup>0 // a BUNCH of dups (almost 1% of account-bills), which will be tricky to parse!
+drop dup
+la var sa_uuid "Service Agreement ID (anonymized, 10-digit)"
+
+** Start and end dates
+assert bseg_start_dt!="" & bseg_end_dt!=""
+gen bill_start_dt = date(bseg_start_dt,"DMY")
+gen bill_end_dt = date(bseg_end_dt,"DMY")
+format %td bill_start_dt bill_end_dt
+assert bill_start_dt!=. & bill_end_dt!=. // no missings
+assert bill_start_dt<=bill_end_dt // end date never prior to start date
+gen bill_length = bill_end_dt-bill_start_dt+1
+tab bill_length // 0.3% of observations have bill period > 34 days! (96% b/tw 28-34 days)
+drop bseg_start_dt bseg_end_dt
+order sa_uuid bill_start_dt bill_end_dt bill_length
+la var bill_start_dt "Bill period start date"
+la var bill_end_dt "Bill period end date"
+la var bill_length "Length of bill period (in days)"
+
+** Rate schedule
+count if rt_sched_cd=="" // only 1 observation missing
+sort sa_uuid bill_start_dt
+egen temp1 = mode(rt_sched_cd), by(sa_uuid)
+egen temp2 = max(rt_sched_cd==""), by(sa_uuid)
+assert (rt_sched_cd==temp1 | rt_sched_cd=="") if temp2==1 // missing is unambiguous
+replace rt_sched_cd = temp1 if rt_sched_cd=="" // populate missing
+drop temp1 temp2
+la var rt_sched_cd "Rate schedule at end of billing cycle"
+
+** Usage and demand
+destring total_electric_usage max_demand peak_demand partial_peak_demand, replace
+count if total_electric_usage==. // 51 missings out of 1.36M
+count if max_demand==. // 231K missings out of 1.36M
+count if peak_demand==. // 1.30M missings out of 1.36M
+count if partial_peak_demand==. // 1.26M missings out of 1.36M
+
+** Bill amount
+destring total_bill_amount, replace
+assert total_bill_amount!=. // never missing!
+gen perkwh = total_bill_amount/total_electric_usage
+sum perkwh, detail // p5 = 9 cents/kWh, p95 = 4.6 $/kWh (!!)
+drop perkwh
+
+** Labels
+rename total_electric_usage total_bill_kwh
+la var total_bill_kwh "Total billed electric usage (kWh)"
+la var max_demand "Max demand in bill period (kWh)" 
+la var peak_demand "Peak demand in bill period (kWh)"
+la var partial_peak_demand "Partial peak demand in bill period (kWh)"
+la var total_bill_amount "Total bill amount ($)"
+
+** Append truncated file and do some diagnostics to check before dropping July 19 observations
+append using `bills_july'
+unique sa_uuid if aug2==1
+unique sa_uuid if aug2==0
+unique sa_uuid-total_bill_amount if aug2==1
+unique sa_uuid-total_bill_amount if aug2==0
+egen temp_min = min(aug2), by(sa_uuid-total_bill_amount)
+egen temp_max = max(aug2), by(sa_uuid-total_bill_amount)
+tab temp_min temp_max
+gen sa1 = real(substr(sa_uuid,1,1))
+tab temp_min temp_max if inrange(sa1,0,6) // first digits of sa_uuid that weren't truncated
+sort *
+br if inrange(sa1,0,6) & temp_min==temp_max // everything checks out, and non-dups are actually dups
+tab sa1 aug2
+drop if aug2==0 // drop all July 19 observations
+drop aug2 temp_min temp_max sa1 
 
 ** Duplicate bills: everything matches except bill amount
 duplicates t sa_uuid bill_start_dt bill_end_dt rt_sched_cd total_bill_kwh, gen(dup)
@@ -2776,8 +2860,8 @@ twoway ///
 
 restore
 	// only 2.0% of accounts are neither openers nor closers!
-	// 35.5% of accounts are openers only
-	// 26.7% of accounts are closers only
+	// 35.6% of accounts are openers only
+	// 26.6% of accounts are closers only
 	// for 35.8% of accoutns, we observe the opening and closing!
 	
 	// label flags
@@ -2817,7 +2901,7 @@ tab flag_long_bill if total_bill_kwh==. | total_bill_kwh==0
 tab flag_short_bill 
 tab flag_short_bill if total_bill_kwh==. | total_bill_kwh==0
 
-	// Compress and save
+	// Compress and save (using the July 19 tag to avoid having 1 file with its own date...)
 compress
 save "$dirpath_data/pge_cleaned/billing_data_20180719.dta", replace	
 
