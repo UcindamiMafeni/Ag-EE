@@ -50,7 +50,7 @@ save "$dirpath_data/pge_raw/pump_test_data_20180322.dta", replace
 ************************************************
 ************************************************
 
-** JULY 19 2018 DATA
+** JULY 19 2018 DATA (where PGE fixed the sampling criteria for all non-APEP data)
 
 *** load customer data and save as dta file
 import excel using "$dirpath_raw/Data 07192018/Customer Detail 201807.xlsx", firstrow allstring clear
@@ -76,6 +76,14 @@ save "$dirpath_data/pge_raw/meter_badge_number_data_20180719.dta", replace
 ************************************************
 ************************************************
 
+** AUGUST 2 2018 DATA (billing data file only, which was inadvertently truncated in the July 19 pull)
+
+*** load monthly billing data and save as dta file
+import delim using "$dirpath_raw/Data08022018/Customer Billing 201808.csv", varn(1) stringc(_all) clear
+save "$dirpath_data/pge_raw/bill_data_20180802.dta", replace
+
+************************************************
+************************************************
 
 
 
