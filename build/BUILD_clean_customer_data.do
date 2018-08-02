@@ -630,7 +630,7 @@ duplicates t sp_uuid-missing_geocode_flag, gen(dup_all6)
 tab dup_all6 dup_spsa
 br if dup_spsa!=dup_all6 // 8 SPs with lat/lon discrepancies (17 SP/SA observations)
 
-
+}
 
 
 
