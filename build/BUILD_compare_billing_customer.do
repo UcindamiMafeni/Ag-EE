@@ -217,7 +217,7 @@ assert _merge!=1 // confirm that all SAs in billing data exist in customer data
 unique sa_uuid
 local uniq = r(unique)
 unique sa_uuid if _merge==2 
-di r(unique)/`uniq' // 22% of SAs in customer data do not appear in billing data!
+di r(unique)/`uniq' // 20% of SAs in customer data do not appear in billing data!
 gen temp_length = sa_sp_stop - sa_sp_start
 egen temp_tag = tag(sa_uuid)
 sum temp_length if _merge==3 & temp_tag==1, detail
@@ -229,7 +229,7 @@ tab temp_year_stop _merge if temp_tag==1, missing
 unique sa_uuid if temp_year_stop>=2008 
 local uniq = r(unique)
 unique sa_uuid if temp_year_stop>=2008 & _merge==2 
-di r(unique)/`uniq' // 8% of SAs in customer data that end after 2007 do not appear in billing data!
+di r(unique)/`uniq' // 11% of SAs in customer data that end after 2007 do not appear in billing data!
 
 ** Deal with dups
 duplicates t sa_uuid bill_start_dt, gen(dup)
@@ -255,7 +255,7 @@ duplicates t sa_uuid bill_start_dt, gen(dup2)
 unique sa_uuid if _merge==3
 local uniq = r(unique)
 unique sa_uuid if _merge==3 & dup2>0
-di r(unique)/`uniq' // 0.1% of merged SAs are dups in customer data
+di r(unique)/`uniq' // 0.02% of merged SAs are dups in customer data
 br _merge sa_uuid bill_start_dt bill_end_dt flag_first_bill sa_sp_start ///
 	flag_last_bill sa_sp_stop sp_uuid if _merge==3 & dup2>0
 
@@ -275,7 +275,7 @@ duplicates t sa_uuid bill_start_dt, gen(dup3)
 unique sa_uuid if _merge==3
 local uniq = r(unique)
 unique sa_uuid if _merge==3 & dup3>0
-di r(unique)/`uniq' // 0.03% of merged SAs are dups in customer data
+di r(unique)/`uniq' // <0.01% of merged SAs are dups in customer data
 br _merge sa_uuid bill_start_dt bill_end_dt flag_first_bill sa_sp_start ///
 	flag_last_bill sa_sp_stop sp_uuid dup3 if _merge==3 & dup3>1
 	// all remaining dups appear to be SAs with multiple meters, so we want them both
@@ -308,7 +308,7 @@ br _merge sa_uuid bill_start_dt flag_first_bill sa_sp_start sa_sp_stop temp_star
 unique sa_uuid 
 local uniq = r(unique)
 unique sa_uuid if temp_start_disp
-di r(unique)/`uniq'	// 137 SAs (0.08%) had bills BEFORE sa_sp_start date (doesn't seem like a huge issue) 
+di r(unique)/`uniq'	// 80 SAs (0.08%) had bills BEFORE sa_sp_start date (doesn't seem like a huge issue) 
 	
 	// last bill vs. stop dates
 gen temp_stop_diff = bill_end_dt-sa_sp_stop if _merge==3 & flag_last_bill==1
@@ -319,7 +319,7 @@ br _merge sa_uuid bill_end_dt flag_last_bill sa_sp_start sa_sp_stop temp_stop_di
 unique sa_uuid 
 local uniq = r(unique)
 unique sa_uuid if temp_stop_disp
-di r(unique)/`uniq'	// 3064 SAs (1.8%) had bills end >1 month AFTER sa_sp_stop date (doesn't seem like a huge issue) 
+di r(unique)/`uniq'	// 1087 SAs (1.8%) had bills end >1 month AFTER sa_sp_stop date (doesn't seem like a huge issue) 
 
 	// clean up
 drop temp_start* temp_stop*	
@@ -328,7 +328,7 @@ drop temp_start* temp_stop*
 gen temp_mid_lapse = (inrange(bill_start_dt,sa_sp_lapse_start1,sa_sp_lapse_stop1) & ///
 	inrange(bill_end_dt,sa_sp_lapse_start1,sa_sp_lapse_stop1) & sa_sp_lapse_start1!=. & ///
 	sa_sp_lapse_stop1!=.) 
-unique sa_uuid if temp_mid_lapse==1 // only 13 out of 162k SAs, so not an issue
+unique sa_uuid if temp_mid_lapse==1 // only 7 out of 162k SAs, so not an issue
 br sa_uuid bill_start_dt bill_end_dt sa_sp_start sa_sp_stop sa_sp_lapse* if temp_mid_lapse==1
 	
 ** NEM flag
@@ -357,10 +357,9 @@ gen temp_neg_bad = total_bill_kwh<0 & flag_nem==0
 count if temp_neg==1
 local rN = r(N)
 count if temp_neg==1 & flag_nem==1 
-di r(N)/`rN' // 99.96% of negative bills have a NEM flag, thank god
+di r(N)/`rN' // 100% of negative bills have a NEM flag, thank god
 egen temp_neg_bad_max = max(temp_neg_bad), by(sa_uuid)
-br if temp_neg_bad_max==1 // only 2 SAs: 1 looks like a glitch in kWh, the other looks like definitely NEM
-replace flag_nem = 1 if sa_uuid=="3498020821" // manually correct the 1 SA 
+assert temp_neg_bad_max==0
 drop temp*
 
 ** Merge back into billing data

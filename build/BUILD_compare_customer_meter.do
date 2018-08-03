@@ -103,11 +103,11 @@ assert r(unique)==r(N)
 rename pge_badge_nbr pge_badge_nbrM
 joinby sp_uuid using "$dirpath_data/pge_cleaned/meter_badge_number_data_20180719.dta", unmatched(both)
 tab _merge
-assert pge_badge_nbrM=="" if _merge==1 // all unmatched SPs have missing badge number
+assert pge_badge_nbrM=="" if _merge==1 // only 9 unmatched SPs; all have missing badge number
 count if _merge!=1 & pge_badge_nbrM==""
 local n = r(N) 
 count if pge_badge_nbrM=="" 
-di `n'/r(N) // 81% of SPs with missing badge number match into meter history data
+di `n'/r(N) // 100% of SPs with missing badge number match into meter history data
 
 ** Pare down duplicates
 duplicates t sp_uuid sa_uuid, gen(dup)
@@ -144,7 +144,8 @@ gen temp_dt_lapse_start = sa_sp_start>=mtr_lapse_start1 & _merge==3
 gen temp_dt_lapse_end =  sa_sp_stop<=mtr_lapse_stop1 & _merge==3
 gen temp_dt_lapse = temp_dt_lapse_start==1 & temp_dt_lapse_end==1
 egen temp_dt_lapse_max = max(temp_dt_lapse), by(sp_uuid sa_uuid)
-tab temp_dt_lapse temp_dt_lapse_max // only 2 observations, so I'm ignoring this
+tab temp_dt_lapse temp_dt_lapse_max, missing
+assert temp_dt_lapse==0 & temp_dt_lapse_max==0
 	
 	// Not much room for further disambiguation here. I went into this thinking I would add
 	// the correct meter number to the customer data, but that isn't really possible in any
@@ -160,6 +161,8 @@ assert r(unique)==r(N)
 unique sp_uuid sa_uuid pge_badge_nbr mtr_install_date
 assert r(unique)==r(N)	
 sort sp_uuid mtr_install_date sa_sp_start pge_badge_nbr sa_uuid 
+unique sp_uuid sa_uuid sa_sp_start
+
 
 ** Save
 compress

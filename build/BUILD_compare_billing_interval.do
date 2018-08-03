@@ -196,7 +196,7 @@ tab month _merge if year==2017
 count if _merge==2
 local m2 = r(N)
 count if _merge==2 & ((year==2011 & inrange(month,1,2)) | (year==2017 & inrange(month,8,9)))
-di r(N)/`m2' // 99% of _merge==2 occur in first or last sample month
+di r(N)/`m2' // 94% of _merge==2 occur in first or last sample month
 drop if _merge==2
 egen temp_max_merge = max(_merge), by(sa_uuid)
 egen temp_max_year = max(year), by(sa_uuid)
@@ -204,9 +204,9 @@ preserve
 keep sa_uuid temp_max_year temp_max_merge
 duplicates drop
 tab temp_max_year temp_max_merge 
-	// 89% of billed accounts appear somewhere in interval data
-	// 53% of accounts that never appear in interval data didn't exist past 2013
-	// 6% of accounts that exist through 2017 donpt appear anywhere in interval data!
+	// 85% of billed accounts appear somewhere in interval data
+	// 43% of accounts that never appear in interval data didn't exist past 2013
+	// 6% of accounts that exist through 2017 don't appear anywhere in interval data!
 restore
 
 ** Split interval kwh where temp_wt==0.5

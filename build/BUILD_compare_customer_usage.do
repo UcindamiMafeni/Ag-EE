@@ -129,6 +129,20 @@ la var bill_dt_last "Latest bill end date in our billing data"
 joinby sa_uuid using "$dirpath_data/pge_cleaned/interval_data_daily_20180719.dta", unmatched(both)
 assert _merge!=2
 
+** Diagnostics
+tab _merge in_billing, missing
+unique sa_uuid if _merge==3 // 25591 SAs match to interval data
+local uniq = r(unique)
+unique sa_uuid if _merge==3 & in_billing==0 // 167 of them aren't in billing data
+di r(unique)/`uniq' // 0.7% of them aren't in billing data
+unique sa_uuid if _merge==3 & in_billing==0 & sa_sp_start<date("30aug2017","DMY") // 11 of them
+di r(unique)/`uniq' // 0.04% of them existed befoe Sept 2017 (our last billing sample month)
+sort sa_sp_start sa_uuid date
+br if _merge==3 & in_billing==0 & sa_sp_start<date("30aug2017","DMY") 
+	// since trivially few SAs are in interval but not in billing, i'm conditioning the 
+	// "in_interval" flag on also being in the billing data (since something's weird with 
+	// the 11 SAs that have no bills....
+
 ** Create flag for presence in interval data
 egen temp_max_merge1 = max(_merge) if in_billing==1, ///
 	by(sp_uuid sa_uuid)

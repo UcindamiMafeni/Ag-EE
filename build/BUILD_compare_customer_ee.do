@@ -49,7 +49,7 @@ save "$dirpath_data/pge_cleaned/pge_cust_detail_20180322.dta", replace
 *******************************************************************************
 
 ** 2. July 2018 data pull
-if 1==0{
+{
 
 ** Make EE data unique by SA, to prep for merge
 use  "$dirpath_data/pge_cleaned/pge_ee_programs_20180719.dta", clear
