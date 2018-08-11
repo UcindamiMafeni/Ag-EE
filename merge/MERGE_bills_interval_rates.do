@@ -17,9 +17,7 @@ global dirpath_data "$dirpath/data"
 	***** 1. Assign SAs to groups in step 2!
 	***** 2. Fix rate AG-4B!! (and maybe also AG-4C)
 	***** 3. Get AG-ICE rates
-	***** 4. DOUBLE CHECK LIST OF EVENT DAYS
-	***** 5. Keep prices per kW in final dataset
-	
+	***** 4. Double check list of Event Days
 	
 	***** NOTE: fixed charges at the season changeover (Apr/May, Oct/Nov) will be off.
 	***** PGE prorates based on max kW & proportion of bill in each season, but the 
