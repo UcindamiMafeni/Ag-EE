@@ -15,14 +15,16 @@ global dirpath_data "$dirpath/data"
 
 	***** COME BACK AND FIX THIS STUFF LATER:
 	***** 1. Assign SAs to groups in step 2!
-	***** 2. For flags on peak and partpeak, differentiate between "missing and needed
-	*****    to calculate bill" vs. "missing but not relevant"
-	***** 3. Fix rate AG-4B!!
-	***** 4. Get AG-ICE rates
-	***** 5. DOUBLE CHECK LIST OF EVENT DAYS
-	***** 6. Keep prices per kW in final dataset
-	***** 7. Confirm split-season (Apr/May, Oct/Nov) demand charges are 
-		// prorated winter charge * max winter demand + prorated summer charge * max summer demand
+	***** 2. Fix rate AG-4B!! (and maybe also AG-4C)
+	***** 3. Get AG-ICE rates
+	***** 4. DOUBLE CHECK LIST OF EVENT DAYS
+	***** 5. Keep prices per kW in final dataset
+	
+	
+	***** NOTE: fixed charges at the season changeover (Apr/May, Oct/Nov) will be off.
+	***** PGE prorates based on max kW & proportion of bill in each season, but the 
+	***** billing data report only 1 value for max demand for changeover months, which
+	***** we couldn't properly unpack...
 
 *******************************************************************************
 *******************************************************************************
