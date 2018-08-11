@@ -21,10 +21,7 @@ global dirpath_data "$dirpath/data"
 	***** 4. Get AG-ICE rates
 	***** 5. DOUBLE CHECK LIST OF EVENT DAYS
 	***** 6. Keep prices per kW in final dataset
-	***** 7. Make sure summer holidays are off-peak! 
-		// New Year's Day, President's Day, Memorial Day, Independence Day, Labor Day, 
-		// Veterans Day, Thanksgiving Day, and Christmas Day
-	***** 8. Confirm split-season (Apr/May, Oct/Nov) demand charges are 
+	***** 7. Confirm split-season (Apr/May, Oct/Nov) demand charges are 
 		// prorated winter charge * max winter demand + prorated summer charge * max summer demand
 
 *******************************************************************************
@@ -127,6 +124,117 @@ drop if date<date("01jan2011","DMY")
 ** Drop post-2017 rates
 drop if date>date("01nov2017","DMY")	
 	
+** Fix holidays so all hours are off-peak (date holiday is observed!)
+	// New Year's Day, President's Day, Memorial Day, Independence Day, Labor Day, 
+	// Veterans Day, Thanksgiving Day, and Christmas Day (list of holidays from PGE)
+gen temp_holiday = 0
+
+	// New Year's Day
+replace temp_holiday = 1 if date==date("31jan2010","DMY")
+replace temp_holiday = 1 if date==date("02jan2012","DMY")
+replace temp_holiday = 1 if date==date("01jan2013","DMY")
+replace temp_holiday = 1 if date==date("01jan2014","DMY")
+replace temp_holiday = 1 if date==date("01jan2015","DMY")
+replace temp_holiday = 1 if date==date("01jan2016","DMY")
+replace temp_holiday = 1 if date==date("02jan2017","DMY")
+
+	// President's Day
+replace temp_holiday = 1 if date==date("21feb2011","DMY")
+replace temp_holiday = 1 if date==date("20feb2012","DMY")
+replace temp_holiday = 1 if date==date("18feb2013","DMY")
+replace temp_holiday = 1 if date==date("17feb2014","DMY")
+replace temp_holiday = 1 if date==date("16feb2015","DMY")
+replace temp_holiday = 1 if date==date("15feb2016","DMY")
+replace temp_holiday = 1 if date==date("20feb2017","DMY")
+
+	// Memorial Day
+replace temp_holiday = 1 if date==date("30may2011","DMY")
+replace temp_holiday = 1 if date==date("28may2012","DMY")
+replace temp_holiday = 1 if date==date("27may2013","DMY")
+replace temp_holiday = 1 if date==date("26may2014","DMY")
+replace temp_holiday = 1 if date==date("25may2015","DMY")
+replace temp_holiday = 1 if date==date("30may2016","DMY")
+replace temp_holiday = 1 if date==date("29may2017","DMY")
+
+	// Independence Day
+replace temp_holiday = 1 if date==date("04jul2011","DMY")
+replace temp_holiday = 1 if date==date("04jul2012","DMY")
+replace temp_holiday = 1 if date==date("04jul2013","DMY")
+replace temp_holiday = 1 if date==date("04jul2014","DMY")
+replace temp_holiday = 1 if date==date("03jul2015","DMY")
+replace temp_holiday = 1 if date==date("04jul2016","DMY")
+replace temp_holiday = 1 if date==date("04jul2017","DMY")
+
+	// Labor Day
+replace temp_holiday = 1 if date==date("05sep2011","DMY")
+replace temp_holiday = 1 if date==date("03sep2012","DMY")
+replace temp_holiday = 1 if date==date("02sep2013","DMY")
+replace temp_holiday = 1 if date==date("01sep2014","DMY")
+replace temp_holiday = 1 if date==date("07sep2015","DMY")
+replace temp_holiday = 1 if date==date("05sep2016","DMY")
+replace temp_holiday = 1 if date==date("04sep2017","DMY")
+
+	// Veteran's Day
+replace temp_holiday = 1 if date==date("11nov2011","DMY")
+replace temp_holiday = 1 if date==date("11nov2012","DMY")
+replace temp_holiday = 1 if date==date("11nov2013","DMY")
+replace temp_holiday = 1 if date==date("11nov2014","DMY")
+replace temp_holiday = 1 if date==date("11nov2015","DMY")
+replace temp_holiday = 1 if date==date("11nov2016","DMY")
+replace temp_holiday = 1 if date==date("10nov2017","DMY")
+
+	// Thanksgiving Day
+replace temp_holiday = 1 if date==date("24nov2011","DMY")
+replace temp_holiday = 1 if date==date("22nov2012","DMY")
+replace temp_holiday = 1 if date==date("28nov2013","DMY")
+replace temp_holiday = 1 if date==date("27nov2014","DMY")
+replace temp_holiday = 1 if date==date("26nov2015","DMY")
+replace temp_holiday = 1 if date==date("24nov2016","DMY")
+replace temp_holiday = 1 if date==date("23nov2017","DMY")
+
+	// Christmas Day
+replace temp_holiday = 1 if date==date("26dec2011","DMY")
+replace temp_holiday = 1 if date==date("25dec2012","DMY")
+replace temp_holiday = 1 if date==date("25dec2013","DMY")
+replace temp_holiday = 1 if date==date("25dec2014","DMY")
+replace temp_holiday = 1 if date==date("25dec2015","DMY")
+replace temp_holiday = 1 if date==date("26dec2016","DMY")
+replace temp_holiday = 1 if date==date("25dec2017","DMY")
+
+	// Calculate offpeak price per kWh for the day of each holiday
+egen double temp1 = mean(energycharge) if offpeak==1 & partpeak==0 & peak==0 & temp_holiday==1, ///
+	by(rateschedule tou group date)
+egen double temp2 = mean(temp1) if temp_holiday==1, by(rateschedule tou group date)
+egen double temp3 = sd(energycharge) if offpeak==1 & partpeak==0 & peak==0 & temp_holiday==1, ///
+	by(rateschedule tou group date)
+assert round(temp3,1e-6)==0 | temp3==. // confirm no variation in offpeak price within day/rate/group
+assert temp2!=. if temp_holiday==1 & tou==1
+
+	// Calculate offpeak price per kW for the day of each holiday
+egen double temp4 = mean(demandcharge) if offpeak==1 & partpeak==0 & peak==0 & temp_holiday==1, ///
+	by(rateschedule tou group date)
+egen double temp5 = mean(temp4) if temp_holiday==1, by(rateschedule tou group date)
+egen double temp6 = sd(demandcharge) if offpeak==1 & partpeak==0 & peak==0 & temp_holiday==1, ///
+	by(rateschedule tou group date)
+assert round(temp6,1e-6)==0 | temp6==. // confirm no variation in offpeak price within day/rate/group
+assert temp5!=. if temp_holiday==1 & tou==1 & inlist(substr(rateschedule,-1,1),"B","C","E","F") 
+	// only large ag rates have demand charges
+
+	// Assign offpeak prices for all hours of all holidays
+replace energycharge = temp2 if temp_holiday==1 & tou==1 & temp2!=.
+replace demandcharge = temp5 if temp_holiday==1 & tou==1 & temp5!=. & inlist(substr(rateschedule,-1,1),"B","C","E","F")
+replace offpeak = 1 if temp_holiday==1 & tou==1
+replace partpeak = 0 if temp_holiday==1 & tou==1
+replace peak = 0 if temp_holiday==1 & tou==1
+
+	// Confirm that holidays never coincide with Event Days
+assert event_day_biz==. & event_day_res==. if temp_holiday==1	
+
+	// Clean up
+rename temp_holiday holiday
+la var holiday "Indicator for observed holiday (no peaks or partpeaks)"	
+drop temp*	
+
 ** Save as working file
 rename rateschedule rt_sched_cd
 replace pdpenergycredit = 0 if pdpenergycredit==.
@@ -707,7 +815,7 @@ foreach f in `files_bills' {
 *******************************************************************************
 
 ** 4. Diagnostics on billing data, and using correlations to resolve rate groups
-{
+if 1==1{
 use "$dirpath_data/merged/bills_rates_constructed_20180719.dta", clear
 gen pull = "20180719"
 merge 1:1 sa_uuid bill_start_dt group using "$dirpath_data/merged/bills_rates_constructed_20180322.dta"
@@ -849,9 +957,11 @@ tabstat temp_bad_bill_match, by(rt_sched_cd) s(mean count)
 tabstat temp_bad_bill_match if temp_regular_bill==1, by(rt_sched_cd) s(mean count)
 tabstat temp_bad_bill_match if temp_regular_bill==1 & total_bill_kwh>0, by(rt_sched_cd) s(mean count)
 	
+/*
 twoway (scatter total_bill_amount_constr  total_bill_amount if temp_regular_bill==1 & total_bill_kwh!=0 ///
 			& total_bill_kwh!=., msize(tiny)) ///
 	(line total_bill_amount total_bill_amount if temp_regular_bill==1 & total_bill_kwh!=0 & total_bill_kwh!=.)
+*/
 
 gen temp_regular_bill2 = flag_interval_merge==1 & flag_interval_disp20==0  & ///
 	flag_nem==0 & flag_bad_tariff==0 & flag_multi_tariff==0 & flag_dup_bad_kwh ==0 & ///
@@ -875,7 +985,7 @@ foreach rt in `levs' {
 		title("`rt'")	
 	sleep 5000 // the problem is "AG-4B"!!
 }
-*/
+
 
 correlate total_bill_amount_constr total_bill_amount if ///
 	temp_regular_bill2==1 & total_bill_kwh!=0 & total_bill_kwh!=. & rt_sched_cd!="AG-4B"
@@ -947,17 +1057,33 @@ twoway (scatter total_bill_amount_constr total_bill_amount ///
 
 preserve
 gen temp_modate = ym(year(bill_start_dt),month(bill_start_dt))
-gen temp_in_corr = temp_regular_bill2==1 & total_bill_kwh!=0 & total_bill_kwh!=. & rt_sched_cd=="AG-4B"
+gen temp_month = month(bill_start_dt)
+gen temp_in_corr = temp_regular_bill2==1 & total_bill_kwh!=0 & total_bill_kwh!=. & rt_sched_cd=="AG-4D"
 drop if temp_in_corr==0
-gsort temp_modate total_bill_amount_constr total_bill_amount
-egen temp_corr4B = corr(total_bill_amount_constr total_bill_amount), by(temp_modate)
-tabstat temp_corr4B, by(temp_modate) s(mean n)
+*gsort temp_modate total_bill_amount_constr total_bill_amount
+*egen temp_corr = corr(total_bill_amount_constr total_bill_amount), by(temp_modate)
+*tabstat temp_corr, by(temp_modate) s(mean n)
 gsort temp_month total_bill_amount_constr total_bill_amount
-egen temp_corr4B2 = corr(total_bill_amount_constr total_bill_amount), by(temp_month)
-tabstat temp_corr4B2, by(temp_month) s(mean n)
+egen temp_corr = corr(total_bill_amount_constr total_bill_amount), by(temp_month)
+tabstat temp_corr, by(temp_month) s(mean n)
 restore	
 	
+gen month = month(bill_start_dt)
+tab rt_sched month
+tab rt_sched monthif temp_reglar_bill==1
+
+tab rt_sched month if flag_partpeak-demand_constr==1 // partial_peak_demand only missing for 4C, 4F, 5C, 5F
+tab flag_partpeak_demand_constr month if inlist(rt_sched,"AG-4C","AG-4F","AG-5C","AG-5F") // very often missing
+
+tab rt_sched month if flag_peak_demand_constr==1 // peak_demand missing for lots!
+tab flag_peak_demand_constr month if inlist(rt_sched,"AG-4B","AG-5B","AG-RB","AG-VB") // very often missing
+tab flag_peak_demand_constr month if inlist(rt_sched,"AG-4E","AG-5E","AG-RE","AG-VE") // very often missing
+tab flag_peak_demand_constr month if inlist(rt_sched,"AG-4C","AG-4F","AG-5C","AG-5F") // very often missing
+
 */
+
+
+
  
 ** Create flag for non-zero bills that are off by more than 100% 
 gen flag_bill_constr_error100 = total_bill_kwh>0 & total_bill_kwh!=. & ///
@@ -979,7 +1105,7 @@ save "$dirpath_data/merged/bills_rates_constructed.dta", replace
 
 *******************************************************************************
 *******************************************************************************
-
+START HERE
 ** 5. Remove unmatched rate groups from hourly dataset
 {
 use "$dirpath_data/merged/bills_rates_constructed.dta", clear
