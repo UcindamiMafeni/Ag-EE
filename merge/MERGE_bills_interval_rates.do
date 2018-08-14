@@ -28,7 +28,7 @@ global dirpath_data "$dirpath/data"
 *******************************************************************************
 
 ** 1. Prepare rates for merge
-if 1==1 {
+if 1==0 {
 
 ** Load rates for both large and small farms
 use "$dirpath_data/pge_cleaned/large_ag_rates.dta", clear
@@ -249,7 +249,7 @@ save "$dirpath_data/merged/ag_rates_for_merge.dta", replace
 *******************************************************************************
 
 ** 2. Merge in billing/interval data, looping over rates (MARCH DATA)
-if 1==1 {
+if 1==0 {
 
 local tag = "20180322"
 
@@ -534,7 +534,7 @@ foreach f in `files_bills' {
 *******************************************************************************
 
 ** 3. Merge in billing/interval data, looping over rates (JULY DATA)
-if 1==1 {
+if 1==0 {
 
 local tag = "20180719"
 
@@ -815,7 +815,7 @@ foreach f in `files_bills' {
 *******************************************************************************
 
 ** 4. Diagnostics on billing data, and using correlations to resolve rate groups
-if 1==1{
+if 1==0 {
 use "$dirpath_data/merged/bills_rates_constructed_20180719.dta", clear
 gen pull = "20180719"
 merge 1:1 sa_uuid bill_start_dt group using "$dirpath_data/merged/bills_rates_constructed_20180322.dta"
@@ -902,6 +902,8 @@ assert _merge>=3 if  pull=="20180322" & flag_interval_merge==1 & ///
 	regexm(rt_sched_cd,"AG")==1 & regexm(rt_sched_cd,"AGICE")==0
 drop if _merge==2 // keep only bills with interval data (for this merge file)
 drop _merge
+
+la var pull "Which data pull does this SA come from?"
 
 unique sa_uuid bill_start_dt
 assert r(unique)==r(N)
