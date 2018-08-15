@@ -13,9 +13,6 @@ global dirpath_data "$dirpath/data"
 	***** 1. Assign SAs to the proper groups 
 	***** 2. Fix rate AG-4B!!
 	***** 3. Get AG-ICE rates
-	***** 4. Redo after redoing the AMI version
-	***** 5. Redo after adding in avg price per kW to AMI version, 
-	*****    and add in avg price per kW here too
 
 *******************************************************************************
 *******************************************************************************
@@ -80,7 +77,11 @@ save `avg_prices'
 ** Now merge these average prices into non-AMI-matched bills 
 
 ** Load cleaned PGE bililng data (full dataset)
-use "$dirpath_data/pge_cleaned/billing_data.dta", clear
+use "$dirpath_data/pge_cleaned/billing_data_20180719.dta", clear
+gen pull = "20180719"
+merge 1:1 sa_uuid bill_start_dt using "$dirpath_data/pge_cleaned/billing_data_20180322.dta"
+replace pull = "20180322" if _merge==2
+drop _merge
 
 ** Keep subset of bills that haven't already merged into rate data
 tab flag_interval_merge
@@ -158,6 +159,7 @@ gen flag_p_from_ami_avgs = 1
 la var flag_p_from_ami_avgs "Flag for non-AMI bills, with prices assigned from rate-day averages"
 
 ** Save
+la var pull "Which data pull does this SA come from?"
 compress
 save "$dirpath_data/merged/bills_rates_nonami.dta", replace
 
