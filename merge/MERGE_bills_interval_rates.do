@@ -819,7 +819,7 @@ if 1==0 {
 use "$dirpath_data/merged/bills_rates_constructed_20180719.dta", clear
 gen pull = "20180719"
 merge 1:1 sa_uuid bill_start_dt group using "$dirpath_data/merged/bills_rates_constructed_20180322.dta"
-*assert _merge!=3
+assert _merge!=3 // because Step 2 above drops SAs in both data pulls to save time
 replace pull = "20180322" if _merge==2
 drop _merge
 
