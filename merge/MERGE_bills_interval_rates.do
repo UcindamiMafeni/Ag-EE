@@ -1107,12 +1107,15 @@ save "$dirpath_data/merged/bills_rates_constructed.dta", replace
 
 *******************************************************************************
 *******************************************************************************
-START HERE
-** 5. Remove unmatched rate groups from hourly dataset
-{
+
+** 5. Remove unmatched rate groups from hourly dataset (MARCH DATA)
+if 1==1 {
+local tag = "20180322"
+
 use "$dirpath_data/merged/bills_rates_constructed.dta", clear
+keep if pull=="`tag'"
 keep sa_uuid bill_start_dt group
-merge 1:m sa_uuid bill_start_dt group using "$dirpath_data/merged/hourly_with_prices.dta"
+merge 1:m sa_uuid bill_start_dt group using "$dirpath_data/merged/hourly_with_prices_`tag'.dta"
 assert _merge!=1
 unique sa_uuid date hour
 local uniq = r(unique)
@@ -1122,9 +1125,35 @@ unique sa_uuid date hour
 assert r(unique)==`uniq'
 compress
 duplicates drop sa_uuid date hour, force // for some reason there are still a few dups?
-save "$dirpath_data/merged/hourly_with_prices.dta", replace
+save "$dirpath_data/merged/hourly_with_prices_`tag'.dta", replace
+
 }
 
 *******************************************************************************
 *******************************************************************************
+
+** 6. Remove unmatched rate groups from hourly dataset (JULY DATA)
+if 1==1 {
+local tag = "20180719"
+
+use "$dirpath_data/merged/bills_rates_constructed.dta", clear
+keep if pull=="`tag'"
+keep sa_uuid bill_start_dt group
+merge 1:m sa_uuid bill_start_dt group using "$dirpath_data/merged/hourly_with_prices_`tag'.dta"
+assert _merge!=1
+unique sa_uuid date hour
+local uniq = r(unique)
+drop if _merge==2
+drop _merge
+unique sa_uuid date hour
+assert r(unique)==`uniq'
+compress
+duplicates drop sa_uuid date hour, force // for some reason there are still a few dups?
+save "$dirpath_data/merged/hourly_with_prices_`tag'.dta", replace
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
 
