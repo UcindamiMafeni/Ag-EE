@@ -187,7 +187,11 @@ save "$dirpath_data/merged/ag_rates_avg_by_day.dta", replace
 
 ** 2. Merge average prices by rate into billing data
 {
-use "$dirpath_data/pge_cleaned/billing_data.dta", clear
+use "$dirpath_data/pge_cleaned/billing_data_20180719.dta", clear
+gen pull = "20180719"
+merge 1:1 sa_uuid bill_start_dt using "$dirpath_data/pge_cleaned/billing_data_20180322.dta"
+replace pull = "20180322" if _merge==2
+drop _merge
 
 ** Prep for merge into rate schedule data
 replace rt_sched_cd = subinstr(rt_sched_cd,"H","",1) if substr(rt_sched_cd,1,1)=="H"
@@ -195,7 +199,7 @@ replace rt_sched_cd = subinstr(rt_sched_cd,"AG","AG-",1) if substr(rt_sched_cd,1
 drop if substr(rt_sched_cd,1,2)!="AG"
 
 ** Keep only essential variables (for purposes of this script)
-keep sa_uuid bill_start_dt bill_end_dt bill_length rt_sched_cd
+keep sa_uuid bill_start_dt bill_end_dt bill_length rt_sched_cd pull
 
 ** Expand whole dataset by bill length variable
 expand bill_length, gen(temp_new)
@@ -248,6 +252,7 @@ unique sa_uuid bill_start_dt
 assert r(unique)==r(N)
 
 ** Save
+la var pull "Which data pull does this SA come from?"
 compress
 save "$dirpath_data/merged/bills_avg_prices_nomerge.dta", replace
 
@@ -257,7 +262,11 @@ save "$dirpath_data/merged/bills_avg_prices_nomerge.dta", replace
 
 ** 3. Merge average prices by rate into monthified billing data
 {
-use "$dirpath_data/pge_cleaned/billing_data_monthified.dta", clear
+use "$dirpath_data/pge_cleaned/billing_data_monthified_20180719.dta", clear
+gen pull = "20180719"
+merge 1:1 sa_uuid modate using "$dirpath_data/pge_cleaned/billing_data_monthified_20180322.dta"
+replace pull = "20180322" if _merge==2
+drop _merge
 
 ** Prep for merge into rate schedule data
 replace rt_sched_cd = subinstr(rt_sched_cd,"H","",1) if substr(rt_sched_cd,1,1)=="H"
@@ -265,7 +274,7 @@ replace rt_sched_cd = subinstr(rt_sched_cd,"AG","AG-",1) if substr(rt_sched_cd,1
 drop if substr(rt_sched_cd,1,2)!="AG"
 
 ** Keep only essential variables (for purposes of this script)
-keep sa_uuid modate days day_first day_last rt_sched_cd
+keep sa_uuid modate days day_first day_last rt_sched_cd pull
 
 ** Create flag for the (very few) months where there's a gap
 gen flag_date_gap = (day_last-day_first+1)!=days
@@ -308,6 +317,7 @@ unique sa_uuid modate
 assert r(unique)==r(N)
 
 ** Save
+la var pull "Which data pull does this SA come from?"
 compress
 save "$dirpath_data/merged/monthified_avg_prices_nomerge.dta", replace
 
