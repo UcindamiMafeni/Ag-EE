@@ -1,0 +1,803 @@
+clear all
+version 13
+set more off
+
+*************************************************************************
+**** Script to merge full panel of customer-meter-pump test datasets ****
+*************************************************************************
+
+global dirpath "S:/Matt/ag_pump"
+global dirpath_data "$dirpath/data"
+
+	***** COME BACK AND FIX THIS STUFF LATER:
+
+*******************************************************************************
+*******************************************************************************
+
+** 1. Merge together customer, meter, and APEP datasets
+{
+
+** Load cleaned PGE customer data
+use "$dirpath_data/pge_cleaned/pge_cust_detail_20180719.dta", clear
+
+** Merge in PGE meter data
+rename pge_badge_nbr pge_badge_nbrBAD
+joinby sa_uuid sp_uuid sa_sp_start sa_sp_stop using ///
+	"$dirpath_data/pge_cleaned/xwalk_sp_meter_date_20180719.dta", unmatched(both)
+assert _merge!=1
+unique sp_uuid if _merge==2 // 9 SPs in meter xwalk don't merge into customer data (out of 13314)
+gen sp_not_in_cust_detail = _merge==2 // flag these 9 meters
+rename _merge merge_sp_meter_xwalk
+assert sp_uuid!=""
+
+	// Drop bad meter ID variable held over from customer data
+drop pge_badge_nbrBAD	
+
+** Merge in APEP data
+preserve
+use "$dirpath_data/pge_cleaned/pump_test_data.dta", clear
+unique apeptestid test_date_stata customertype farmtype waterenduse pge_badge_nbr
+assert r(unique)==r(N)
+keep apeptestid test_date_stata customertype farmtype waterenduse pge_badge_nbr
+gen apeptestid_uniq = _n
+tempfile apep
+save `apep'
+restore
+joinby pge_badge_nbr using `apep', unmatched(both)
+tab _merge
+unique apeptestid test_date_stata if test_date_stata!=.
+local uniq = r(unique)
+unique apeptestid test_date_stata if test_date_stata!=. &_merge==3
+di r(unique)/`uniq' // 99.5% of pump tests merge to a meter (huzzah!)
+unique sp_uuid if sp_uuid!=""
+local uniq = r(unique)
+unique sp_uuid if _merge==3 & sp_uuid!=""
+di r(unique)/`uniq' // all 13314 SPs merge to an APEP test (huzZAH!)
+rename _merge merge_apep_test
+	
+** Merge in APEP project data
+joinby pge_badge_nbr using "$dirpath_data/pge_cleaned/pump_test_project_data.dta", ///
+	unmatched(both)
+unique sp_uuid
+local uniq = r(unique)
+unique sp_uuid if _merge==3 & merge_apep_test==3 
+di r(unique)/`uniq'	// 735 SPs merge to an APEP project
+rename _merge merge_apep_proj
+
+** First item of business: identify SAs/SPs/persons/meters that ever match to a pump test/project
+gen MATCH = merge_apep_test==3 | (merge_apep_proj==3 & sp_uuid!="")
+replace MATCH = 0 if sp_not_in_cust_detail==1
+
+unique pge_badge_nbr if sp_uuid!=""
+local uniq = r(unique)
+unique pge_badge_nbr if sp_uuid!="" & MATCH==1
+di r(unique)/`uniq' // 15,088 meters (all but 2)
+
+unique sa_uuid if sp_uuid!=""
+local uniq = r(unique)
+unique sa_uuid if sp_uuid!="" & MATCH==1
+di r(unique)/`uniq' // 40,857 SAs (all non-missings)
+
+unique sp_uuid if sp_uuid!=""
+local uniq = r(unique)
+unique sp_uuid if sp_uuid!="" & MATCH==1
+di r(unique)/`uniq' // 13,305 SPs (all but the 9 from the SP-meter xwalk flagged above)
+
+unique prsn_uuid if sp_uuid!=""
+local uniq = r(unique)
+unique prsn_uuid if sp_uuid!="" & MATCH==1
+di r(unique)/`uniq' // 7,764 persons (all non-missings)
+
+/*
+** Create list of missing meters to send back to PGE
+unique pge_badge_nbr if (test_date_stata!=. | apep_proj_id!=.) 
+local uniq = r(unique) // 15,216 total APEP meters
+unique pge_badge_nbr if (test_date_stata!=. | apep_proj_id!=.) ///
+	& length(pge_badge_nbr)==10 
+di r(unique)/`uniq' //  76% of all APEP meters have 10 digits
+	
+unique pge_badge_nbr if (test_date_stata!=. | apep_proj_id!=.) & sp_uuid!=""
+local uniq = r(unique) // 8,957 matched APEP meters
+unique pge_badge_nbr if (test_date_stata!=. | apep_proj_id!=.) & sp_uuid!="" ///
+	& length(pge_badge_nbr)==10 
+di r(unique)/`uniq' //  74% of matched APEP meters have 10 digits
+
+preserve
+gen temp = (test_date_stata!=. | apep_proj_id!=.) & sp_uuid==""
+egen temp_min = min(temp), by(pge_badge_nbr)
+unique pge_badge_nbr if temp_min==1 // 6259 unmached APEP meters
+keep if temp_min==1
+assert sp_uuid=="" 
+assert merge_apep_test==2 | merge_apep_test==.
+keep pge_badge_nbr apep_proj_id apeptestid customertype farmtype waterenduse test_date_stata
+tab waterenduse customertype, missing
+gen len = length(p)
+gen year = year(test_date_stata)
+tab year len
+drop apeptestid test_date_stata apep_proj_id
+duplicates drop
+tab waterenduse customertype, missing
+unique pge_badge_nbr
+drop farmtype
+duplicates drop
+unique pge_badge_nbr
+duplicates t pge_badge_nbr, gen(dup)
+sort pge_badge_nbr
+br if dup>0
+keep pge_badge_nbr len
+duplicates drop
+sort len pge_badge_nbr
+drop len
+outsheet using "$dirpath_data/misc/missing_meters.csv", comma replace
+restore
+*/
+
+** Flag cross-sectional units that ever match to a pump test/project
+foreach v of varlist pge_badge_nbr sa_uuid sp_uuid {
+	egen MATCH_max_`v' = max(MATCH), by(`v')
+	replace MATCH_max_`v' = 0 if mi(`v')
+}
+egen temp = rowmax(MATCH_max*)
+br if temp==0
+egen temp2 = rowmin(MATCH_max*)
+tab temp temp2
+br if temp2==0
+br if inlist(sp_uuid,"4076610000","5707910021","7681710016","4503710033","1893310030", /// 
+			"1229110037","5001410005","6580910154","7136710095") | ///
+		inlist(pge_badge_nbr,"W00997","83P256","1004793951","1006925479","1009390128", ///
+			"20P008","1009410723","1009974273","5000047605")
+sort pge_badge_nbr apeptestid // all but 2 SP-meter combos have matches elsewhere,
+	// meaning that the others are redundant xwalk false positives
+br if inlist(sp_uuid,"1893310030","7136710095") | ///
+		inlist(pge_badge_nbr,"1009390128","5000047605") // looks like we're only losing 2 pump tests 
+drop temp*
+
+** Drop units that never match, which we have no way of knowing if they even do pumping
+unique sp_uuid if sp_uuid!=""
+local uniq = r(unique)
+unique apeptestid if apeptestid!=.
+local uniq2 = r(unique)
+drop if MATCH_max_pge_badge_nbr==0 & MATCH_max_sa_uuid==0 & MATCH_max_sp_uuid==0 
+unique sp_uuid if sp_uuid!=""
+di `uniq' - r(unique) // we lose only 2 (totally unmatched) SPs
+unique apeptestid if apeptestid!=.
+di `uniq2' - r(unique) // we lose only 121 pump tests
+
+tab MATCH_max_pge_badge_nbr
+tab MATCH_max_sa_uuid
+tab MATCH_max_sp_uuid // 99.88% of remaming observations have an SP that matches
+
+sort sp_uuid sa_sp_start mtr_install_date test_date_stata
+br sp_uuid sa_uuid pge_badge_nbr sa_sp_start sa_sp_stop bill_dt_first bill_dt_last mtr_install_date ///
+	mtr_remove_date merge_apep_test test_date_stata merge_apep_proj MATCH*
+
+** Pare down duplicates by SA start/stop, bill first/last, meter install/remove, and pump test dates
+
+	// Before starting: drop APEP project data (for now), to dedupify one thing at a time
+drop merge_apep_proj apep_proj_id-flag_apep_mismatch
+unique sp_uuid
+local uniq1 = r(unique)
+unique apeptestid_uniq
+local uniq2 = r(unique)
+unique pge_badge_nbr
+local uniq3 = r(unique)
+duplicates drop
+unique sp_uuid
+assert `uniq1'==r(unique)
+unique apeptestid_uniq
+assert `uniq2'==r(unique)
+unique pge_badge_nbr
+assert `uniq3'==r(unique)
+
+	// First: pump tests with dates that coincide with only one SA within an SP-meter (SA start/stop AND bill first/last)
+duplicates t sp_uuid pge_badge_nbr apeptestid_uniq, gen(dup)
+br sp_uuid sa_uuid pge_badge_nbr sa_sp_start sa_sp_stop bill_dt_first bill_dt_last mtr_install_date ///
+	mtr_remove_date test_date_stata apeptestid_uniq MATCH* ///
+	if dup>0 & test_date_stata!=.
+gen temp_keep = test_date_stata>=bill_dt_first & test_date_stata<=bill_dt_last & ///
+	test_date_stata>=sa_sp_start & test_date_stata<=sa_sp_stop & dup>0 & test_date_stata!=.
+egen temp_keep_max = max(temp_keep), by(sp_uuid pge_badge_nbr apeptestid_uniq)	
+unique sp_uuid pge_badge_nbr apeptestid_uniq
+local uniq = r(unique)
+drop if temp_keep==0 & temp_keep_max==1
+unique sp_uuid pge_badge_nbr apeptestid_uniq
+assert `uniq'==r(unique)
+drop dup temp*
+
+	// Second: pump tests with dates that coincide with only one SA within an SP-meter (bill first/last)
+duplicates t sp_uuid pge_badge_nbr apeptestid_uniq, gen(dup)
+br sp_uuid sa_uuid pge_badge_nbr sa_sp_start sa_sp_stop bill_dt_first bill_dt_last mtr_install_date ///
+	mtr_remove_date test_date_stata apeptestid_uniq MATCH* ///
+	if dup>0 & test_date_stata!=.
+gen temp_keep = (test_date_stata>=bill_dt_first & test_date_stata<=bill_dt_last) & ///
+	dup>0 & test_date_stata!=.
+egen temp_keep_max = max(temp_keep), by(sp_uuid pge_badge_nbr apeptestid_uniq)	
+tab dup temp_keep_max if test_date_stata!=., missing
+br sp_uuid sa_uuid pge_badge_nbr sa_sp_start sa_sp_stop bill_dt_first bill_dt_last mtr_install_date ///
+	mtr_remove_date test_date_stata apeptestid_uniq MATCH* ///
+	if dup>0 & test_date_stata!=. & temp_keep_max==1
+unique sp_uuid pge_badge_nbr apeptestid_uniq
+local uniq = r(unique)
+drop if temp_keep==0 & temp_keep_max==1
+unique sp_uuid pge_badge_nbr apeptestid_uniq
+assert `uniq'==r(unique)
+drop dup temp*
+
+	// Third: drop pump tests with dates don't coincide with any SA, but meter switched SPs
+duplicates t sp_uuid pge_badge_nbr apeptestid_uniq, gen(dup)
+tab dup
+gen temp_keep = (test_date_stata>=bill_dt_first & test_date_stata<=bill_dt_last) & test_date_stata!=.
+egen temp_keep_max = max(temp_keep), by(sp_uuid pge_badge_nbr apeptestid_uniq)	
+assert temp_keep==temp_keep_max // confirm no remaining disambiguated SP-APEP dups
+tab dup temp_keep if test_date_stata!=.
+unique pge_badge_nbr if test_date_stata!=.
+local uniq = r(unique)
+unique pge_badge_nbr if test_date_stata!=. & temp_keep==0
+di r(unique)/`uniq' // 3.7% of matched pump test meters don't have dates that don't coincide with any SA
+egen temp_keep_max2 = max(temp_keep), by(apeptestid_uniq) // what if the meter chnaged SPs?
+egen temp_keep_min2 = min(temp_keep), by(apeptestid_uniq) // what if the meter chnaged SPs?
+tab temp_keep temp_keep_max2 if test_date_stata!=. // looks like this is the case for about 40%
+sort apeptestid_uniq sp_uuid
+br sp_uuid sa_uuid pge_badge_nbr sa_sp_start sa_sp_stop bill_dt_first bill_dt_last mtr_install_date ///
+	mtr_remove_date test_date_stata apeptestid_uniq MATCH* temp_keep temp_keep*2 ///
+	if test_date_stata!=. & temp_keep_max2==1 & temp_keep_min2==0
+gen temp_keep_mtr = (test_date_stata>=mtr_install_date & test_date_stata<=mtr_remove_date) & test_date_stata!=.
+egen temp_keep_mtr_max = max(temp_keep_mtr), by(apeptestid_uniq)
+egen temp_keep_mtr_min = min(temp_keep_mtr), by(apeptestid_uniq)
+br sp_uuid sa_uuid pge_badge_nbr sa_sp_start sa_sp_stop bill_dt_first bill_dt_last mtr_install_date ///
+	mtr_remove_date test_date_stata apeptestid_uniq MATCH* temp_keep temp_keep*2 temp_keep_mtr* ///
+	if test_date_stata!=. & temp_keep_max2==1 & temp_keep_min2==0 & temp_keep_mtr_min<temp_keep_mtr_max
+tab temp_keep temp_keep_mtr if temp_keep_max2==1 & temp_keep_min2==0 & temp_keep_mtr_min<temp_keep_mtr_max
+	// keep based on meter dates is almost in perfect agreement with keep based on bill dates
+unique sp_uuid pge_badge_nbr apeptestid_uniq
+local uniq1 = r(unique)
+unique apeptestid_uniq
+local uniq2 = r(unique)
+unique sp_uuid
+local uniq3 = r(unique)
+drop if temp_keep==0 & temp_keep_max2==1
+unique sp_uuid pge_badge_nbr apeptestid_uniq
+di `uniq1' - r(unique) // 357 bad SP-APEP combos got dropped
+unique apeptestid_uniq
+assert `uniq2'==r(unique) // confirm we didn't lose any pump tests
+unique sp_uuid
+di `uniq3' - r(unique) // 220 entire SPs are gone, were non-APEP SPs that got a once/future APEP meter
+drop dup temp_keep temp_keep_max
+
+	// Fourth: break remaining ties within SP-APEP by picking the dates that are closest
+duplicates t sp_uuid pge_badge_nbr apeptestid_uniq, gen(dup)
+tab dup
+sort apeptestid_uniq sp_uuid sa_sp_start
+br sp_uuid sa_uuid pge_badge_nbr sa_sp_start sa_sp_stop bill_dt_first bill_dt_last mtr_install_date ///
+	mtr_remove_date test_date_stata apeptestid_uniq MATCH* dup ///
+	if test_date_stata!=. & dup>0
+gen temp_days_after_stop = test_date_stata-sa_sp_stop
+gen temp_days_before_start = sa_sp_start-test_date_stata
+gen temp_days_after_last = test_date_stata-bill_dt_last
+gen temp_days_before_first = bill_dt_first-test_date_stata
+foreach v of varlist temp_days_* {
+	replace `v' = . if `v'<0
+	egen `v'_min = min(`v'), by(sp_uuid pge_badge_nbr apeptestid_uniq)
+}
+
+unique sp_uuid pge_badge_nbr apeptestid_uniq
+local uniq = r(unique)
+	// Of SP/SAs that preceed APEP test date: keep only the most recent
+drop if dup>0 & temp_days_after_stop!=. & temp_days_after_stop>temp_days_after_stop_min & ///
+	temp_days_after_last!=. & temp_days_after_last>temp_days_after_last_min
+drop if dup>0 & temp_days_after_stop!=. & temp_days_after_stop>temp_days_after_stop_min
+drop if dup>0 & temp_days_after_last!=. & temp_days_after_last>temp_days_after_last_min
+	// Of SP/SAs that follow APEP test date: keep only the most earliest
+drop if dup>0 & temp_days_before_start!=. & temp_days_before_start>temp_days_before_start_min & ///
+	temp_days_before_first!=. & temp_days_before_first>temp_days_before_first_min
+drop if dup>0 & temp_days_before_start!=. & temp_days_before_start>temp_days_before_start_min
+drop if dup>0 & temp_days_before_first!=. & temp_days_before_first>temp_days_before_first_min
+unique sp_uuid pge_badge_nbr apeptestid_uniq
+assert `uniq'==r(unique)
+
+duplicates t sp_uuid pge_badge_nbr apeptestid_uniq, gen(dup2)
+tab dup2
+br sp_uuid sa_uuid pge_badge_nbr sa_sp_start sa_sp_stop bill_dt_first bill_dt_last mtr_install_date ///
+	mtr_remove_date test_date_stata apeptestid_uniq MATCH* temp* dup2 ///
+	if test_date_stata!=. & dup2>0
+unique sp_uuid pge_badge_nbr apeptestid_uniq
+local uniq = r(unique)
+	// If either the before/after SA is missing billing data, drop it in favor of the after/before
+drop if dup2>0 & temp_days_before_first_min==. & temp_days_after_last_min!=. & ///
+	temp_days_after_last==temp_days_after_last_min
+drop if dup2>0 & temp_days_after_last_min==. & temp_days_before_first_min!=. & ///
+	temp_days_before_first==temp_days_before_first_min
+unique sp_uuid pge_badge_nbr apeptestid_uniq
+assert `uniq'==r(unique)
+
+duplicates t sp_uuid pge_badge_nbr apeptestid_uniq, gen(dup3)
+tab dup3
+br sp_uuid sa_uuid pge_badge_nbr sa_sp_start sa_sp_stop bill_dt_first bill_dt_last mtr_install_date ///
+	mtr_remove_date test_date_stata apeptestid_uniq MATCH* temp* dup3 ///
+	if test_date_stata!=. & dup3>0
+unique sp_uuid pge_badge_nbr apeptestid_uniq
+local uniq = r(unique)
+	// If a good before and after option exists, pick the closest date-wise
+drop if dup3>0 & temp_days_after_stop_min!=. & temp_days_before_start_min!=. & ///
+	temp_days_after_last_min!=. & temp_days_before_first_min!=. & ///
+	temp_days_after_stop_min<temp_days_before_start_min & ///
+	temp_days_after_last_min<temp_days_before_first_min & ///
+	temp_days_before_start==temp_days_before_start_min & ///
+	temp_days_before_first==temp_days_before_first_min
+drop if dup3>0 & temp_days_after_stop_min!=. & temp_days_before_start_min!=. & ///
+	temp_days_after_last_min!=. & temp_days_before_first_min!=. & ///
+	temp_days_after_stop_min>temp_days_before_start_min & ///
+	temp_days_after_last_min>temp_days_before_first_min & ///
+	temp_days_after_stop==temp_days_after_stop_min & ///
+	temp_days_after_last==temp_days_after_last_min
+unique sp_uuid pge_badge_nbr apeptestid_uniq
+assert `uniq'==r(unique)
+	
+duplicates t sp_uuid pge_badge_nbr apeptestid_uniq, gen(dup4)
+tab dup4
+br sp_uuid sa_uuid pge_badge_nbr sa_sp_start sa_sp_stop bill_dt_first bill_dt_last mtr_install_date ///
+	mtr_remove_date test_date_stata apeptestid_uniq MATCH* temp* dup4 ///
+	if test_date_stata!=. & dup4>0
+unique sp_uuid pge_badge_nbr apeptestid_uniq
+local uniq = r(unique)
+	// Same idea, but less strict on missings
+drop if dup4>0 & temp_days_after_stop_min!=. & temp_days_before_start_min!=. & ///
+	temp_days_after_last_min!=. & temp_days_before_first_min!=. & ///
+	temp_days_after_stop_min<temp_days_before_start_min & ///
+	temp_days_after_last_min<temp_days_before_first_min & ///
+	((temp_days_before_start==temp_days_before_start_min | temp_days_before_start==.) & temp_days_after_stop!=.) & ///
+	((temp_days_before_first==temp_days_before_first_min | temp_days_before_first==.) & temp_days_after_last!=.)
+drop if dup4>0 & temp_days_after_stop_min!=. & temp_days_before_start_min!=. & ///
+	temp_days_after_last_min!=. & temp_days_before_first_min!=. & ///
+	temp_days_after_stop_min>temp_days_before_start_min & ///
+	temp_days_after_last_min>temp_days_before_first_min & ///
+	((temp_days_after_stop==temp_days_after_stop_min | temp_days_after_stop==.) & temp_days_before_start!=.) & ///
+	((temp_days_after_last==temp_days_after_last_min | temp_days_after_last==.) & temp_days_before_first!=.)
+unique sp_uuid pge_badge_nbr apeptestid_uniq
+assert `uniq'==r(unique)
+	
+duplicates t sp_uuid pge_badge_nbr apeptestid_uniq, gen(dup5)
+tab dup5
+br sp_uuid sa_uuid pge_badge_nbr sa_sp_start sa_sp_stop bill_dt_first bill_dt_last mtr_install_date ///
+	mtr_remove_date test_date_stata apeptestid_uniq MATCH* temp* dup5 ///
+	if test_date_stata!=. & dup5>0		
+	// Same idea, but allowing one set of dates to be missing
+gen temp_to_drop = 0	
+replace temp_to_drop = 1 if dup5>0 & ///
+	((temp_days_after_stop_min!=. & temp_days_before_start_min!=. & ///
+	temp_days_after_stop_min<temp_days_before_start_min & ///
+	((temp_days_before_start==temp_days_before_start_min | temp_days_before_start==.) & temp_days_after_stop!=.) ///
+	) |  ///
+	(temp_days_after_last_min!=. & temp_days_before_first_min!=. & ///
+	temp_days_after_last_min<temp_days_before_first_min & ///
+	((temp_days_before_first==temp_days_before_first_min | temp_days_before_first==.) & temp_days_after_last!=.) ///
+	))
+replace temp_to_drop = 1 if dup5>0 & ///
+	((temp_days_after_stop_min!=. & temp_days_before_start_min!=. & ///
+	temp_days_after_stop_min>temp_days_before_start_min & ///
+	((temp_days_after_stop==temp_days_after_stop_min | temp_days_after_stop==.) & temp_days_before_start!=.) ///
+	) | ///
+	(temp_days_after_last_min!=. & temp_days_before_first_min!=. & ///
+	temp_days_after_last_min>temp_days_before_first_min & ///
+	((temp_days_after_last==temp_days_after_last_min | temp_days_after_last==.) & temp_days_before_first!=.) ///
+	))
+egen temp_to_drop_min = min(temp_to_drop), by(sp_uuid pge_badge_nbr apeptestid_uniq)
+unique sp_uuid pge_badge_nbr apeptestid_uniq
+local uniq = r(unique)
+drop if temp_to_drop_min==0 & temp_to_drop==1
+unique sp_uuid pge_badge_nbr apeptestid_uniq
+assert `uniq'==r(unique)	
+	
+duplicates t sp_uuid pge_badge_nbr apeptestid_uniq, gen(dup6)
+tab dup6
+br sp_uuid sa_uuid pge_badge_nbr sa_sp_start sa_sp_stop bill_dt_first bill_dt_last mtr_install_date ///
+	mtr_remove_date test_date_stata apeptestid_uniq MATCH* temp* dup6 ///
+	if test_date_stata!=. & dup6>0		
+	// At this point, I'm just picking one. Dates aren't matching and billing data is mostly missing, so this
+	// is a low-stakes decision I think
+unique sp_uuid pge_badge_nbr apeptestid_uniq
+local uniq = r(unique)
+duplicates drop sp_uuid pge_badge_nbr apeptestid_uniq, force
+unique sp_uuid pge_badge_nbr apeptestid_uniq
+assert `uniq'==r(unique)
+assert r(unique)==r(N)
+	
+	// Clean up some messy temp variables
+drop dup* temp*
+
+	// Fifth: For APEP tests matched to multiple SPs, keep the one with contemporaneous meter dates
+assert test_date_stata!=. & apeptestid_uniq!=.
+assert sp_uuid!="" & sa_uuid!=""
+duplicates t apeptestid_uniq, gen(dup)
+tab dup
+br sp_uuid sa_uuid pge_badge_nbr sa_sp_start sa_sp_stop bill_dt_first bill_dt_last mtr_install_date ///
+	mtr_remove_date test_date_stata apeptestid_uniq MATCH* dup ///
+	if dup>0		
+gen temp_keep = inrange(test_date_stata,mtr_install_date,mtr_remove_date)
+egen temp_keep_max = max(temp_keep), by(apeptestid_uniq)
+egen temp_keep_min = min(temp_keep), by(apeptestid_uniq)	
+unique apeptestid_uniq
+local uniq1 = r(unique)
+unique sp_uuid
+local uniq2 = r(unique)
+drop if dup>0 & temp_keep==0 & temp_keep_max==1
+unique apeptestid_uniq
+assert `uniq1'==r(unique)
+unique sp_uuid
+di `uniq2' - r(unique) // 223 entire SPs are gone, which apparently had a once/future APEP meter 
+drop dup* temp*
+	
+	// Sixth: Break ties in APEP test id based on modal SP at each pge_badge_nbr
+duplicates t apeptestid_uniq, gen(dup)
+tab dup
+br sp_uuid sa_uuid pge_badge_nbr sa_sp_start sa_sp_stop bill_dt_first bill_dt_last mtr_install_date ///
+	mtr_remove_date test_date_stata apeptestid_uniq MATCH* dup ///
+	if dup>0		
+egen temp_max_dup = max(dup), by(pge_badge_nbr)
+tab dup temp_max_dup
+sort pge_badge_nbr
+br sp_uuid sa_uuid pge_badge_nbr sa_sp_start sa_sp_stop bill_dt_first bill_dt_last mtr_install_date ///
+	mtr_remove_date test_date_stata apeptestid_uniq dup ///
+	if temp_max_dup>0
+egen temp_sp_mode = mode(sp_uuid), by(pge_badge_nbr)	
+unique apeptestid_uniq
+local uniq1 = r(unique)
+unique sp_uuid
+local uniq2 = r(unique)
+drop if dup>0 & temp_max_dup>0 & temp_sp_mode!="" & sp_uuid!=temp_sp_mode
+unique apeptestid_uniq
+assert `uniq1'==r(unique)
+unique sp_uuid
+di `uniq2' - r(unique) // 5 entire SPs are gone, which apparently had a once/future APEP meter 
+drop dup* temp*
+	
+	// Seventh: Break ties in APEP test id based on whether SAs were/weren't on AG tariffs
+duplicates t apeptestid_uniq, gen(dup)
+tab dup
+br sp_uuid sa_uuid pge_badge_nbr sa_sp_start sa_sp_stop bill_dt_first bill_dt_last mtr_install_date ///
+	mtr_remove_date test_date_stata apeptestid_uniq dup ///
+	if dup>0		
+egen temp_max_dup = max(dup), by(pge_badge_nbr)
+tab dup temp_max_dup
+assert temp_max_dup==dup
+preserve
+keep if dup>0
+keep sp_uuid sa_uuid pge_badge_nbr
+duplicates drop
+joinby sa_uuid using "$dirpath_data/pge_cleaned/billing_data_20180719.dta"
+assert inlist(sp_uuid,sp_uuid1,sp_uuid2,sp_uuid3)
+gen ag_rate = substr(rt_sched_cd,1,2)=="AG" | substr(rt_sched_cd,1,3)=="HAG"
+keep sp_uuid sa_uuid pge_badge_nbr ag_rate
+gen nbills = 1
+collapse (sum) nbills, by(sp_uuid sa_uuid pge_badge_nbr ag_rate) fast
+unique sp_uuid sa_uuid pge_badge_nbr 
+assert r(unique)==r(N) // ever SP/SA is either all ag or all non-ag
+drop nbills
+tempfile sasp_dups
+save `sasp_dups'
+restore
+merge m:1 sp_uuid sa_uuid pge_badge_nbr using `sasp_dups'
+gen temp_keep = ag_rate==1
+egen temp_keep_max = max(temp_keep), by(apeptestid_uniq)
+egen temp_keep_min = min(temp_keep), by(apeptestid_uniq)
+unique apeptestid_uniq
+local uniq1 = r(unique)
+unique sp_uuid
+local uniq2 = r(unique)
+drop if dup>0 & temp_max_dup>0 & temp_keep==0 & temp_keep_min==0 & temp_keep_max==1
+unique apeptestid_uniq
+assert `uniq1'==r(unique)
+unique sp_uuid
+di `uniq2' - r(unique) // 6 entire SPs are gone, which apparently had a once/future APEP meter 
+drop dup* temp* ag_rate _merge
+
+	// Eighth: Break ties in APEP test id based on the least inconsistent date
+duplicates t apeptestid_uniq, gen(dup)
+tab dup
+br sp_uuid sa_uuid pge_badge_nbr sa_sp_start sa_sp_stop bill_dt_first bill_dt_last mtr_install_date ///
+	mtr_remove_date test_date_stata apeptestid_uniq dup ///
+	if dup>0		
+gen temp_in_sasp_range = inrange(test_date_stata,sa_sp_start,sa_sp_stop)
+gen temp_in_bill_range = inrange(test_date_stata,bill_dt_first,bill_dt_last)
+gen temp_in_meter_range = inrange(test_date_stata,mtr_install_date,mtr_remove_date)	
+egen temp_ranges = rowtotal(temp_in_*_range)	
+egen temp_ranges_max = max(temp_ranges), by(apeptestid_uniq)
+unique apeptestid_uniq
+local uniq1 = r(unique)
+unique sp_uuid
+local uniq2 = r(unique)
+drop if dup>0 & temp_ranges<temp_ranges_max
+unique apeptestid_uniq
+assert `uniq1'==r(unique)
+unique sp_uuid
+di `uniq2' - r(unique) // 3 entire SPs are gone, which apparently had a once/future APEP meter 
+drop dup* temp*
+	
+	// Ninth: Break ties in APEP test id based on the least inconsistent date (manually)
+duplicates t apeptestid_uniq, gen(dup)
+tab dup
+br sp_uuid sa_uuid pge_badge_nbr sa_sp_start sa_sp_stop bill_dt_first bill_dt_last mtr_install_date ///
+	mtr_remove_date test_date_stata apeptestid_uniq dup ///
+	if dup>0		
+unique apeptestid_uniq
+local uniq1 = r(unique)
+unique sp_uuid
+local uniq2 = r(unique)
+drop if sp_uuid=="6121910009" & sa_uuid=="0833420564" & apeptestid_uniq==2859
+drop if sp_uuid=="2400910094" & sa_uuid=="7259720409" & apeptestid_uniq==3283
+drop if sp_uuid=="7387210054" & sa_uuid=="3000320679" & apeptestid_uniq==3283
+drop if sp_uuid=="1985110110" & sa_uuid=="9744220630" & apeptestid_uniq==4215
+drop if sp_uuid=="2970010085" & sa_uuid=="9696820270" & apeptestid_uniq==14612
+unique apeptestid_uniq
+assert `uniq1'==r(unique)
+unique sp_uuid
+di `uniq2' - r(unique) // 3 entire SPs are gone, which apparently had a once/future APEP meter 
+drop dup* 
+
+	// Confirm uniqueness
+unique apeptestid_uniq
+assert r(unique)==r(N)	
+
+
+asfsd	
+
+
+
+
+
+duplicates r sp_uuid pge_badge_nbr apeptestid_uniq
+duplicates r apeptestid_uniq apep_proj_id
+
+egen temp_spgroup = group(sp_uuid)
+egen temp_min = min(temp_spgroup), by(apeptestid_uniq)
+egen temp_max = max(temp_spgroup), by(apeptestid_uniq)
+unique apeptestid_uniq if temp_min<temp_max
+unique apeptestid_uniq
+
+egen temp_spgroup = group(sp_uuid)
+egen temp_min = min(temp_spgroup), by(pge_badge_nbr)
+egen temp_max = max(temp_spgroup), by(pge_badge_nbr)
+unique pge_badge_nbr if temp_min<temp_max
+unique pge_badge_nbr
+
+
+** True-up APEP tests with APEP project test dates
+egen temp_sp_proj = max(merge_apep_proj==3), by(sp_uuid)
+unique sp_uuid
+local uniq = r(unique)
+unique sp_uuid if temp_sp_proj==1
+di r(unique)/`uniq'
+unique sp_uuid if apep_proj_id!=. // 361 SPs with projects
+unique sp_uuid apep_proj_id if temp_sp_proj==1 // 576 projects across these 361 SPs
+sort sp_uuid test_date_stata
+br sp_uuid test_date_stata apeptestid_uniq merge_apep_proj date_proj_finish-date_test_subs ///
+	flag_date_problem flag_subs_after_proj flag_subs_before_proj est_savings_kwh_yr subsidy_proj ///
+	iswell run flag_apep_mismatch if temp_sp_proj==1
+drop temp*	
+
+	// Left-join APEP projects on sp_uuid, in order to pare down pre/post dates
+preserve
+keep sp_uuid merge_apep_proj apep_proj_id-flag_apep_mismatch
+duplicates drop
+drop if apep_proj_id==.
+unique apep_proj_id
+assert r(unique)==r(N)
+assert merge_apep_proj==3
+drop merge_apep_proj
+unique sp_uuid
+local n_sp = r(unique)
+tempfile projs
+save `projs'
+restore
+drop merge_apep_proj apep_proj_id-flag_apep_mismatch
+joinby sp_uuid using `projs', unmatched(both)
+assert _merge!=2
+unique sp_uuid if _merge==3
+assert r(unique)==`n_sp'
+rename _merge merge_apep_proj	
+	
+	// Construct new versions of APEP project variables linked to the pump test date
+gen apep_date_test_pre = test_date_stata==date_test_pre & test_date_stata!=.
+gen apep_date_test_post = test_date_stata==date_test_post & test_date_stata!=.
+gen apep_date_test_subs = test_date_stata==date_test_subs & test_date_stata!=.
+	
+	// Duplicates drop if no dates match
+duplicates t sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj, gen(dup)
+tab dup 
+gen temp = apep_date_test_pre==1 | apep_date_test_post==1 | apep_date_test_subs==1
+egen temp_max = max(temp), by(sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj)
+unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj
+local uniq = r(unique)
+drop if dup>0 & temp==0 & temp_max==1
+unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj
+assert r(unique)==`uniq'
+drop dup temp*
+
+	// Remaining dups: drop project test date variables and project ID, then duplicates drop
+duplicates t sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj, gen(dup)
+tab dup 
+br sp_uuid test_date_stata apeptestid_uniq apep_proj_id date_proj_finish-date_test_subs ///
+	flag_date_problem flag_subs_after_proj flag_subs_before_proj est_savings_kwh_yr subsidy_proj ///
+	iswell run flag_apep_mismatch if dup>0
+drop apep_date_test_pre apep_date_test_post apep_date_test_subs apep_proj_id
+unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj
+local uniq = r(unique)
+duplicates drop	
+unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj
+assert r(unique)==`uniq'
+drop dup
+
+	// Remaining dups: drop dup where subsidy date conflicts
+duplicates t sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
+	date_test_pre date_test_post, gen(dup)
+tab dup 
+br sp_uuid test_date_stata apeptestid_uniq date_proj_finish-date_test_subs ///
+	flag_date_problem flag_subs_after_proj flag_subs_before_proj est_savings_kwh_yr subsidy_proj ///
+	iswell run flag_apep_mismatch if dup>0
+gen temp = date_test_subs==test_date_stata
+egen temp_max = max(temp), by(sp_uuid apeptestid_uniq test_date_stata date_proj_finish ///
+	subsidy_proj date_test_pre date_test_post)
+unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
+	date_test_pre date_test_post
+local uniq = r(unique)
+drop if temp==0 & temp_max==1 & dup>0
+unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
+	date_test_pre date_test_post
+assert r(unique)==`uniq'
+drop dup temp*
+
+	// Remaining dups: drop dup where iswell==0
+duplicates t sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
+	date_test_pre date_test_post, gen(dup)
+tab dup 
+br sp_uuid test_date_stata apeptestid_uniq date_proj_finish-date_test_subs ///
+	flag_date_problem flag_subs_after_proj flag_subs_before_proj est_savings_kwh_yr subsidy_proj ///
+	iswell run flag_apep_mismatch if dup>0
+egen temp_max = max(iswell), by(sp_uuid apeptestid_uniq test_date_stata date_proj_finish ///
+	subsidy_proj date_test_pre date_test_post)
+unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
+	date_test_pre date_test_post
+local uniq = r(unique)
+drop if iswell==0 & temp_max==1 & dup>0
+unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
+	date_test_pre date_test_post
+assert r(unique)==`uniq'
+drop dup temp*
+	
+	// Remaining dups: drop dup where subsidy is after project end
+duplicates t sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
+	date_test_pre date_test_post, gen(dup)
+tab dup 
+br sp_uuid test_date_stata apeptestid_uniq date_proj_finish-date_test_subs ///
+	flag_date_problem flag_subs_after_proj flag_subs_before_proj est_savings_kwh_yr subsidy_proj ///
+	iswell run flag_apep_mismatch if dup>0
+egen temp_min = min(flag_subs_after_proj), by(sp_uuid apeptestid_uniq test_date_stata date_proj_finish ///
+	subsidy_proj date_test_pre date_test_post)
+unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
+	date_test_pre date_test_post
+local uniq = r(unique)
+drop if flag_subs_after_proj==1 & temp_min==0 & dup>0
+unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
+	date_test_pre date_test_post
+assert r(unique)==`uniq'
+drop dup temp*
+	
+	// Remaining dups: drop dup where subsidy is before project start
+duplicates t sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
+	date_test_pre date_test_post, gen(dup)
+tab dup 
+br sp_uuid test_date_stata apeptestid_uniq date_proj_finish-date_test_subs ///
+	flag_date_problem flag_subs_after_proj flag_subs_before_proj est_savings_kwh_yr subsidy_proj ///
+	iswell run flag_apep_mismatch if dup>0
+egen temp_min = min(flag_subs_before_proj), by(sp_uuid apeptestid_uniq test_date_stata date_proj_finish ///
+	subsidy_proj date_test_pre date_test_post)
+unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
+	date_test_pre date_test_post
+local uniq = r(unique)
+drop if flag_subs_before_proj==1 & temp_min==0 & dup>0
+unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
+	date_test_pre date_test_post
+assert r(unique)==`uniq'
+drop dup temp*
+	
+	// Remaining dups: take latest subsidy date
+duplicates t sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
+	date_test_pre date_test_post, gen(dup)
+tab dup 
+br sp_uuid test_date_stata apeptestid_uniq date_proj_finish-date_test_subs ///
+	flag_date_problem flag_subs_after_proj flag_subs_before_proj est_savings_kwh_yr subsidy_proj ///
+	iswell run flag_apep_mismatch if dup>0
+egen temp_max = max(date_test_subs), by(sp_uuid apeptestid_uniq test_date_stata date_proj_finish ///
+	subsidy_proj date_test_pre date_test_post)
+unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
+	date_test_pre date_test_post
+local uniq = r(unique)
+drop if date_test_subs<temp_max & dup>0
+unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
+	date_test_pre date_test_post
+assert r(unique)==`uniq'
+drop dup temp*
+
+	// Confirm uniqueness
+unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
+	date_test_pre date_test_post
+assert r(unique)==r(N)
+unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj 
+assert r(unique)==r(N)
+
+
+** Resolve 41 dups where a single pump test merges to multiple SPs (don't know what's going on here...)
+duplicates t apeptestid test_date_stata customertype farmtype waterenduse, gen(dup)
+sort apeptestid test_date_stata
+br sp_uuid sa_uuid bill_dt_first bill_dt_last pge_badge_nbr test_date_stata ///
+	customertype farmtype waterenduse apeptestid apeptestid_uniq ///
+	if dup>0
+preserve
+keep if dup>0
+keep sp_uuid pge_badge_nbr test_date_stata	
+duplicates drop
+joinby sp_uuid pge_badge_nbr using "$dirpath_data/pge_cleaned/xwalk_sp_meter_date.dta", ///
+	unmatched(master)
+sort sp_uuid pge_badge_nbr test_date_stata
+drop if test_date_stata<mtr_install_date | test_date_stata>mtr_remove_date
+keep sp_uuid pge_badge_nbr test_date_stata
+duplicates drop
+unique sp_uuid pge_badge_nbr test_date_stata
+assert r(unique)==r(N)
+tempfile sps
+save `sps'
+restore	
+merge m:1 sp_uuid pge_badge_nbr test_date_stata using `sps'
+egen temp_max_merge = max(_merge), by(apeptestid test_date_stata customertype farmtype waterenduse)
+unique apeptestid test_date_stata customertype farmtype waterenduse
+local uniq = r(unique)
+drop if _merge==1 & temp_max_merge==3
+unique apeptestid test_date_stata customertype farmtype waterenduse
+assert `uniq'==r(unique)
+drop dup temp* _merge
+
+	// Remaining dups: 2 are SPs where 1 SA started and stops on same date (drop)
+duplicates t apeptestid test_date_stata customertype farmtype waterenduse, gen(dup)
+sort apeptestid test_date_stata
+br sp_uuid sa_uuid bill_dt_first bill_dt_last pge_badge_nbr test_date_stata ///
+	customertype farmtype waterenduse apeptestid apeptestid_uniq ///
+	if dup>0
+gen temp = sa_sp_stop - sa_sp_start
+egen temp_max = max(temp), by( apeptestid test_date_stata customertype farmtype waterenduse)
+unique apeptestid test_date_stata customertype farmtype waterenduse
+local uniq = r(unique)
+drop if temp==0 & temp_max>0
+unique apeptestid test_date_stata customertype farmtype waterenduse
+assert `uniq'==r(unique)
+drop dup temp* 
+
+	// Remaining dups are multiple APEP projects!!
+	
+** Merge in relevant APEP test variables, and collapse tests on same SP-date
+joinby apeptestid test_date_stata customertype farmtype waterenduse ///
+	using "$dirpath_data/pge_cleaned/pump_test_data.dta", unmatched(master)	
+assert _merge==3
+drop _merge
+	
+***** FOR WHEN WE END UP USING THESE VARIABLES, WE'LL NEED TO PICK UP THE CODE HERE AND 
+***** FIGURE OUT A PROPER UNIT OF ANALYSIS, AND THEN MAKE UNIQUE BY THAT
+
+** Add back in SPs that got dropped (weirdly, but don't think this matters for the resulting dataset)
+assert test_date_stata!=.
+merge m:1 sp_uuid sa_uuid sa_sp_start sa_sp_stop using "$dirpath_data/pge_cleaned/pge_cust_detail.dta"
+assert _merge!=1
+egen temp_max_merge = max(_merge), by(sp_uuid)
+keep if temp_max_merge==3
+drop temp* _merge
+
+
+** Save messy but finalized (for now) dataset of SPs-tests-projects
+duplicates drop
+compress
+save "$dirpath_data/merged/sp_apep_merged_notunique.dta"
+
+
+}
+
+*******************************************************************************
+*******************************************************************************
