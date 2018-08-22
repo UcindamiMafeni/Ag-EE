@@ -51,6 +51,12 @@ di 7.59e9/2.06e10 // 37% of TOTAL APEP consumption is coded as NAICS=111
 tabstat total_bill_kwh if ag_rate, by(naics111) s(sum)
 di 7.58e9/1.77e10 // 43% of APEP consumption on an AG rate is coded as NAICS=111
 
+unique sp_uuid if ag_rate & naics111  // 7815 SPs on AG rate coded as NAICS=111
+unique sp_uuid if ag_rate & !naics111 // 6469 SPs on AG rate NOT coded as NAICS=111
+unique sa_uuid if ag_rate & naics111  // 16728 SAs on AG rate coded as NAICS=111
+unique sa_uuid if ag_rate & !naics111 // 14049 SAs on AG rate NOT coded as NAICS=111
+
+
 *******************************************************************************
 
 ** APEP AG 111 as a share of total AG 111
@@ -128,6 +134,19 @@ sum total_bill_kwh if _merge==3 & ag_rate==1
 local rsum = r(sum)
 sum total_bill_kwh if (_merge==1 | _merge==3) & ag_rate==1
 di `rsum'/r(sum) // APEP AG-111 is getting us 31% of Total AG-111
+
+sum total_bill_kwh if _merge==3 & ag_rate==1
+di r(sum) // 7.6 TWh in APEP, AG, 111
+
+sum total_bill_kwh if _merge==1 & ag_rate==1
+di r(sum) // 16.5 TWh in not-APEP, AG, 111
+
+
+unique sp_uuid if _merge==3 & ag_rate==1 // 7803 SPs in APEP, AG, 111
+unique sp_uuid if _merge==1 & ag_rate==1 // 53346 SPs in not-APEP, AG, 111
+
+unique sa_uuid if _merge==3 & ag_rate==1 // 16666 SAs in APEP, AG, 111
+unique sa_uuid if _merge==1 & ag_rate==1 // 109921 SAs in not-APEP, AG, 111
 
 
 *******************************************************************************
