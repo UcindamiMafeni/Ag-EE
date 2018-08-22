@@ -77,9 +77,16 @@ do "$dirpath_code/build/BUILD_clean_cadwr_groundwater.do"
 *************** MERGE ****************
 
 *** 1: MERGE BILLING/INTERVAL DATA WITH RATE DATA
-do "$dirpath_code/merge/MERGE_bills_intervals_rates.do"
+do "$dirpath_code/merge/MERGE_bills_interval_rates.do"
 
+*** 2: ASSIGN AVERAGE PRICES TO BILLS WITHOUT AMI DATA (EXTRAPOLATION)
+do "$dirpath_code/merge/MERGE_bills_noninterval_rates.do"
 
+*** 3: ASSIGN AVERAGE PRICES TO ALL (MONTHIFIED) BILLS (INTERNALLY CONSISTENT)
+do "$dirpath_code/merge/MERGE_bills_rate_nomerge.do"
+
+*** 4: MERGE CUSTOMER DETAILS & APEP DATASETS TO CONSTRUCT MASTER XSECTION(S) FOR EVENTUAL PANEL(S)
+do "$dirpath_code/merge/MERGE_customer_apep_units.do"
 
 
 
