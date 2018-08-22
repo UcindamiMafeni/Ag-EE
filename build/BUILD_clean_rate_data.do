@@ -48,7 +48,7 @@ foreach file in `files' {
 }
 
 
-
+/*
 **** LARGE AG RATES
 {
 
@@ -3080,3 +3080,338 @@ local files: dir . files "*.dta"
 qui foreach f in `files' {
 	erase "`f'"
 }
+
+*/
+
+
+**** RESIDENTIAL (NON-TOU) RATES
+{
+
+**** BEGINNING THROUGH 100301-100430 
+qui foreach dates in "080101-080229" "080301-080430" "080501-080930" "081001-081231" ///
+   "090101-090228" "090301-090930" "091001-091231" ///
+   "100101-100228" "100301-100531" ///
+    "100601-101231" "110101-110228" "110301-110619" ///
+	"110620-111031" "120101-120229" ///
+	"120301-120630" "120701-121231" "130101-130430" "130501-130930" ///
+  "131001-131231"   "140101-140228" "140301-140430" "140501-140731" "140801-140930" ///
+  "141001-141231" ///
+  "150101-150228"  "150301-150831" "150901-151231" "160101-160229" "160301-160323" ///
+  "160324-160531" "160601-160731" { 
+
+   
+*local dates "160301-160323"
+
+// read dataset in
+use "$dirpath_data_temp/res_`dates'.dta", clear
+rename *, lower
+
+ds
+foreach var in `r(varlist)' {
+capture confirm string variable `var'
+if !_rc {
+  replace `var' = lower(`var')
+}
+}
+
+// get rid of variables that don't pertain to e-1
+drop ratedesign discountperdwell minimumaverage  averagetotal
+
+
+// get rid of unnecessary rates and footnotes
+gen rs = 0
+replace rs = 1 if rateschedule == "rate schedule"
+replace rs = rs[_n-1] if rs == 0
+drop if rs == 1
+drop rs
+
+// keep only the e-1 rate
+keep if strpos(rateschedule, "e-1")
+replace rateschedule = "e-1"
+
+
+cap rename *minimum* minimum
+
+rename (minimum energycharge g h i j) ///
+   (minimum_energycharge energycharge_tier1 ///
+   energycharge_tier2 energycharge_tier3 energycharge_tier4 energycharge_tier5)
+ 
+cap rename californiaclimatecredit climatecredit
+cap destring climatecredit, replace
+ 
+ 
+destring *_energycharge energycharge_*, replace
+   
+// get the start & end date for the rates
+rename file dates
+replace dates = subinstr(dates, "res_", "", .)
+split dates, p("-")
+replace dates1 = "20" + dates1
+replace dates2 = "20" + dates2
+
+gen rate_start_date = date(dates1, "YMD") 
+gen rate_end_date = date(dates2, "YMD") 
+
+format rate_start rate_end %td
+
+drop dates dates1 dates2
+
+label variable rateschedule "rate name"
+label variable rate_start_date "rate period start date"
+label variable rate_end_date "rate period end date"
+
+label variable energycharge_tier1 "energy charge ($/kWh) -- tier 1"
+label variable energycharge_tier2 "energy charge ($/kWh) -- tier 2"
+label variable energycharge_tier3 "energy charge ($/kWh) -- tier 3"
+label variable energycharge_tier4 "energy charge ($/kWh) -- tier 4"
+label variable energycharge_tier5 "energy charge ($/kWh) -- tier 5"
+
+cap label variable climatecredit "CA climate credit ($) -- paid in April & October"
+
+compress *
+
+
+duplicates drop
+
+save "$dirpath_data_temp/cleaned/CLEANED_res_`dates'.dta", replace
+}
+
+
+
+  
+
+  
+
+  
+  
+  
+  
+  
+
+  
+  
+ 
+ 
+**** BEGINNING THROUGH 100301-100430 
+qui foreach dates in "160801-160930" "161001-161231" "170101-170228" "170301-171231" ///
+  "180101-180228" { 
+
+   
+*local dates "160301-160323"
+
+// read dataset in
+use "$dirpath_data_temp/res_`dates'.dta", clear
+rename *, lower
+
+ds
+foreach var in `r(varlist)' {
+capture confirm string variable `var'
+if !_rc {
+  replace `var' = lower(`var')
+}
+}
+
+// get rid of variables that don't pertain to e-1
+drop ratedesign discountperdwell minimumaverage  averagetotal
+
+
+// get rid of unnecessary rates and footnotes
+gen rs = 0
+replace rs = 1 if rateschedule == "rate schedule"
+replace rs = rs[_n-1] if rs == 0
+drop if rs == 1
+drop rs
+
+// keep only the e-1 rate
+keep if strpos(rateschedule, "e-1")
+replace rateschedule = "e-1"
+
+
+cap rename *minimum* minimum
+
+rename (minimum energycharge g h) ///
+   (minimum_energycharge energycharge_tier1 ///
+   energycharge_tier2 energycharge_tier3)
+ 
+cap rename californiaclimatecredit climatecredit
+cap destring climatecredit, replace
+ 
+ 
+destring *_energycharge energycharge_*, replace
+   
+// get the start & end date for the rates
+rename file dates
+replace dates = subinstr(dates, "res_", "", .)
+split dates, p("-")
+replace dates1 = "20" + dates1
+replace dates2 = "20" + dates2
+
+gen rate_start_date = date(dates1, "YMD") 
+gen rate_end_date = date(dates2, "YMD") 
+
+format rate_start rate_end %td
+
+drop dates dates1 dates2
+
+label variable rateschedule "rate name"
+label variable rate_start_date "rate period start date"
+label variable rate_end_date "rate period end date"
+
+label variable energycharge_tier1 "energy charge ($/kWh) -- tier 1"
+label variable energycharge_tier2 "energy charge ($/kWh) -- tier 2"
+label variable energycharge_tier3 "energy charge ($/kWh) -- tier 3"
+
+cap label variable climatecredit "CA climate credit ($) -- paid in April & October"
+
+compress *
+
+
+duplicates drop
+
+save "$dirpath_data_temp/cleaned/CLEANED_res_`dates'.dta", replace
+}
+
+
+
+  
+
+  
+
+  
+  
+  
+  
+  
+
+  
+  
+ 
+  
+ 
+ 
+ 
+  
+
+qui foreach dates in "Current" { 
+
+*local dates "160301-160323"
+
+// read dataset in
+use "$dirpath_data_temp/reselec`dates'.dta", clear
+rename *, lower
+
+ds
+foreach var in `r(varlist)' {
+capture confirm string variable `var'
+if !_rc {
+  replace `var' = lower(`var')
+}
+}
+
+// get rid of variables that don't pertain to e-1
+drop ratedesign discountperdwell minimumaverage  averagetotal
+
+
+// get rid of unnecessary rates and footnotes
+gen rs = 0
+replace rs = 1 if rateschedule == "rate schedule"
+replace rs = rs[_n-1] if rs == 0
+drop if rs == 1
+drop rs
+
+// keep only the e-1 rate
+keep if strpos(rateschedule, "e-1")
+replace rateschedule = "e-1"
+
+
+cap rename *minimum* minimum
+
+rename (minimum energycharge g h) ///
+   (minimum_energycharge energycharge_tier1 ///
+   energycharge_tier2 energycharge_tier3)
+ 
+cap rename californiaclimatecredit climatecredit
+cap destring climatecredit, replace
+ 
+ 
+destring *_energycharge energycharge_*, replace
+   
+// get the start & end date for the rates
+rename file dates
+replace dates = "180301-999999"
+local dates = dates
+split dates, p("-")
+replace dates1 = "20" + dates1
+replace dates2 = "20" + dates2
+
+gen rate_start_date = date(dates1, "YMD") 
+gen rate_end_date = date(dates2, "YMD") 
+
+format rate_start rate_end %td
+
+drop dates dates1 dates2
+
+label variable rateschedule "rate name"
+label variable rate_start_date "rate period start date"
+label variable rate_end_date "rate period end date"
+
+label variable energycharge_tier1 "energy charge ($/kWh) -- tier 1"
+label variable energycharge_tier2 "energy charge ($/kWh) -- tier 2"
+label variable energycharge_tier3 "energy charge ($/kWh) -- tier 3"
+
+cap label variable climatecredit "CA climate credit ($) -- paid in April & October"
+
+compress *
+
+
+duplicates drop
+
+save "$dirpath_data_temp/cleaned/CLEANED_res_`dates'.dta", replace
+}
+
+
+
+  
+
+  
+
+  
+  
+  
+  
+  
+
+  
+  
+ 
+  
+ 
+ 
+ 
+  
+
+
+******** APPEND
+clear
+set obs 1
+
+cd "$dirpath_data_temp/cleaned"
+local files: dir . files "*.dta"
+foreach f in `files' {
+ append using "`f'"
+}
+drop in 1
+
+
+save "$dirpath_data_pge_cleaned/e1_rates.dta", replace
+
+**** CLEAN UP
+clear
+cd "$dirpath_data_temp/cleaned"
+local files: dir . files "*.dta"
+qui foreach f in `files' {
+	erase "`f'"
+}
+}
+
+
