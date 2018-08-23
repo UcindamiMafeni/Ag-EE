@@ -691,187 +691,124 @@ save "$dirpath_data/merged/apep_projects_sp_merge.dta", replace
 restore	
 
 
+** 	Make unique by SP-APEP test ID, reshaping duplicate projects wide
 
-	
-	
-	
-drop apep_date_test_pre apep_date_test_post apep_date_test_subs apep_proj_id
-unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj
-local uniq = r(unique)
-duplicates drop	
-unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj
-assert r(unique)==`uniq'
-drop dup
+unique sp_uuid apeptestid_uniq apep_proj_id
+assert r(unique)==r(N)
 
-	// Remaining dups: drop dup where subsidy date conflicts
-duplicates t sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
-	date_test_pre date_test_post, gen(dup)
-tab dup 
-br sp_uuid test_date_stata apeptestid_uniq date_proj_finish-date_test_subs ///
+duplicates t sp_uuid apeptestid_uniq, gen(dup)
+tab dup
+br sp_uuid test_date_stata apeptestid_uniq apep_proj_id date_proj_finish-date_test_subs ///
 	flag_date_problem flag_subs_after_proj flag_subs_before_proj est_savings_kwh_yr subsidy_proj ///
 	iswell run flag_apep_mismatch if dup>0
-gen temp = date_test_subs==test_date_stata
-egen temp_max = max(temp), by(sp_uuid apeptestid_uniq test_date_stata date_proj_finish ///
-	subsidy_proj date_test_pre date_test_post)
-unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
-	date_test_pre date_test_post
-local uniq = r(unique)
-drop if temp==0 & temp_max==1 & dup>0
-unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
-	date_test_pre date_test_post
-assert r(unique)==`uniq'
-drop dup temp*
 
-	// Remaining dups: drop dup where iswell==0
-duplicates t sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
-	date_test_pre date_test_post, gen(dup)
-tab dup 
-br sp_uuid test_date_stata apeptestid_uniq date_proj_finish-date_test_subs ///
-	flag_date_problem flag_subs_after_proj flag_subs_before_proj est_savings_kwh_yr subsidy_proj ///
-	iswell run flag_apep_mismatch if dup>0
-egen temp_max = max(iswell), by(sp_uuid apeptestid_uniq test_date_stata date_proj_finish ///
-	subsidy_proj date_test_pre date_test_post)
-unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
-	date_test_pre date_test_post
-local uniq = r(unique)
-drop if iswell==0 & temp_max==1 & dup>0
-unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
-	date_test_pre date_test_post
-assert r(unique)==`uniq'
-drop dup temp*
+	// Discard APEP project ID, and make a new project ID based on savings/subsidy amounts
+drop apep_proj_id
+egen apep_proj_group = group(est_saving subsidy_proj sp_uuid)
+egen apep_proj_group2 = group(est_saving subsidy_proj)
+egen apep_proj_group3 = group(est_saving subsidy_proj date_proj_finish)
+assert apep_proj_group==apep_proj_group2	
+assert apep_proj_group==apep_proj_group3	
+drop apep_proj_group2 apep_proj_group3
+
+	// For multiple subsidized test dates, take the max for each specific apeptestid_uniq
+egen temp = max(apep_date_test_subs), by(sp_uuid apeptestid_uniq apep_proj_group)
+replace apep_date_test_subs = temp
+drop temp date_test_subs
+duplicates drop
 	
-	// Remaining dups: drop dup where subsidy is after project end
-duplicates t sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
-	date_test_pre date_test_post, gen(dup)
-tab dup 
-br sp_uuid test_date_stata apeptestid_uniq date_proj_finish-date_test_subs ///
-	flag_date_problem flag_subs_after_proj flag_subs_before_proj est_savings_kwh_yr subsidy_proj ///
-	iswell run flag_apep_mismatch if dup>0
-egen temp_min = min(flag_subs_after_proj), by(sp_uuid apeptestid_uniq test_date_stata date_proj_finish ///
-	subsidy_proj date_test_pre date_test_post)
-unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
-	date_test_pre date_test_post
-local uniq = r(unique)
-drop if flag_subs_after_proj==1 & temp_min==0 & dup>0
-unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
-	date_test_pre date_test_post
-assert r(unique)==`uniq'
-drop dup temp*
-	
-	// Remaining dups: drop dup where subsidy is before project start
-duplicates t sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
-	date_test_pre date_test_post, gen(dup)
-tab dup 
-br sp_uuid test_date_stata apeptestid_uniq date_proj_finish-date_test_subs ///
-	flag_date_problem flag_subs_after_proj flag_subs_before_proj est_savings_kwh_yr subsidy_proj ///
-	iswell run flag_apep_mismatch if dup>0
-egen temp_min = min(flag_subs_before_proj), by(sp_uuid apeptestid_uniq test_date_stata date_proj_finish ///
-	subsidy_proj date_test_pre date_test_post)
-unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
-	date_test_pre date_test_post
-local uniq = r(unique)
-drop if flag_subs_before_proj==1 & temp_min==0 & dup>0
-unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
-	date_test_pre date_test_post
-assert r(unique)==`uniq'
-drop dup temp*
-	
-	// Remaining dups: take latest subsidy date
-duplicates t sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
-	date_test_pre date_test_post, gen(dup)
-tab dup 
-br sp_uuid test_date_stata apeptestid_uniq date_proj_finish-date_test_subs ///
-	flag_date_problem flag_subs_after_proj flag_subs_before_proj est_savings_kwh_yr subsidy_proj ///
-	iswell run flag_apep_mismatch if dup>0
-egen temp_max = max(date_test_subs), by(sp_uuid apeptestid_uniq test_date_stata date_proj_finish ///
-	subsidy_proj date_test_pre date_test_post)
-unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
-	date_test_pre date_test_post
-local uniq = r(unique)
-drop if date_test_subs<temp_max & dup>0
-unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
-	date_test_pre date_test_post
-assert r(unique)==`uniq'
-drop dup temp*
+	// For the pre/post flags, take the minimum w/in each apep_proj_group
+foreach v of varlist flag_subs_after_proj flag_subs_before_proj flag_apep_mismatch {
+	egen temp = min(`v'), by(sp_uuid apep_proj_group)
+	replace `v' = temp
+	drop temp
+}
+duplicates drop
+
+	// Remaining dups are the "iswell" and "run" variables, which seem redundant to me (we'll know ///
+	// if it's a well based on the APEP test variables...)
+drop iswell run
+drop apep_date_test_max* // also these variables 
+duplicates drop
+drop dup*
 
 	// Confirm uniqueness
-unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj ///
-	date_test_pre date_test_post
-assert r(unique)==r(N)
-unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj 
+unique sp_uuid apeptestid_uniq apep_proj_group
 assert r(unique)==r(N)
 
+	// Reshape wide
+duplicates t sp_uuid apeptestid_uniq, gen(dup)
+tab dup // 16 SP-tests with multiple project groups
+assert dup<2
+br sp_uuid test_date_stata apeptestid_uniq date_proj_finish date_test_pre date_test_post ///
+	flag_date_problem flag_subs_after_proj flag_subs_before_proj est_savings_kwh_yr subsidy_proj ///
+	flag_apep_mismatch if dup>0 // 4 SPs had multiple APEP projects
+gsort sp_uuid apeptestid_uniq date_proj_finish -subsidy_proj
+rename apep_date_test_* proj_date_test_*
+gen to_drop = dup==1 & sp_uuid==sp_uuid[_n-1] & apeptestid_uniq==apeptestid_uniq[_n-1]
+foreach v of varlist date_proj_finish date_test_pre date_test_post flag_date_problem flag_subs_after_proj ///
+	flag_subs_before_proj est_savings_kwh_yr subsidy_proj flag_apep_mismatch proj_date_test_pre ///
+	proj_date_test_post proj_date_test_subs	{
+	gen `v'2 = .
+	replace `v'2 = `v'[_n+1] if dup==1 & to_drop==0
+}
+format %td date_proj_finish2 date_test_pre2 date_test_post2 
+unique sp_uuid apeptestid_uniq
+local uniq = r(unique)
+drop if to_drop==1
+unique sp_uuid apeptestid_uniq
+assert r(unique)==`uniq'
+assert r(unique)==r(N)	
+	
 
-** Resolve 41 dups where a single pump test merges to multiple SPs (don't know what's going on here...)
-duplicates t apeptestid test_date_stata customertype farmtype waterenduse, gen(dup)
-sort apeptestid test_date_stata
-br sp_uuid sa_uuid bill_dt_first bill_dt_last pge_badge_nbr test_date_stata ///
-	customertype farmtype waterenduse apeptestid apeptestid_uniq ///
-	if dup>0
+** Clean up and label
+drop dup to_drop apep_proj_group
+assert inlist(flag_apep_mismatch,0,.) & inlist(flag_apep_mismatch2,0,.)
+drop flag_apep_mismatch*
+la var date_proj_finish2 "Date of project finish (proj #2)"
+la var date_test_pre2 "Date of pre-project pump test (for project) (proj #2)"
+la var date_test_post2 "Date of post-project pum test (for project) (proj #2)"
+la var flag_date_problem2 "Date inconsisency (pre after post; pre after finish)(proj #2)"
+la var flag_subs_after_proj2 "Subsizided pump test AFTER project, likely not compliers (proj #2)"
+la var flag_subs_before_proj2 "Subsidized pump test BEFORE project, maybe inrdirect influence (proj #2)"
+la var est_savings_kwh_yr2 "Engineering estimate(?) of gross kWh savings in first year (proj #2)"
+la var subsidy_proj2 "Subsidy offered for project (proj #2)"
+la var proj_date_test_pre "Dummy if APEP test date matches project pre test date"
+la var proj_date_test_post "Dummy if APEP test date matches project post test date"
+la var proj_date_test_subs "Dummy if APEP test date matches a project subsidized test date"
+la var proj_date_test_pre2 "Dummy if APEP test date matches project pre test date (proj #2)"
+la var proj_date_test_post2 "Dummy if APEP test date matches project post test date (proj #2)"
+la var proj_date_test_subs2 "Dummy if APEP test date matches a project subsidized test date (proj #2)"
+
+egen temp = max(merge_apep_proj), by(sp_uuid)
+assert merge_apep_proj==temp
+gen apep_proj_count = 0
+replace apep_proj_count = 1 if merge_apep_proj==3
+replace apep_proj_count = 2 if merge_apep_proj==3 & date_proj_finish2!=.
 preserve
-keep if dup>0
-keep sp_uuid pge_badge_nbr test_date_stata	
+keep sp_uuid apep_proj_count
 duplicates drop
-joinby sp_uuid pge_badge_nbr using "$dirpath_data/pge_cleaned/xwalk_sp_meter_date.dta", ///
-	unmatched(master)
-sort sp_uuid pge_badge_nbr test_date_stata
-drop if test_date_stata<mtr_install_date | test_date_stata>mtr_remove_date
-keep sp_uuid pge_badge_nbr test_date_stata
-duplicates drop
-unique sp_uuid pge_badge_nbr test_date_stata
-assert r(unique)==r(N)
-tempfile sps
-save `sps'
-restore	
-merge m:1 sp_uuid pge_badge_nbr test_date_stata using `sps'
-egen temp_max_merge = max(_merge), by(apeptestid test_date_stata customertype farmtype waterenduse)
-unique apeptestid test_date_stata customertype farmtype waterenduse
-local uniq = r(unique)
-drop if _merge==1 & temp_max_merge==3
-unique apeptestid test_date_stata customertype farmtype waterenduse
-assert `uniq'==r(unique)
-drop dup temp* _merge
+tab apep_proj_count // 12,142 with none, 704 with 1, 4 with 2
+restore
+la var apep_proj_count "Number of APEP projects linked to SP"
+drop temp merge_apep_proj
 
-	// Remaining dups: 2 are SPs where 1 SA started and stops on same date (drop)
-duplicates t apeptestid test_date_stata customertype farmtype waterenduse, gen(dup)
-sort apeptestid test_date_stata
-br sp_uuid sa_uuid bill_dt_first bill_dt_last pge_badge_nbr test_date_stata ///
-	customertype farmtype waterenduse apeptestid apeptestid_uniq ///
-	if dup>0
-gen temp = sa_sp_stop - sa_sp_start
-egen temp_max = max(temp), by( apeptestid test_date_stata customertype farmtype waterenduse)
-unique apeptestid test_date_stata customertype farmtype waterenduse
-local uniq = r(unique)
-drop if temp==0 & temp_max>0
-unique apeptestid test_date_stata customertype farmtype waterenduse
-assert `uniq'==r(unique)
-drop dup temp* 
+assert merge_sp_meter_xwalk==3
+drop merge_sp_meter_xwalk
 
-	// Remaining dups are multiple APEP projects!!
+assert merge_apep_test==3
+drop merge_apep_test
+
+la var test_date_stata "APEP test date"
+la var apeptestid_uniq "Unique ID for observations in APEP test dataset"
 	
-** Merge in relevant APEP test variables, and collapse tests on same SP-date
-joinby apeptestid test_date_stata customertype farmtype waterenduse ///
-	using "$dirpath_data/pge_cleaned/pump_test_data.dta", unmatched(master)	
-assert _merge==3
-drop _merge
 	
-***** FOR WHEN WE END UP USING THESE VARIABLES, WE'LL NEED TO PICK UP THE CODE HERE AND 
-***** FIGURE OUT A PROPER UNIT OF ANALYSIS, AND THEN MAKE UNIQUE BY THAT
-
-** Add back in SPs that got dropped (weirdly, but don't think this matters for the resulting dataset)
-assert test_date_stata!=.
-merge m:1 sp_uuid sa_uuid sa_sp_start sa_sp_stop using "$dirpath_data/pge_cleaned/pge_cust_detail.dta"
-assert _merge!=1
-egen temp_max_merge = max(_merge), by(sp_uuid)
-keep if temp_max_merge==3
-drop temp* _merge
-
-
 ** Save messy but finalized (for now) dataset of SPs-tests-projects
 duplicates drop
+unique sp_uuid apeptestid_uniq
+assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/sp_apep_merged_notunique.dta"
-
+save "$dirpath_data/merged/sp_apep_proj_merged.dta", replace
 
 }
 
