@@ -3115,7 +3115,7 @@ if !_rc {
 }
 
 // get rid of variables that don't pertain to e-1
-drop ratedesign discountperdwell minimumaverage  averagetotal
+drop ratedesign discountperdwell minimumaverage  
 
 
 // get rid of unnecessary rates and footnotes
@@ -3159,7 +3159,7 @@ drop dates dates1 dates2
 label variable rateschedule "rate name"
 label variable rate_start_date "rate period start date"
 label variable rate_end_date "rate period end date"
-
+label variable averagetotal "average total rate ($/kWh)" 
 label variable energycharge_tier1 "energy charge ($/kWh) -- tier 1"
 label variable energycharge_tier2 "energy charge ($/kWh) -- tier 2"
 label variable energycharge_tier3 "energy charge ($/kWh) -- tier 3"
@@ -3212,7 +3212,7 @@ if !_rc {
 }
 
 // get rid of variables that don't pertain to e-1
-drop ratedesign discountperdwell minimumaverage  averagetotal
+drop ratedesign discountperdwell minimumaverage 
 
 
 // get rid of unnecessary rates and footnotes
@@ -3256,6 +3256,7 @@ drop dates dates1 dates2
 label variable rateschedule "rate name"
 label variable rate_start_date "rate period start date"
 label variable rate_end_date "rate period end date"
+label variable averagetotal "average total rate ($/kWh)" 
 
 label variable energycharge_tier1 "energy charge ($/kWh) -- tier 1"
 label variable energycharge_tier2 "energy charge ($/kWh) -- tier 2"
@@ -3309,7 +3310,7 @@ if !_rc {
 }
 
 // get rid of variables that don't pertain to e-1
-drop ratedesign discountperdwell minimumaverage  averagetotal
+drop ratedesign discountperdwell minimumaverage  
 
 
 // get rid of unnecessary rates and footnotes
@@ -3354,6 +3355,7 @@ drop dates dates1 dates2
 label variable rateschedule "rate name"
 label variable rate_start_date "rate period start date"
 label variable rate_end_date "rate period end date"
+label variable averagetotal "average total rate ($/kWh)" 
 
 label variable energycharge_tier1 "energy charge ($/kWh) -- tier 1"
 label variable energycharge_tier2 "energy charge ($/kWh) -- tier 2"
