@@ -3084,7 +3084,7 @@ qui foreach f in `files' {
 */
 
 
-**** RESIDENTIAL (NON-TOU) RATES
+**** RESIDENTIAL (NON-TOU) RATE (E-1)
 {
 
 **** BEGINNING THROUGH 100301-100430 
@@ -3404,6 +3404,586 @@ drop in 1
 
 
 save "$dirpath_data_pge_cleaned/e1_rates.dta", replace
+
+**** CLEAN UP
+clear
+cd "$dirpath_data_temp/cleaned"
+local files: dir . files "*.dta"
+qui foreach f in `files' {
+	erase "`f'"
+}
+}
+
+
+
+
+
+**** INDUSTRIAL RATE (E-20 PRIMARY)
+{
+**** BEGINNING THROUGH 100301-100430 
+qui foreach dates in "080101-080229" "080301-080430" "080501-080930" "081001-081231" ///
+   "090101-090228" "090301-090930" "091001-091231" ///
+   "100101-100228" "100301-100430" "100501-100531" ///
+    "100601-101231" "110101-110228" "110301-111231" ///
+	 "120101-120229" ///
+	"120301-120630" "120701-121231" "130101-130430" "130501-130930" ///
+  "131001-131231"   "140101-140228" "140301-140430" "140501-140930" ///
+  "141001-141231" ///
+  "150101-150228"  "150301-150531" "150601-150831" "150901-151231" "160101-160229" "160301-160323" ///
+  "160324-160731"  "160801-160930" "161001-161231" "170101-170228" "170301-171231" ///
+  "180101-180228" { 
+
+   
+*local dates "170301-171231"
+
+// read dataset in
+use "$dirpath_data_temp/ind_`dates'.dta", clear
+rename *, lower
+
+ds
+foreach var in `r(varlist)' {
+capture confirm string variable `var'
+if !_rc {
+  replace `var' = lower(`var')
+}
+}
+
+// keep only the e-20 primary
+gen rs = 0
+replace rs = 1 if strpos(rateschedule, "primary")
+replace rs = rs[_n-1] if rs == 0
+replace rs = 0 if strpos(rateschedule, "transmission")
+replace rs = rs[_n-1] if rs == 1 & rs[_n-1] != . 
+keep if rs == 1
+drop rs
+
+
+replace rateschedule = "e-20 primary"
+replace customercharge = subinstr(customercharge, "$", "", .)
+replace customercharge = subinstr(customercharge, " per day", "", .)
+destring customercharge, replace
+replace customercharge = customercharge[_n-1] if customercharge == .
+
+
+replace averageratelim = "0" if averageratelim == "-"
+destring averageratelim, replace
+egen mean_avg = mean(averageratelim), by(season)
+replace averageratelim = mean_avg
+drop mean_avg
+
+cap {
+replace ufrcredit = "0" if ufrcredit == "-"
+destring ufrcredit, replace
+egen mean_avg = mean(ufrcredit), by(season)
+replace ufrcredit = mean_avg
+drop mean_avg
+}
+
+cap {
+replace powerfactor = "0" if powerfactor == "-"
+destring powerfactor, replace
+egen mean_avg = mean(powerfactor), by(season)
+replace powerfactor = mean_avg
+drop mean_avg
+}
+
+
+
+foreach var in demandcharge energycharge  {
+ replace `var' = subinstr(`var', "-", "", .)
+ destring `var', replace
+}
+
+cap destring pdp1, replace
+
+
+cap foreach var in  pdp2 j {
+ replace `var' = subinstr(`var', "-", "", .)
+ destring `var', replace
+}
+
+
+cap {
+rename j pdpenergycredit
+replace pdp2 = -pdp2
+replace pdpenergycredit = -pdpenergycredit
+
+egen pdp_mean = mean(pdp1charges), by(rateschedule)
+replace pdp1 = pdp_mean
+drop pdp_mean
+}
+
+foreach var in demandcharge energycharge  {
+replace `var' = 0 if `var' == .
+}
+
+cap {
+pdp1 pdp2 pdpenergycredit
+}
+
+
+
+gen tou = 1
+
+// create an indicator for peak, off peak, partial peak for each hour
+gen rownr = _n if tou == 1 & timeofuseperiod != "connected load"
+expand 24 if tou == 1 & timeofuseperiod != "connected load"
+bys rownr: gen hour = _n
+replace hour = hour - 1
+expand 2 if tou == 1 & timeofuseperiod != "connected load"
+bys rownr hour: gen minute = _n
+replace minute = 0 if minute == 1
+replace minute = 30 if minute == 2
+expand 7 if tou == 1 & timeofuseperiod != "connected load"
+bys rownr hour minute: gen dow_num = _n
+replace dow_num = dow_num - 1
+// sunday = 0, monday = 1, ... saturday = 6
+
+drop rownr
+
+// create a peak flag
+gen offpeak = 0 if tou ==1 & timeofuseperiod != "connected load"
+gen partpeak = 0 if tou == 1 & timeofuseperiod != "connected load"
+gen peak = 0 if tou==1 & timeofuseperiod != "connected load"
+
+
+
+// DEFINITION OF PEAK/OFF-PEAK FROM: https://www.pge.com/tariffs/assets/pdf/tariffbook/ELEC_SCHEDS_E-20.pdf
+/*
+SUMMER Period A (Service from May 1 through October 31):
+Peak: 12:00 noon to 6:00 p.m. Monday through Friday (except holidays)
+Partial-peak: 8:30 a.m. to 12:00 noon Monday through Friday (except holidays)
+AND 6:00 p.m. to 9:30 p.m.
+Off-peak: 9:30 p.m. to 8:30 a.m. Monday through Friday
+All day Saturday, Sunday, and holidays
+WINTER Period B (service from November 1 through April 30):
+Partial-Peak: 8:30 a.m. to 9:30 p.m. Monday through Friday (except holidays)
+Off-Peak: 9:30 p.m. to 8:30 a.m. Monday through Friday (except holidays)
+All day Saturday, Sunday, and holidays
+*/
+
+replace peak = 1 if season == "summer" /// 
+    & hour >= 12 & hour < 18 ///
+  & (dow_num >= 1 & dow_num <= 5) 
+      
+replace partpeak = 1 if /// 
+    hour >= 8 & hour <= 12 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "winter"
+  
+replace partpeak = 0 if  /// 
+    hour == 8 & minute == 0 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "winter"
+  
+replace partpeak = 1 if /// 
+    hour >= 18 & hour <= 21 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "winter"
+  
+replace partpeak = 0 if  /// 
+    hour == 21 & minute == 30 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "winter"
+  
+ 
+replace offpeak = 1 if peak == 0 & partpeak ==0
+
+
+
+// set up the energy charge for all hours of the day
+egen peakenergy_prelim = mean(energycharge) if timeofuse == "max peak", by(rateschedule season)
+egen offpeakenergy_prelim = mean(energycharge) if timeofuse == "off-peak", by(rateschedule season)
+egen partialpeakenergy_prelim = mean(energycharge) if timeofuse == "part-peak", by(rateschedule season)
+
+
+egen peakenergy = mean(peakenergy_prelim), by(rateschedule season)
+egen offpeakenergy = mean(offpeakenergy_prelim), by(rateschedule season)
+egen partialpeakenergy = mean(partialpeakenergy_prelim), by(rateschedule season)
+
+
+replace energycharge = peakenergy if peak == 1 & tou == 1
+replace energycharge = offpeakenergy if offpeak == 1 & tou == 1
+replace energycharge = partialpeakenergy if partpeak == 1 & tou == 1
+
+drop peakenergy offpeakenergy partialpeakenergy *_prelim
+
+egen cload_prelim = mean(demandcharge), by(rateschedule season)
+replace demandcharge = cload_prelim if tou == 1
+drop cload_prelim
+
+
+drop if timeofuse == "connected load"
+
+
+drop if timeofuse == "off-peak" & offpeak != 1
+drop if timeofuse == "on-peak" & peak != 1
+drop if timeofuse == "max peak" & peak != 1
+drop if timeofuse == "part-peak" & partpeak != 1
+
+
+assert offpeak + partpeak + peak == 1 if tou == 1
+
+
+// get the start & end date for the rates
+rename file dates
+local dates = dates
+split dates, p("-")
+replace dates1 = subinstr(dates1, "ind_", "", .)
+replace dates1 = "20" + dates1
+replace dates2 = "20" + dates2
+
+gen rate_start_date = date(dates1, "YMD") 
+gen rate_end_date = date(dates2, "YMD") 
+
+format rate_start rate_end %td
+
+drop  dates1 dates2
+
+
+drop averagetotalrate  
+
+
+// organize the dataset
+order rateschedule rate_start rate_end tou season  dow_num hour minute ///
+  offpeak partpeak peak demandcharge energycharge customercharge 
+  
+
+rename demandcharge demandcharge
+rename energycharge energycharge
+rename averageratelimiter averageratelim
+cap rename ufrcredit ufrcredit
+cap rename powerfactor powerfactoradj
+
+replace rateschedule = upper(rateschedule)
+
+
+label variable rateschedule "rate name"
+label variable rate_start_date "rate period start date"
+label variable rate_end_date "rate period end date"
+label variable tou "tou rate? (1/0)"
+label variable season "summer vs winter? summer: may-oct, winter = nov-apr"
+label variable dow_num "day of week (following stata dow numbering)"
+lab define dowl 0 "sunday" 1 "monday" 2 "tuesday" 3 "wednesday" ///
+  4 "thursday" 5 "friday" 6 "saturday" 
+label values dow_num dowl
+
+label variable hour "hour of day"
+label variable minute "minute of day"
+label variable offpeak "is off peak? (1/0)"
+label variable partpeak "is partial peak? (1/0)"
+label variable peak "is peak? (1/0)"
+label variable demandcharge "demand charge ($/hp connected load per month)"
+label variable energycharge "energy charge ($/kWh)"
+label variable customercharge "customer charge ($/day)"
+label variable averageratelim "average rate limiter (??)"
+cap label variable ufrcredit "ufr credit ($/kwh)"
+cap label variable powerfactor "power factor adjustment ($/kwh/% deviation from 85% PF)"
+
+
+cap label variable pdpcharge "peak day pricing charge ($/kwh during event hours)"
+cap label variable pdpcredit "peak day pricing credit ($/kw)"
+cap label variable pdpenergycredit "peak day pricing energy credit ($/kwh)"
+
+
+drop timeofuseperiod
+duplicates drop
+
+
+compress *
+
+save "$dirpath_data_temp/cleaned/CLEANED_ind_`dates'.dta", replace
+}
+
+ 
+
+ 
+ 
+
+ 
+ 
+******* Current 
+
+
+**** BEGINNING THROUGH 100301-100430 
+qui foreach dates in "Current" {
+// read dataset in
+use "$dirpath_data_temp/industrial`dates'.dta", clear
+rename *, lower
+
+ds
+foreach var in `r(varlist)' {
+capture confirm string variable `var'
+if !_rc {
+  replace `var' = lower(`var')
+}
+}
+
+// keep only the e-20 primary
+gen rs = 0
+replace rs = 1 if strpos(rateschedule, "primary")
+replace rs = rs[_n-1] if rs == 0
+replace rs = 0 if strpos(rateschedule, "transmission")
+replace rs = rs[_n-1] if rs == 1 & rs[_n-1] != . 
+keep if rs == 1
+drop rs
+
+
+replace rateschedule = "e-20 primary"
+replace customercharge = subinstr(customercharge, "$", "", .)
+replace customercharge = subinstr(customercharge, " per day", "", .)
+destring customercharge, replace
+replace customercharge = customercharge[_n-1] if customercharge == .
+
+
+replace averageratelim = "0" if averageratelim == "-"
+destring averageratelim, replace
+egen mean_avg = mean(averageratelim), by(season)
+replace averageratelim = mean_avg
+drop mean_avg
+
+cap {
+replace ufrcredit = "0" if ufrcredit == "-"
+destring ufrcredit, replace
+egen mean_avg = mean(ufrcredit), by(season)
+replace ufrcredit = mean_avg
+drop mean_avg
+}
+
+cap {
+replace powerfactor = "0" if powerfactor == "-"
+destring powerfactor, replace
+egen mean_avg = mean(powerfactor), by(season)
+replace powerfactor = mean_avg
+drop mean_avg
+}
+
+
+
+foreach var in demandcharge energycharge  {
+ replace `var' = subinstr(`var', "-", "", .)
+ destring `var', replace
+}
+
+cap destring pdp1, replace
+
+
+cap foreach var in  pdp2 j {
+ replace `var' = subinstr(`var', "-", "", .)
+ destring `var', replace
+}
+
+
+cap {
+rename j pdpenergycredit
+replace pdp2 = -pdp2
+replace pdpenergycredit = -pdpenergycredit
+
+egen pdp_mean = mean(pdp1charges), by(rateschedule)
+replace pdp1 = pdp_mean
+drop pdp_mean
+}
+
+foreach var in demandcharge energycharge  {
+replace `var' = 0 if `var' == .
+}
+
+cap {
+pdp1 pdp2 pdpenergycredit
+}
+
+
+
+gen tou = 1
+
+// create an indicator for peak, off peak, partial peak for each hour
+gen rownr = _n if tou == 1 & timeofuseperiod != "connected load"
+expand 24 if tou == 1 & timeofuseperiod != "connected load"
+bys rownr: gen hour = _n
+replace hour = hour - 1
+expand 2 if tou == 1 & timeofuseperiod != "connected load"
+bys rownr hour: gen minute = _n
+replace minute = 0 if minute == 1
+replace minute = 30 if minute == 2
+expand 7 if tou == 1 & timeofuseperiod != "connected load"
+bys rownr hour minute: gen dow_num = _n
+replace dow_num = dow_num - 1
+// sunday = 0, monday = 1, ... saturday = 6
+
+drop rownr
+
+// create a peak flag
+gen offpeak = 0 if tou ==1 & timeofuseperiod != "connected load"
+gen partpeak = 0 if tou == 1 & timeofuseperiod != "connected load"
+gen peak = 0 if tou==1 & timeofuseperiod != "connected load"
+
+
+
+// DEFINITION OF PEAK/OFF-PEAK FROM: https://www.pge.com/tariffs/assets/pdf/tariffbook/ELEC_SCHEDS_E-20.pdf
+/*
+SUMMER Period A (Service from May 1 through October 31):
+Peak: 12:00 noon to 6:00 p.m. Monday through Friday (except holidays)
+Partial-peak: 8:30 a.m. to 12:00 noon Monday through Friday (except holidays)
+AND 6:00 p.m. to 9:30 p.m.
+Off-peak: 9:30 p.m. to 8:30 a.m. Monday through Friday
+All day Saturday, Sunday, and holidays
+WINTER Period B (service from November 1 through April 30):
+Partial-Peak: 8:30 a.m. to 9:30 p.m. Monday through Friday (except holidays)
+Off-Peak: 9:30 p.m. to 8:30 a.m. Monday through Friday (except holidays)
+All day Saturday, Sunday, and holidays
+*/
+
+replace peak = 1 if season == "summer" /// 
+    & hour >= 12 & hour < 18 ///
+  & (dow_num >= 1 & dow_num <= 5) 
+      
+replace partpeak = 1 if /// 
+    hour >= 8 & hour <= 12 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "winter"
+  
+replace partpeak = 0 if  /// 
+    hour == 8 & minute == 0 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "winter"
+  
+replace partpeak = 1 if /// 
+    hour >= 18 & hour <= 21 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "winter"
+  
+replace partpeak = 0 if  /// 
+    hour == 21 & minute == 30 ///
+  & (dow_num >= 1 & dow_num <= 5) & season == "winter"
+  
+ 
+replace offpeak = 1 if peak == 0 & partpeak ==0
+
+
+
+// set up the energy charge for all hours of the day
+egen peakenergy_prelim = mean(energycharge) if timeofuse == "max peak", by(rateschedule season)
+egen offpeakenergy_prelim = mean(energycharge) if timeofuse == "off-peak", by(rateschedule season)
+egen partialpeakenergy_prelim = mean(energycharge) if timeofuse == "part-peak", by(rateschedule season)
+
+
+egen peakenergy = mean(peakenergy_prelim), by(rateschedule season)
+egen offpeakenergy = mean(offpeakenergy_prelim), by(rateschedule season)
+egen partialpeakenergy = mean(partialpeakenergy_prelim), by(rateschedule season)
+
+
+replace energycharge = peakenergy if peak == 1 & tou == 1
+replace energycharge = offpeakenergy if offpeak == 1 & tou == 1
+replace energycharge = partialpeakenergy if partpeak == 1 & tou == 1
+
+drop peakenergy offpeakenergy partialpeakenergy *_prelim
+
+egen cload_prelim = mean(demandcharge), by(rateschedule season)
+replace demandcharge = cload_prelim if tou == 1
+drop cload_prelim
+
+
+drop if timeofuse == "connected load"
+
+
+drop if timeofuse == "off-peak" & offpeak != 1
+drop if timeofuse == "on-peak" & peak != 1
+drop if timeofuse == "max peak" & peak != 1
+drop if timeofuse == "part-peak" & partpeak != 1
+
+
+assert offpeak + partpeak + peak == 1 if tou == 1
+
+// get the start & end date for the rates
+rename file dates
+replace dates = "180301-999999"
+local dates = dates
+split dates, p("-")
+replace dates1 = "20" + dates1
+replace dates2 = "20" + dates2
+
+
+gen rate_start_date = date(dates1, "YMD") 
+gen rate_end_date = date(dates2, "YMD") 
+
+format rate_start rate_end %td
+
+drop  dates1 dates2
+
+
+drop averagetotalrate  
+
+
+// organize the dataset
+order rateschedule rate_start rate_end tou season  dow_num hour minute ///
+  offpeak partpeak peak demandcharge energycharge customercharge 
+  
+
+rename demandcharge demandcharge
+rename energycharge energycharge
+rename averageratelimiter averageratelim
+cap rename ufrcredit ufrcredit
+cap rename powerfactor powerfactoradj
+
+replace rateschedule = upper(rateschedule)
+
+
+label variable rateschedule "rate name"
+label variable rate_start_date "rate period start date"
+label variable rate_end_date "rate period end date"
+label variable tou "tou rate? (1/0)"
+label variable season "summer vs winter? summer: may-oct, winter = nov-apr"
+label variable dow_num "day of week (following stata dow numbering)"
+lab define dowl 0 "sunday" 1 "monday" 2 "tuesday" 3 "wednesday" ///
+  4 "thursday" 5 "friday" 6 "saturday" 
+label values dow_num dowl
+
+label variable hour "hour of day"
+label variable minute "minute of day"
+label variable offpeak "is off peak? (1/0)"
+label variable partpeak "is partial peak? (1/0)"
+label variable peak "is peak? (1/0)"
+label variable demandcharge "demand charge ($/hp connected load per month)"
+label variable energycharge "energy charge ($/kWh)"
+label variable customercharge "customer charge ($/day)"
+label variable averageratelim "average rate limiter (??)"
+cap label variable ufrcredit "ufr credit ($/kwh)"
+cap label variable powerfactor "power factor adjustment ($/kwh/% deviation from 85% PF)"
+
+
+cap label variable pdpcharge "peak day pricing charge ($/kwh during event hours)"
+cap label variable pdpcredit "peak day pricing credit ($/kw)"
+cap label variable pdpenergycredit "peak day pricing energy credit ($/kwh)"
+
+
+drop timeofuseperiod
+duplicates drop
+
+
+compress *
+
+save "$dirpath_data_temp/cleaned/CLEANED_ind_`dates'.dta", replace
+}
+
+ 
+
+ 
+ 
+
+ 
+******** APPEND
+clear
+set obs 1
+
+cd "$dirpath_data_temp/cleaned"
+local files: dir . files "*.dta"
+foreach f in `files' {
+ append using "`f'"
+}
+drop in 1
+
+
+cap drop dates
+foreach var of varlist demandcharge - powerfactor {
+  replace `var' = 0 if `var' == .
+}
+
+drop tou
+
+save "$dirpath_data_pge_cleaned/e20_rates.dta", replace
 
 **** CLEAN UP
 clear
