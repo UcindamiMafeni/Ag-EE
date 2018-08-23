@@ -48,7 +48,7 @@ foreach file in `files' {
 }
 
 
-/*
+
 **** LARGE AG RATES
 {
 
@@ -458,8 +458,11 @@ replace offpeak = 1 if peak == 0 & partpeak ==0 ///
 & (rateschedule == "ag-5a" | rateschedule == "ag-5b" | rateschedule == "ag-5c" | ///
   rateschedule == "ag-5d" | rateschedule == "ag-5e" | rateschedule == "ag-5f")  
 
+  
+replace timeofuse = "on-peak" if timeofuse == "max peak" | timeofuse == "on peak"
+  
 // set up the energy charge for all hours of the day
-egen peakenergy_prelim = mean(energycharge) if timeofuse == "max peak", by(rateschedule season)
+egen peakenergy_prelim = mean(energycharge) if timeofuse == "on-peak", by(rateschedule season)
 egen offpeakenergy_prelim = mean(energycharge) if timeofuse == "off-peak", by(rateschedule season)
 egen partialpeakenergy_prelim = mean(energycharge) if timeofuse == "part-peak", by(rateschedule season)
 
@@ -489,7 +492,7 @@ drop if timeofuse == "maximum"
 
 
 drop if timeofuse == "off-peak" & offpeak != 1
-drop if timeofuse == "max peak" & peak != 1
+drop if timeofuse == "on-peak" & peak != 1
 drop if timeofuse == "part-peak" & partpeak != 1
 
 
@@ -955,9 +958,12 @@ replace offpeak = 1 if peak == 0 & partpeak ==0 ///
 & (rateschedule == "ag-5a" | rateschedule == "ag-5b" | rateschedule == "ag-5c" | ///
   rateschedule == "ag-5d" | rateschedule == "ag-5e" | rateschedule == "ag-5f")  
 
+
+  
+replace timeofuse = "on-peak" if timeofuse == "max peak" | timeofuse == "on peak"
   
   // set up the energy charge for all hours of the day
-egen peakenergy_prelim = mean(energycharge) if timeofuse == "max peak", by(rateschedule season)
+egen peakenergy_prelim = mean(energycharge) if timeofuse == "on-peak", by(rateschedule season)
 egen offpeakenergy_prelim = mean(energycharge) if timeofuse == "off-peak", by(rateschedule season)
 egen partialpeakenergy_prelim = mean(energycharge) if timeofuse == "part-peak", by(rateschedule season)
 
@@ -989,7 +995,7 @@ replace rateschedule = upper(rateschedule)
 
 
 drop if timeofuse == "off-peak" & offpeak != 1
-drop if timeofuse == "max peak" & peak != 1
+drop if timeofuse == "on-peak" & peak != 1
 drop if timeofuse == "part-peak" & partpeak != 1
 
 
@@ -1459,9 +1465,9 @@ replace offpeak = 1 if peak == 0 & partpeak ==0 ///
 & (rateschedule == "ag-5a" | rateschedule == "ag-5b" | rateschedule == "ag-5c" | ///
   rateschedule == "ag-5d" | rateschedule == "ag-5e" | rateschedule == "ag-5f")  
 
-  
+replace timeofuse = "on-peak" if timeofuse == "max peak" | timeofuse == "on peak"  
 // set up the energy charge for all hours of the day
-egen peakenergy_prelim = mean(energycharge) if timeofuse == "max peak", by(rateschedule season)
+egen peakenergy_prelim = mean(energycharge) if timeofuse == "on-peak", by(rateschedule season)
 egen offpeakenergy_prelim = mean(energycharge) if timeofuse == "off-peak", by(rateschedule season)
 egen partialpeakenergy_prelim = mean(energycharge) if timeofuse == "part-peak", by(rateschedule season)
 
@@ -1491,7 +1497,7 @@ drop if timeofuse == "maximum"
 
 
 drop if timeofuse == "off-peak" & offpeak != 1
-drop if timeofuse == "max peak" & peak != 1
+drop if timeofuse == "on-peak" & peak != 1
 drop if timeofuse == "part-peak" & partpeak != 1
 
 
@@ -1971,6 +1977,8 @@ replace partpeak = 0 if ///
 replace offpeak = 1 if peak == 0 & partpeak ==0 /// 
 & (rateschedule == "ag-5a" | rateschedule == "ag-5d")  
 
+replace timeofuse = "on-peak" if timeofuse == "max peak" | timeofuse == "on peak"
+
 // set up the energy charge for all hours of the day
 egen peakenergy_prelim = mean(energycharge) if timeofuse == "on-peak", by(rateschedule season)
 egen offpeakenergy_prelim = mean(energycharge) if timeofuse == "off-peak", by(rateschedule season)
@@ -2064,7 +2072,7 @@ qui foreach dates in "100501-100531" "100601-101231" "110101-110228" "110301-111
   "160324-160731" "160801-160930" "161001-161231" "170101-170228" "170301-171231" ///
   "180101-180228" {
    
-   
+*local dates "140301-140430"   
 // read dataset in
 use "$dirpath_data_temp/smag_`dates'.dta", clear
 rename *, lower
@@ -2465,7 +2473,7 @@ replace partpeak = 0 if ///
 replace offpeak = 1 if peak == 0 & partpeak ==0 /// 
 & (rateschedule == "ag-5a" | rateschedule == "ag-5d")  
 
-
+replace timeofuse = "on-peak" if timeofuse == "max peak" | timeofuse == "on peak"
 
 // set up the energy charge for all hours of the day
 egen peakenergy_prelim = mean(energycharge) if timeofuse == "on-peak", by(rateschedule season)
@@ -2558,7 +2566,8 @@ save "$dirpath_data_temp/cleaned/CLEANED_smag_`dates'.dta", replace
   
   
 qui foreach dates in "Current" {
-   
+
+local dates "Current" 
    // read dataset in
 use "$dirpath_data_temp/smag`dates'.dta", clear
 rename *, lower
@@ -2961,6 +2970,7 @@ replace offpeak = 1 if peak == 0 & partpeak ==0 ///
 & (rateschedule == "ag-5a" | rateschedule == "ag-5d")  
 
 
+replace timeofuse = "on-peak" if timeofuse == "max peak" | timeofuse == "on peak"
 
 // set up the energy charge for all hours of the day
 egen peakenergy_prelim = mean(energycharge) if timeofuse == "on-peak", by(rateschedule season)
@@ -3081,7 +3091,7 @@ qui foreach f in `files' {
 	erase "`f'"
 }
 
-*/
+
 
 
 **** RESIDENTIAL (NON-TOU) RATE (E-1)
@@ -3588,9 +3598,10 @@ replace partpeak = 0 if  ///
 replace offpeak = 1 if peak == 0 & partpeak ==0
 
 
+replace timeofuse = "on-peak" if timeofuse == "max peak" | timeofuse == "on peak"
 
 // set up the energy charge for all hours of the day
-egen peakenergy_prelim = mean(energycharge) if timeofuse == "max peak", by(rateschedule season)
+egen peakenergy_prelim = mean(energycharge) if timeofuse == "on-peak", by(rateschedule season)
 egen offpeakenergy_prelim = mean(energycharge) if timeofuse == "off-peak", by(rateschedule season)
 egen partialpeakenergy_prelim = mean(energycharge) if timeofuse == "part-peak", by(rateschedule season)
 
@@ -3616,7 +3627,6 @@ drop if timeofuse == "connected load"
 
 drop if timeofuse == "off-peak" & offpeak != 1
 drop if timeofuse == "on-peak" & peak != 1
-drop if timeofuse == "max peak" & peak != 1
 drop if timeofuse == "part-peak" & partpeak != 1
 
 
@@ -3855,9 +3865,10 @@ replace partpeak = 0 if  ///
 replace offpeak = 1 if peak == 0 & partpeak ==0
 
 
+replace timeofuse = "on-peak" if timeofuse == "max peak" | timeofuse == "on peak"
 
 // set up the energy charge for all hours of the day
-egen peakenergy_prelim = mean(energycharge) if timeofuse == "max peak", by(rateschedule season)
+egen peakenergy_prelim = mean(energycharge) if timeofuse == "on-peak", by(rateschedule season)
 egen offpeakenergy_prelim = mean(energycharge) if timeofuse == "off-peak", by(rateschedule season)
 egen partialpeakenergy_prelim = mean(energycharge) if timeofuse == "part-peak", by(rateschedule season)
 
@@ -3883,7 +3894,6 @@ drop if timeofuse == "connected load"
 
 drop if timeofuse == "off-peak" & offpeak != 1
 drop if timeofuse == "on-peak" & peak != 1
-drop if timeofuse == "max peak" & peak != 1
 drop if timeofuse == "part-peak" & partpeak != 1
 
 
