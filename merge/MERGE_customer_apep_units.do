@@ -20,6 +20,7 @@ global dirpath_data "$dirpath/data"
 ** Load cleaned PGE customer data
 use "$dirpath_data/pge_cleaned/pge_cust_detail_20180719.dta", clear
 
+
 ** Merge in PGE meter data
 rename pge_badge_nbr pge_badge_nbrBAD
 joinby sa_uuid sp_uuid sa_sp_start sa_sp_stop using ///
@@ -32,6 +33,7 @@ assert sp_uuid!=""
 
 	// Drop bad meter ID variable held over from customer data
 drop pge_badge_nbrBAD	
+
 
 ** Merge in APEP data
 preserve
@@ -54,6 +56,7 @@ local uniq = r(unique)
 unique sp_uuid if _merge==3 & sp_uuid!=""
 di r(unique)/`uniq' // all 13314 SPs merge to an APEP test (huzZAH!)
 rename _merge merge_apep_test
+	
 	
 ** Merge in APEP project data
 joinby pge_badge_nbr using "$dirpath_data/pge_cleaned/pump_test_project_data.dta", ///
@@ -132,6 +135,7 @@ outsheet using "$dirpath_data/misc/missing_meters.csv", comma replace
 restore
 */
 
+
 ** Flag cross-sectional units that ever match to a pump test/project
 foreach v of varlist pge_badge_nbr sa_uuid sp_uuid {
 	egen MATCH_max_`v' = max(MATCH), by(`v')
@@ -171,6 +175,7 @@ sort sp_uuid sa_sp_start mtr_install_date test_date_stata
 br sp_uuid sa_uuid pge_badge_nbr sa_sp_start sa_sp_stop bill_dt_first bill_dt_last mtr_install_date ///
 	mtr_remove_date merge_apep_test test_date_stata merge_apep_proj MATCH*
 
+	
 ** Pare down duplicates by SA start/stop, bill first/last, meter install/remove, and pump test dates
 
 	// Before starting: drop APEP project data (for now), to dedupify one thing at a time
@@ -537,88 +542,159 @@ drop dup*
 	// Confirm uniqueness
 unique apeptestid_uniq
 assert r(unique)==r(N)	
+drop MATCH*
+assert sp_not_in_cust_detail==0
+drop sp_not_in_cust_detail
 
 
-asfsd	
+** Save outcome of de-dupified merge
+preserve
+keep sp_uuid sa_uuid pge_badge_nbr apeptestid apeptestid_uniq test_date_stata
+compress
+save "$dirpath_data/merged/sp_apeptest_xwalk.dta", replace
+restore
 
 
+** Merge back in APEP project data
+joinby pge_badge_nbr using "$dirpath_data/pge_cleaned/pump_test_project_data.dta", ///
+	unmatched(both)
+unique sp_uuid
+local uniq = r(unique)
+unique sp_uuid if _merge==3 & merge_apep_test==3 
+di r(unique)/`uniq'	// 708 SPs merge to an APEP project
+rename _merge merge_apep_proj
+tab merge_apep_proj // 11 project observatios that don't merge
+unique pge_badge_nbr if merge_apep_proj==2 // 11 badge numbers that don't merge
+
+preserve 
+keep if merge_apep_proj==2
+keep pge_badge_nbr
+duplicates drop
+merge 1:m pge_badge_nbr using "$dirpath_data/pge_cleaned/xwalk_sp_meter_date_20180719.dta"
+assert _merge!=3 // this confirms that all 11 badge numbers are missing from the SP-meter xwalk
+restore
+
+preserve 
+keep if merge_apep_proj==2
+keep pge_badge_nbr
+duplicates drop
+merge 1:m pge_badge_nbr using "$dirpath_data/pge_cleaned/pump_test_data.dta"
+assert _merge!=3 // this confirms that these 11 badge numbers are also missing from the APEP test dataset
+restore
+
+preserve 
+keep if merge_apep_proj==2
+keep pge_badge_nbr
+duplicates drop
+merge 1:m pge_badge_nbr using "$dirpath_data/pge_cleaned/pump_test_project_data.dta"
+tab _merge flag_apep_mismatch
+assert flag_apep_mismatch==1 if _merge==3 // these 11 badge numbers were already flagged as problematic
+restore
+
+drop if merge_apep_proj==2 // drop these 11 unusable APEP projects
 
 
-
-duplicates r sp_uuid pge_badge_nbr apeptestid_uniq
-duplicates r apeptestid_uniq apep_proj_id
-
-egen temp_spgroup = group(sp_uuid)
-egen temp_min = min(temp_spgroup), by(apeptestid_uniq)
-egen temp_max = max(temp_spgroup), by(apeptestid_uniq)
-unique apeptestid_uniq if temp_min<temp_max
-unique apeptestid_uniq
-
-egen temp_spgroup = group(sp_uuid)
-egen temp_min = min(temp_spgroup), by(pge_badge_nbr)
-egen temp_max = max(temp_spgroup), by(pge_badge_nbr)
-unique pge_badge_nbr if temp_min<temp_max
-unique pge_badge_nbr
+** Redo join at the SP level, since APEP project data might not have contemporaneously correct meters
+preserve
+keep if merge_apep_proj==3
+keep sp_uuid pge_badge_nbr apep_proj_id date_proj_finish date_test_pre date_test_post date_test_subs ///
+	 flag_date_problem flag_subs_after_proj flag_subs_before_proj est_savings_kwh_yr subsidy_proj ///
+	 iswell run flag_apep_mismatch
+rename pge_badge_nbr pge_badge_nbr_PROJ	
+duplicates drop
+tempfile proj_sp
+save `proj_sp'
+restore
+drop merge_apep_proj apep_proj_id date_proj_finish date_test_pre date_test_post date_test_subs ///
+	flag_date_problem flag_subs_after_proj flag_subs_before_proj est_savings_kwh_yr subsidy_proj ///
+	iswell run flag_apep_mismatch
+duplicates drop
+joinby sp_uuid using `proj_sp', unmatched(both)
+assert _merge!=2
+tab _merge
+rename _merge merge_apep_proj	
+unique sp_uuid 
+local uniq = r(unique)
+unique sp_uuid if merge_apep_proj==3
+di r(unique)/`uniq' // 5.5% of SPs have projects
 
 
 ** True-up APEP tests with APEP project test dates
-egen temp_sp_proj = max(merge_apep_proj==3), by(sp_uuid)
-unique sp_uuid
-local uniq = r(unique)
-unique sp_uuid if temp_sp_proj==1
-di r(unique)/`uniq'
-unique sp_uuid if apep_proj_id!=. // 361 SPs with projects
-unique sp_uuid apep_proj_id if temp_sp_proj==1 // 576 projects across these 361 SPs
-sort sp_uuid test_date_stata
-br sp_uuid test_date_stata apeptestid_uniq merge_apep_proj date_proj_finish-date_test_subs ///
-	flag_date_problem flag_subs_after_proj flag_subs_before_proj est_savings_kwh_yr subsidy_proj ///
-	iswell run flag_apep_mismatch if temp_sp_proj==1
-drop temp*	
-
-	// Left-join APEP projects on sp_uuid, in order to pare down pre/post dates
-preserve
-keep sp_uuid merge_apep_proj apep_proj_id-flag_apep_mismatch
-duplicates drop
-drop if apep_proj_id==.
-unique apep_proj_id
-assert r(unique)==r(N)
-assert merge_apep_proj==3
-drop merge_apep_proj
-unique sp_uuid
-local n_sp = r(unique)
-tempfile projs
-save `projs'
-restore
-drop merge_apep_proj apep_proj_id-flag_apep_mismatch
-joinby sp_uuid using `projs', unmatched(both)
-assert _merge!=2
-unique sp_uuid if _merge==3
-assert r(unique)==`n_sp'
-rename _merge merge_apep_proj	
 	
 	// Construct new versions of APEP project variables linked to the pump test date
 gen apep_date_test_pre = test_date_stata==date_test_pre & test_date_stata!=.
 gen apep_date_test_post = test_date_stata==date_test_post & test_date_stata!=.
 gen apep_date_test_subs = test_date_stata==date_test_subs & test_date_stata!=.
-	
-	// Duplicates drop if no dates match
-duplicates t sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj, gen(dup)
-tab dup 
-gen temp = apep_date_test_pre==1 | apep_date_test_post==1 | apep_date_test_subs==1
-egen temp_max = max(temp), by(sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj)
-unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj
+egen apep_date_test_max = rowmax(apep_date_test_*)
+egen apep_date_test_max2 = max(apep_date_test_max), by(apep_proj_id)
+sum apep_date_test_* if merge_apep_proj==3 // 
+unique apep_proj_id if merge_apep_proj==3
 local uniq = r(unique)
-drop if dup>0 & temp==0 & temp_max==1
-unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj
-assert r(unique)==`uniq'
+unique apep_proj_id if merge_apep_proj==3 & apep_date_test_max2==1
+di r(unique)/`uniq' // ALL BUT 6 APEP projects have A matching SP-DATE!!!
+
+	// Duplicates drop if no dates match 
+duplicates t sp_uuid apep_proj_id, gen(dup)
+tab dup merge_apep_proj
+br sp_uuid test_date_stata apeptestid_uniq apep_proj_id date_proj_finish-date_test_subs ///
+	apep_date* flag_apep_mismatch dup if dup>0 & merge_apep_proj==3
+gen temp = apep_date_test_max==1
+egen temp_max = max(temp), by(sp_uuid apep_proj_id)
+egen temp_min = min(temp), by(sp_uuid apep_proj_id)
+tab temp temp_max
+egen temp_max2 = max(temp), by(sp_uuid apeptestid_uniq) // to make sure we don't lose any tests outright
+unique sp_uuid apeptestid_uniq 
+local uniq1 = r(unique)
+unique sp_uuid apep_proj_id
+local uniq2 = r(unique)
+drop if dup>0 & temp==0 & temp_max==1 & temp_max2==1
+unique sp_uuid apeptestid_uniq 
+assert r(unique)==`uniq1'
+unique sp_uuid apep_proj_id
+assert r(unique)==`uniq2'
 drop dup temp*
 
 	// Remaining dups: drop project test date variables and project ID, then duplicates drop
-duplicates t sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj, gen(dup)
-tab dup 
+duplicates t sp_uuid apep_proj_id, gen(dup)
+tab dup merge_apep_proj
 br sp_uuid test_date_stata apeptestid_uniq apep_proj_id date_proj_finish-date_test_subs ///
-	flag_date_problem flag_subs_after_proj flag_subs_before_proj est_savings_kwh_yr subsidy_proj ///
-	iswell run flag_apep_mismatch if dup>0
+	apep_date* flag_apep_mismatch dup if dup>5 & merge_apep_proj==3
+	// Looks pretty good, not a ton of low-hanging fruit
+drop dup pge_badge_nbr_PROJ
+
+
+** Save dataset at the APEP project level, with merged SPs and dummies for dates matching
+preserve
+keep sp_uuid apep_proj_id-apep_date_test_max2
+keep if apep_proj_id!=.
+duplicates drop
+foreach v of varlist apep_date_test_pre apep_date_test_post apep_date_test_subs {
+	egen temp = max(`v'), by(apep_proj_id)
+	replace `v' = temp
+	drop temp
+}
+drop apep_date_test_max apep_date_test_max2
+duplicates drop
+unique apep_proj_id
+assert r(unique)==r(N)
+egen apep_date_test_max = rowmax(apep_date_test*)
+tab flag_apep_mismatch apep_date_test_max
+assert apep_date_test_max==1-flag_apep_mismatch
+drop apep_date_test_max
+la var apep_date_test_pre "Dummy for matches to APEP test on pre date"
+la var apep_date_test_post "Dummy for matches to APEP test on post date"
+la var apep_date_test_subs "Dummy for matches to APEP test on subs date"
+order sp_uuid apep_proj_id date* apep* est_savings subsidy
+sort apep_proj_id
+compress
+save "$dirpath_data/merged/apep_projects_sp_merge.dta", replace
+restore	
+
+
+
+	
+	
+	
 drop apep_date_test_pre apep_date_test_post apep_date_test_subs apep_proj_id
 unique sp_uuid apeptestid_uniq test_date_stata date_proj_finish subsidy_proj
 local uniq = r(unique)
