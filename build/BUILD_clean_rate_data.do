@@ -1595,6 +1595,8 @@ qui foreach dates in "080101-080229" "080301-080430" "080501-080930" "081001-081
    "090101-090228" "090301-090930" "091001-091231" ///
    "100101-100228" "100301-100430" {
    
+   
+*local dates  "080101-080229" 
 // read dataset in
 use "$dirpath_data_temp/smag_`dates'.dta", clear
 rename *, lower
@@ -1997,8 +1999,9 @@ replace energycharge = partialpeakenergy if partpeak == 1 & tou == 1
 drop peakenergy offpeakenergy partialpeakenergy *_prelim
 
 egen cload_prelim = mean(demandcharge) if timeofuse == "connected load", by(rateschedule season)
-replace demandcharge = cload_prelim if tou == 1
-drop cload_prelim
+egen cload  = mean(cload_prelim), by(rateschedule season)
+replace demandcharge = cload if tou == 1
+drop cload*
 
 
 drop if timeofuse == "connected load"
@@ -2493,8 +2496,10 @@ replace energycharge = partialpeakenergy if partpeak == 1 & tou == 1
 drop peakenergy offpeakenergy partialpeakenergy *_prelim
 
 egen cload_prelim = mean(demandcharge) if timeofuse == "connected load", by(rateschedule season)
-replace demandcharge = cload_prelim if tou == 1
-drop cload_prelim
+egen cload  = mean(cload_prelim), by(rateschedule season)
+replace demandcharge = cload if tou == 1
+drop cload*
+
 
 
 drop if timeofuse == "connected load"
@@ -2990,8 +2995,9 @@ replace energycharge = partialpeakenergy if partpeak == 1 & tou == 1
 drop peakenergy offpeakenergy partialpeakenergy *_prelim
 
 egen cload_prelim = mean(demandcharge) if timeofuse == "connected load", by(rateschedule season)
-replace demandcharge = cload_prelim if tou == 1
-drop cload_prelim
+egen cload  = mean(cload_prelim), by(rateschedule season)
+replace demandcharge = cload if tou == 1
+drop cload*
 
 
 drop if timeofuse == "connected load"
@@ -4670,9 +4676,10 @@ replace energycharge = partialpeakenergy if partpeak == 1 & tou == 1
 
 drop peakenergy offpeakenergy partialpeakenergy *_prelim
 
-egen cload_prelim = mean(demandcharge), by(rateschedule season)
-replace demandcharge = cload_prelim if tou == 1
-drop cload_prelim
+egen cload_prelim = mean(demandcharge) if timeofuse == "connected load", by(rateschedule season)
+egen cload  = mean(cload_prelim), by(rateschedule season)
+replace demandcharge = cload if tou == 1
+drop cload*
 
 
 drop if timeofuse == "connected load"
@@ -4936,9 +4943,11 @@ replace energycharge = partialpeakenergy if partpeak == 1 & tou == 1
 
 drop peakenergy offpeakenergy partialpeakenergy *_prelim
 
-egen cload_prelim = mean(demandcharge), by(rateschedule season)
-replace demandcharge = cload_prelim if tou == 1
-drop cload_prelim
+egen cload_prelim = mean(demandcharge) if timeofuse == "connected load", by(rateschedule season)
+egen cload  = mean(cload_prelim), by(rateschedule season)
+replace demandcharge = cload if tou == 1
+drop cload*
+
 
 
 drop if timeofuse == "connected load"
