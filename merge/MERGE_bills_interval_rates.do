@@ -38,7 +38,7 @@ append using "$dirpath_data/pge_cleaned/small_ag_rates.dta"
 replace large = 0 if large==.
 rename demandcharge demandcharge_hp // small rates: demandcharge = "$/hp per month"
 replace demandcharge_hp = 0 if demandcharge_hp==. & large==0
-la var demandcharge "Fixed charge in $/hp-month of connected load (small ag rates only)"
+la var demandcharge_hp "Fixed charge in $/hp-month of connected load (small ag rates only)"
 drop large
 rename demandcharge_large demandcharge
 unique rateschedule-peak
