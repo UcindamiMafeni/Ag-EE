@@ -33,14 +33,18 @@ if 1==0 {
 ** Load rates for both large and small farms
 use "$dirpath_data/pge_cleaned/large_ag_rates.dta", clear
 rename demandcharge demandcharge_large // large rates: demandcharge = "$/kW max (part)peak demand"
+rename pdpcredit pdpcredit_large // large rates: pdpcredit = "$/kW"
 gen large = 1
 append using "$dirpath_data/pge_cleaned/small_ag_rates.dta"
 replace large = 0 if large==.
 rename demandcharge demandcharge_hp // small rates: demandcharge = "$/hp per month"
+rename pdpcredit pdpcredit_hp // small rates: pdpcredit = "$/hp connected load"
 replace demandcharge_hp = 0 if demandcharge_hp==. & large==0
 la var demandcharge_hp "Fixed charge in $/hp-month of connected load (small ag rates only)"
+la var pdpcredit_hp "Fixed charge in $/hp-month of connected load (small ag rates only)"
 drop large
 rename demandcharge_large demandcharge
+rename pdpcredit_large pdpcredit
 unique rateschedule-peak
 assert r(unique)==r(N)
 unique rateschedule-minute
