@@ -223,8 +223,11 @@ prems <- prems[c("sp_uuid","prem_lat","prem_long","climate_zone_cd","longitude",
 ## 2.4 Deal with lat/lons that still haven't been classified
 
 #Assign edge cases
-prems$edge_sce <- as.numeric(prems$in_calif==1 & prems$in_pge==0 & prems$in_pou==0 & prems$longitude>(-120) & 
+prems$edge_sce1 <- as.numeric(prems$in_calif==1 & prems$in_pge==0 & prems$in_pou==0 & prems$longitude>(-120) & 
                              prems$longitude<(-118.5) & prems$latitude>35 & prems$latitude<37.5)
+prems$edge_sce2 <- as.numeric(prems$in_calif==1 & prems$in_pge==0 & prems$in_pou==0 & prems$longitude>(-120.5) & 
+                                prems$longitude<(-119.5) & prems$latitude>33 & prems$latitude<35)
+prems$edge_sce = prems$edge_sce1+prems$edge_sce2
 prems$edge_coast <- as.numeric(prems$in_calif==1 & prems$in_pge==0 & prems$in_pou==0 & prems$longitude>(-125) & 
                                prems$longitude<(-123) & prems$latitude>37.5 & prems$latitude<40)
 prems$edge_mid <- as.numeric(prems$in_calif==1 & prems$in_pge==0 & prems$in_pou==0 & prems$longitude>(-121.5) & 
