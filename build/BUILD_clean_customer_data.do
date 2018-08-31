@@ -880,7 +880,7 @@ replace climate_zone_cd = "Z07" if climate_zone_cd=="" // an obviously wrong Cli
 outsheet using "$dirpath_data/misc/pge_prem_coord_raw_20180827.txt", comma replace
 restore
 	
-	// run auxilary GIS script "BUILD_gis_climate_zone_20180719.R"
+	// run auxilary GIS script "BUILD_gis_climate_zone_20180827.R"
 *shell "${R_exe_path}" --vanilla <"${dirpath_code}/BUILD_gis_climate_zone_20180827.R"
 	
 	// import results from GIS script
@@ -935,9 +935,66 @@ la var missing_geocode_flag "PGE geocodes are missing"
 unique prsn_uuid sp_uuid sa_uuid
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/pge_cleaned/pge_cust_detail_20180719.dta", replace	
+save "$dirpath_data/pge_cleaned/pge_cust_detail_20180827.dta", replace	
 
 }
 
 *******************************************************************************
 *******************************************************************************
+
+** 3. Compare August 2018 vs March/July 2018
+if 1==1{
+
+** Confirm no overlap between March and August
+use "$dirpath_data/pge_cleaned/pge_cust_detail_20180322.dta", clear
+gen temp_old = 1
+append using "$dirpath_data/pge_cleaned/pge_cust_detail_20180827.dta"
+replace temp_old = 0 if temp_old==.
+unique sp_uuid sa_uuid temp_old
+assert r(unique)==r(N)
+
+duplicates t sp_uuid sa_uuid, gen(dup)
+tab dup // 36 dups
+sort sp_uuid sa_uuid temp_old
+br if dup>0
+
+duplicates t sp_uuid sa_uuid prem_lat prem_long, gen(dup2)
+assert dup2==dup
+br if dup2!=dup // 1 minor lat/lon discrepancy, nothing else to see here
+
+
+** Confirm no overlap between March and August
+use "$dirpath_data/pge_cleaned/pge_cust_detail_20180719.dta", clear
+gen temp_old = 1
+append using "$dirpath_data/pge_cleaned/pge_cust_detail_20180827.dta"
+replace temp_old = 0 if temp_old==.
+unique sp_uuid sa_uuid temp_old
+assert r(unique)==r(N)
+
+duplicates t sp_uuid sa_uuid, gen(dup)
+tab dup 
+
+unique sp_uuid sa_uuid
+assert r(unique)==r(N)
+// NO OVERLAP in SP/SA
+
+egen temp_min = min(temp_old), by(sp_uuid)
+egen temp_max = max(temp_old), by(sp_uuid)
+tab temp_min temp_max
+assert temp_min==temp_max
+// NO OVERLAP IN SPs
+
+egen temp_min2 = min(temp_old), by(sa_uuid)
+egen temp_max2 = max(temp_old), by(sa_uuid)
+tab temp_min2 temp_max2 
+// very minor overlap for SA
+
+
+}
+
+
+
+
+*******************************************************************************
+*******************************************************************************
+
