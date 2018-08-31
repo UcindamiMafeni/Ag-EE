@@ -234,6 +234,8 @@ prems$edge_mid <- as.numeric(prems$in_calif==1 & prems$in_pge==0 & prems$in_pou=
                                prems$longitude<(-120) & prems$latitude>37.5 & prems$latitude<38.1)
 prems$edge_lodi <- as.numeric(prems$in_calif==1 & prems$in_pge==0 & prems$in_pou==0 & prems$longitude>(-121.5) & 
                                prems$longitude<(-120) & prems$latitude>38.1 & prems$latitude<38.5)
+prems$edge_svp <- as.numeric(prems$in_calif==1 & prems$in_pge==0 & prems$in_pou==0 & prems$longitude>(-123) & 
+                                prems$longitude<(-121.5) & prems$latitude>37 & prems$latitude<37.5)
 
 #Plot edge cases
 ggplot() + 
@@ -247,16 +249,20 @@ ggplot() +
              alpha=1, size=1) +
   geom_point(data=prems[prems$edge_mid==1,], aes(x=longitude, y=latitude), color=rgb(0,0,0), shape=19, 
              alpha=1, size=1) +
-  geom_point(data=prems[prems$edge_lodi==1,], aes(x=longitude, y=latitude), color=rgb(0,1,1), shape=19, 
+  geom_point(data=prems[prems$edge_lodi==1,], aes(x=longitude, y=latitude), color=rgb(0,0,1), shape=19, 
+             alpha=1, size=1) +
+  geom_point(data=prems[prems$edge_svp==1,], aes(x=longitude, y=latitude), color=rgb(0,0,0), shape=19, 
              alpha=1, size=1) +
   geom_point(data=prems[(prems$in_calif==1 & prems$in_pge==0 & prems$in_pou==0 & prems$edge_sce==0 & prems$edge_coast==0 &
-                         prems$edge_mid==0 & prems$edge_lodi==0),], aes(x=longitude, y=latitude), color=rgb(1,1,0), shape=19, 
+                         prems$edge_mid==0 & prems$edge_lodi==0 & prems$edge_svp==0),], aes(x=longitude, y=latitude), color=rgb(1,1,0), shape=19, 
              alpha=1, size=1) 
 
 #Clean up and consolidate
 prems$in_pge[prems$edge_coast==1] <- 1    # single edge case is really in PGE proper
 prems$in_pou[prems$edge_lodi==1] <- 1     # Lodi Electric Utility
 prems$pou[prems$edge_lodi==1] <- "Lodi Electric Utility"
+prems$in_pou[prems$edge_svp==1] <- 1     # Silicon Valley Power
+prems$pou[prems$edge_svp==1] <- "Silicon Valley Power"
 prems$in_pou[prems$edge_mid==1] <- 1      # Area served by PGE and Merced Irrigation District
 prems$pou <- as.character(prems$pou)
 prems$pou[prems$edge_mid==1] <- "PGE/Merced Irrigation District"
