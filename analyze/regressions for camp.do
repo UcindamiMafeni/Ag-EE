@@ -67,8 +67,14 @@ save "$dirpath_data/merged/sp_hour_panel_apep2.dta", replace
 
 use "$dirpath_data/merged/sp_hour_panel_apep2.dta", clear 
 
+di c(current_time)
 reghdfe log_kwh log_p, absorb(sp_id modate hour) vce(cluster sp_id modate)
+di c(current_time)
+
+di c(current_time)
 reghdfe log_kwh log_p, absorb(sp_id##month##hour modate hour) vce(cluster sp_id modate)
+di c(current_time)
+
 reghdfe log_kwh log_p, absorb(sp_id##month##hour sp_id##c.year modate hour) vce(cluster sp_id modate)
 
 reghdfe log_kwh log_p, absorb(sp_id##month##hour sp_id##year modate##cz hour) vce(cluster sp_id modate)
