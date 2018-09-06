@@ -92,7 +92,7 @@ save "$dirpath_data/pge_cleaned/xwalk_sp_meter_date_20180322.dta", replace
 *******************************************************************************
 
 ** 2. July 2018 data pull
-{
+if 1==1{
 
 ** Load cleaned PGE bililng data
 use "$dirpath_data/pge_cleaned/pge_cust_detail_20180719.dta", clear
@@ -173,4 +173,84 @@ save "$dirpath_data/pge_cleaned/xwalk_sp_meter_date_20180719.dta", replace
 *******************************************************************************
 *******************************************************************************
 
+** 3. August 2018 data pull
+if 1==1{
+
+** Load cleaned PGE bililng data
+use "$dirpath_data/pge_cleaned/pge_cust_detail_20180827.dta", clear
+unique sp_uuid sa_uuid
+assert r(unique)==r(N)
+
+** Merge with billing data
+rename pge_badge_nbr pge_badge_nbrM
+joinby sp_uuid using "$dirpath_data/pge_cleaned/meter_badge_number_data_20180827.dta", unmatched(both)
+tab _merge
+assert pge_badge_nbrM=="" if _merge==1 // 5012 unmatched SPs; all have missing badge number
+count if _merge!=1 & pge_badge_nbrM==""
+local n = r(N) 
+count if pge_badge_nbrM=="" 
+di `n'/r(N) // 92% of SPs with missing badge number match into meter history data
+
+** Pare down duplicates
+duplicates t sp_uuid sa_uuid, gen(dup)
+tab dup
+sort sp_uuid mtr_install_date sa_sp_start
+br prsn_uuid sp_uuid sa_uuid pge_badge_nbr* sa_sp_start sa_sp_stop mtr_install_date ///
+	mtr_remove_date _merge if dup>0
+
+	// flag cases where dates match
+gen temp_dt_match_start = sa_sp_start>=mtr_install_date & _merge==3
+gen temp_dt_match_end =  sa_sp_stop<=mtr_remove_date & _merge==3
+gen temp_dt_match = temp_dt_match_start==1 & temp_dt_match_end==1
+egen temp_dt_match_max = max(temp_dt_match), by(sp_uuid sa_uuid)
+
+	// drop if dates don't match BUT dates do match for another meter, for the same SP/SA
+unique sp_uuid sa_uuid
+local uniq = r(unique)
+drop if temp_dt_match==0 & temp_dt_match_max==1
+unique sp_uuid sa_uuid
+assert r(unique)==`uniq'
+
+	// tag remaining dups
+duplicates t sp_uuid sa_uuid, gen(dup2)
+tab dup2
+br prsn_uuid sp_uuid sa_uuid pge_badge_nbr* sa_sp_start sa_sp_stop mtr_install_date ///
+	mtr_remove_date dup2 if dup2>0 & temp_dt_match_max==0
+br prsn_uuid sp_uuid sa_uuid pge_badge_nbr* sa_sp_start sa_sp_stop mtr_install_date ///
+	mtr_remove_date dup2 if dup2>0 & temp_dt_match_max==1
+br prsn_uuid sp_uuid sa_uuid pge_badge_nbr* sa_sp_start sa_sp_stop mtr_install_date ///
+	mtr_remove_date dup2 if dup2>0 & temp_dt_match_max==1 & sa_sp_stop- sa_sp_start>0	
+
+	// flag cases where dates are in lapses
+gen temp_dt_lapse_start = sa_sp_start>=mtr_lapse_start1 & _merge==3
+gen temp_dt_lapse_end =  sa_sp_stop<=mtr_lapse_stop1 & _merge==3
+gen temp_dt_lapse = temp_dt_lapse_start==1 & temp_dt_lapse_end==1
+egen temp_dt_lapse_max = max(temp_dt_lapse), by(sp_uuid sa_uuid)
+tab temp_dt_lapse temp_dt_lapse_max, missing
+count if (temp_dt_lapse==0 & temp_dt_lapse_max==0)==0
+	// fix one observation, based on dates
+egen temp_dt_lapse_min = min(temp_dt_lapse), by(sp_uuid sa_uuid)
+drop if temp_dt_lapse_min==0 & temp_dt_lapse_max==1 & mtr_install_date<sa_sp_start	
+	
+	// Not much room for further disambiguation here. And we don't really care about this
+	// crosswalk for the August data (i.e. all non-APEP SP/SAs)
+	
+** Keep only essential identifying variables for crosswalk
+keep sp_uuid sa_uuid pge_badge_nbr sa_sp_start sa_sp_stop mtr_install_date mtr_remove_date
+unique sp_uuid sa_uuid pge_badge_nbr mtr_install_date
+assert r(unique)==r(N)	
+unique sp_uuid sa_uuid pge_badge_nbr mtr_install_date
+assert r(unique)==r(N)	
+sort sp_uuid mtr_install_date sa_sp_start pge_badge_nbr sa_uuid 
+unique sp_uuid sa_uuid sa_sp_start
+
+
+** Save
+compress
+save "$dirpath_data/pge_cleaned/xwalk_sp_meter_date_20180827.dta", replace
+
+}
+
+*******************************************************************************
+*******************************************************************************
 
