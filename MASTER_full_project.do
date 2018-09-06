@@ -2,9 +2,9 @@ clear all
 version 13
 set more off
 
-*******************************************************************************
-**** MASTER DO FILE TO RUN ALL OTHER DOFILES                          *********
-*******************************************************************************
+******************************************************
+**** MASTER DO FILE TO RUN ALL OTHER DOFILES *********
+******************************************************
 
 global dirpath "S:/Matt/ag_pump"
 global dirpath_code "S:/Fiona/backup/Ag-EE"
@@ -26,6 +26,7 @@ do "$dirpath_code/build/BUILD_naics_descr.do"
 do "$dirpath_code/build/BUILD_clean_customer_data.do"
 	// calls auxilary GIS scripts "BUILD_gis_climate_zone_20180322.R" 
 	//                        and "BUILD_gis_climate_zone_20180719.R"
+	//                        and "BUILD_gis_climate_zone_20180827.R"
 
 *** 4: CLEAN BILLING DATA
 do "$dirpath_code/build/BUILD_clean_bill_data.do"
