@@ -30,11 +30,26 @@ global dirpath_data "$dirpath/data"
 
 ** Load rates for both large and small farms
 use "$dirpath_data/pge_cleaned/large_ag_rates.dta", clear
+rename demandcharge demandcharge_large // large rates: demandcharge = "$/kW max (part)peak demand"
+rename pdpcredit pdpcredit_large // large rates: pdpcredit = "$/kW"
+gen large = 1
 append using "$dirpath_data/pge_cleaned/small_ag_rates.dta"
+replace large = 0 if large==.
+rename demandcharge demandcharge_hp // small rates: demandcharge = "$/hp per month"
+rename pdpcredit pdpcredit_hp // small rates: pdpcredit = "$/hp connected load"
+replace demandcharge_hp = 0 if demandcharge_hp==. & large==0
+la var demandcharge_hp "Fixed charge in $/hp-month of connected load (small ag rates only)"
+la var pdpcredit_hp "Fixed charge in $/hp-month of connected load (small ag rates only)"
+drop large
+rename demandcharge_large demandcharge
+rename pdpcredit_large pdpcredit
 unique rateschedule-peak
 assert r(unique)==r(N)
 unique rateschedule-minute
 assert r(unique)==r(N)
+
+** Append ICE rates
+
 
 ** Populate group variable where missing
 assert group==. if tou==0
@@ -107,6 +122,142 @@ drop rate_start_date rate_end_date rate_length year temp_new*
 merge m:1 date using "$dirpath_data/pge_cleaned/event_days.dta"
 assert _merge!=2
 drop _merge
+
+** Fix holidays so all hours are off-peak (date holiday is observed!)
+	// New Year's Day, President's Day, Memorial Day, Independence Day, Labor Day, 
+	// Veterans Day, Thanksgiving Day, and Christmas Day (list of holidays from PGE)
+gen temp_holiday = 0
+
+	// New Year's Day
+replace temp_holiday = 1 if date==date("01jan2008","DMY")
+replace temp_holiday = 1 if date==date("01jan2009","DMY")
+replace temp_holiday = 1 if date==date("01jan2010","DMY")
+replace temp_holiday = 1 if date==date("31jan2010","DMY")
+replace temp_holiday = 1 if date==date("02jan2012","DMY")
+replace temp_holiday = 1 if date==date("01jan2013","DMY")
+replace temp_holiday = 1 if date==date("01jan2014","DMY")
+replace temp_holiday = 1 if date==date("01jan2015","DMY")
+replace temp_holiday = 1 if date==date("01jan2016","DMY")
+replace temp_holiday = 1 if date==date("02jan2017","DMY")
+
+	// President's Day
+replace temp_holiday = 1 if date==date("18feb2008","DMY")
+replace temp_holiday = 1 if date==date("16feb2009","DMY")
+replace temp_holiday = 1 if date==date("15feb2010","DMY")
+replace temp_holiday = 1 if date==date("21feb2011","DMY")
+replace temp_holiday = 1 if date==date("20feb2012","DMY")
+replace temp_holiday = 1 if date==date("18feb2013","DMY")
+replace temp_holiday = 1 if date==date("17feb2014","DMY")
+replace temp_holiday = 1 if date==date("16feb2015","DMY")
+replace temp_holiday = 1 if date==date("15feb2016","DMY")
+replace temp_holiday = 1 if date==date("20feb2017","DMY")
+
+	// Memorial Day
+replace temp_holiday = 1 if date==date("26may2008","DMY")
+replace temp_holiday = 1 if date==date("25may2009","DMY")
+replace temp_holiday = 1 if date==date("31may2010","DMY")
+replace temp_holiday = 1 if date==date("30may2011","DMY")
+replace temp_holiday = 1 if date==date("28may2012","DMY")
+replace temp_holiday = 1 if date==date("27may2013","DMY")
+replace temp_holiday = 1 if date==date("26may2014","DMY")
+replace temp_holiday = 1 if date==date("25may2015","DMY")
+replace temp_holiday = 1 if date==date("30may2016","DMY")
+replace temp_holiday = 1 if date==date("29may2017","DMY")
+
+	// Independence Day
+replace temp_holiday = 1 if date==date("04jul2008","DMY")
+replace temp_holiday = 1 if date==date("03jul2009","DMY")
+replace temp_holiday = 1 if date==date("04jul2010","DMY")
+replace temp_holiday = 1 if date==date("04jul2011","DMY")
+replace temp_holiday = 1 if date==date("04jul2012","DMY")
+replace temp_holiday = 1 if date==date("04jul2013","DMY")
+replace temp_holiday = 1 if date==date("04jul2014","DMY")
+replace temp_holiday = 1 if date==date("03jul2015","DMY")
+replace temp_holiday = 1 if date==date("04jul2016","DMY")
+replace temp_holiday = 1 if date==date("04jul2017","DMY")
+
+	// Labor Day
+replace temp_holiday = 1 if date==date("01sep2008","DMY")
+replace temp_holiday = 1 if date==date("07sep2009","DMY")
+replace temp_holiday = 1 if date==date("06sep2010","DMY")
+replace temp_holiday = 1 if date==date("05sep2011","DMY")
+replace temp_holiday = 1 if date==date("03sep2012","DMY")
+replace temp_holiday = 1 if date==date("02sep2013","DMY")
+replace temp_holiday = 1 if date==date("01sep2014","DMY")
+replace temp_holiday = 1 if date==date("07sep2015","DMY")
+replace temp_holiday = 1 if date==date("05sep2016","DMY")
+replace temp_holiday = 1 if date==date("04sep2017","DMY")
+
+	// Veteran's Day
+replace temp_holiday = 1 if date==date("11nov2008","DMY")
+replace temp_holiday = 1 if date==date("11nov2009","DMY")
+replace temp_holiday = 1 if date==date("11nov2010","DMY")
+replace temp_holiday = 1 if date==date("11nov2011","DMY")
+replace temp_holiday = 1 if date==date("11nov2012","DMY")
+replace temp_holiday = 1 if date==date("11nov2013","DMY")
+replace temp_holiday = 1 if date==date("11nov2014","DMY")
+replace temp_holiday = 1 if date==date("11nov2015","DMY")
+replace temp_holiday = 1 if date==date("11nov2016","DMY")
+replace temp_holiday = 1 if date==date("10nov2017","DMY")
+
+	// Thanksgiving Day
+replace temp_holiday = 1 if date==date("27nov2008","DMY")
+replace temp_holiday = 1 if date==date("26nov2009","DMY")
+replace temp_holiday = 1 if date==date("25nov2010","DMY")
+replace temp_holiday = 1 if date==date("24nov2011","DMY")
+replace temp_holiday = 1 if date==date("22nov2012","DMY")
+replace temp_holiday = 1 if date==date("28nov2013","DMY")
+replace temp_holiday = 1 if date==date("27nov2014","DMY")
+replace temp_holiday = 1 if date==date("26nov2015","DMY")
+replace temp_holiday = 1 if date==date("24nov2016","DMY")
+replace temp_holiday = 1 if date==date("23nov2017","DMY")
+
+	// Christmas Day
+replace temp_holiday = 1 if date==date("25dec2008","DMY")
+replace temp_holiday = 1 if date==date("25dec2009","DMY")
+replace temp_holiday = 1 if date==date("24dec2010","DMY")
+replace temp_holiday = 1 if date==date("26dec2011","DMY")
+replace temp_holiday = 1 if date==date("25dec2012","DMY")
+replace temp_holiday = 1 if date==date("25dec2013","DMY")
+replace temp_holiday = 1 if date==date("25dec2014","DMY")
+replace temp_holiday = 1 if date==date("25dec2015","DMY")
+replace temp_holiday = 1 if date==date("26dec2016","DMY")
+replace temp_holiday = 1 if date==date("25dec2017","DMY")
+
+	// Calculate offpeak price per kWh for the day of each holiday
+egen double temp1 = mean(energycharge) if offpeak==1 & partpeak==0 & peak==0 & temp_holiday==1, ///
+	by(rateschedule tou group date)
+egen double temp2 = mean(temp1) if temp_holiday==1, by(rateschedule tou group date)
+egen double temp3 = sd(energycharge) if offpeak==1 & partpeak==0 & peak==0 & temp_holiday==1, ///
+	by(rateschedule tou group date)
+assert round(temp3,1e-6)==0 | temp3==. // confirm no variation in offpeak price within day/rate/group
+assert temp2!=. if temp_holiday==1 & tou==1
+
+	// Calculate offpeak price per kW for the day of each holiday
+egen double temp4 = mean(demandcharge) if offpeak==1 & partpeak==0 & peak==0 & temp_holiday==1, ///
+	by(rateschedule tou group date)
+egen double temp5 = mean(temp4) if temp_holiday==1, by(rateschedule tou group date)
+egen double temp6 = sd(demandcharge) if offpeak==1 & partpeak==0 & peak==0 & temp_holiday==1, ///
+	by(rateschedule tou group date)
+assert round(temp6,1e-6)==0 | temp6==. // confirm no variation in offpeak price within day/rate/group
+assert temp5!=. if temp_holiday==1 & tou==1 & inlist(substr(rateschedule,-1,1),"B","C","E","F") 
+	// only large ag rates have demand charges
+
+	// Assign offpeak prices for all hours of all holidays
+replace energycharge = temp2 if temp_holiday==1 & tou==1 & temp2!=.
+replace demandcharge = temp5 if temp_holiday==1 & tou==1 & temp5!=. & inlist(substr(rateschedule,-1,1),"B","C","E","F")
+replace offpeak = 1 if temp_holiday==1 & tou==1
+replace partpeak = 0 if temp_holiday==1 & tou==1
+replace peak = 0 if temp_holiday==1 & tou==1
+
+	// Confirm that holidays never coincide with Event Days
+assert event_day_biz==. & event_day_res==. if temp_holiday==1	
+
+	// Clean up
+rename temp_holiday holiday
+la var holiday "Indicator for observed holiday (no peaks or partpeaks)"	
+drop temp*	
+
 
 ** Code up marginal price per kWh
 gen p_kwh = .
