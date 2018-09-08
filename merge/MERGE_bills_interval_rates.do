@@ -54,6 +54,7 @@ append using "$dirpath_data/pge_cleaned/ice_rates.dta"
 replace demandcharge = demandchargekw if rateschedule=="AG-ICE" & demandcharge==.
 replace energycharge = energychargekwh if rateschedule=="AG-ICE" & energycharge==.
 drop demandchargekw energychargekwh
+replace pdpcharge = 0 if pdpcharge==. & rateschedule=="AG-ICE"
 unique rateschedule-peak
 assert r(unique)==r(N)
 unique rateschedule-minute
@@ -260,6 +261,7 @@ drop temp*
 ** Save as working file
 rename rateschedule rt_sched_cd
 replace pdpenergycredit = 0 if pdpenergycredit==.
+replace pdpenergycredit = 0 if pdpenergycredit==.
 unique rt_sched_cd group date hour
 assert r(unique)==r(N)
 compress
@@ -271,7 +273,7 @@ save "$dirpath_data/merged/ag_rates_for_merge.dta", replace
 *******************************************************************************
 
 ** 2. Merge in billing/interval data, looping over rates (MARCH DATA)
-if 1==0 {
+if 1==1 {
 
 local tag = "20180322"
 
@@ -428,7 +430,8 @@ forvalues YM = `YM_min'/`YM_max' {
 	drop temp
 
 	** Collapse down from hourly observations, to expedite the next few steps
-	drop date hour kwh tou p_kwh energycharge pdpcharge pdpenergycredit event_day* bill_length holiday
+	drop date hour kwh tou p_kwh energycharge pdpcharge pdpenergycredit event_day* bill_length ///
+		holiday demandchage_hp pdpcredit_hp
 	duplicates drop sa_uuid bill_start_dt group offpeak partpeak peak, force
 		// all I need here is SA-bill-group-offpeak/partpeak/peak to build up
 		// group-specific fixed charges
@@ -708,7 +711,8 @@ forvalues YM = `YM_min'/`YM_max' {
 	drop temp
 
 	** Collapse down from hourly observations, to expedite the next few steps
-	drop date hour kwh tou p_kwh energycharge pdpcharge pdpenergycredit event_day* bill_length holiday
+	drop date hour kwh tou p_kwh energycharge pdpcharge pdpenergycredit event_day* bill_length ///
+		holiday demandchage_hp pdpcredit_hp
 	duplicates drop sa_uuid bill_start_dt group offpeak partpeak peak, force
 		// all I need here is SA-bill-group-offpeak/partpeak/peak to build up
 		// group-specific fixed charges
@@ -989,7 +993,8 @@ forvalues YM = `YM_min'/`YM_max' {
 	drop temp
 
 	** Collapse down from hourly observations, to expedite the next few steps
-	drop date hour kwh tou p_kwh energycharge pdpcharge pdpenergycredit event_day* bill_length holiday
+	drop date hour kwh tou p_kwh energycharge pdpcharge pdpenergycredit event_day* bill_length ///
+		holiday demandchage_hp pdpcredit_hp
 	duplicates drop sa_uuid bill_start_dt group offpeak partpeak peak, force
 		// all I need here is SA-bill-group-offpeak/partpeak/peak to build up
 		// group-specific fixed charges
