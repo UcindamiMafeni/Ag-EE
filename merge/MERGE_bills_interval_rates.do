@@ -431,7 +431,7 @@ forvalues YM = `YM_min'/`YM_max' {
 
 	** Collapse down from hourly observations, to expedite the next few steps
 	drop date hour kwh tou p_kwh energycharge pdpcharge pdpenergycredit event_day* bill_length ///
-		holiday demandchage_hp pdpcredit_hp
+		holiday demandcharge_hp pdpcredit_hp
 	duplicates drop sa_uuid bill_start_dt group offpeak partpeak peak, force
 		// all I need here is SA-bill-group-offpeak/partpeak/peak to build up
 		// group-specific fixed charges
@@ -712,7 +712,7 @@ forvalues YM = `YM_min'/`YM_max' {
 
 	** Collapse down from hourly observations, to expedite the next few steps
 	drop date hour kwh tou p_kwh energycharge pdpcharge pdpenergycredit event_day* bill_length ///
-		holiday demandchage_hp pdpcredit_hp
+		holiday demandcharge_hp pdpcredit_hp
 	duplicates drop sa_uuid bill_start_dt group offpeak partpeak peak, force
 		// all I need here is SA-bill-group-offpeak/partpeak/peak to build up
 		// group-specific fixed charges
@@ -994,7 +994,7 @@ forvalues YM = `YM_min'/`YM_max' {
 
 	** Collapse down from hourly observations, to expedite the next few steps
 	drop date hour kwh tou p_kwh energycharge pdpcharge pdpenergycredit event_day* bill_length ///
-		holiday demandchage_hp pdpcredit_hp
+		holiday demandcharge_hp pdpcredit_hp
 	duplicates drop sa_uuid bill_start_dt group offpeak partpeak peak, force
 		// all I need here is SA-bill-group-offpeak/partpeak/peak to build up
 		// group-specific fixed charges
