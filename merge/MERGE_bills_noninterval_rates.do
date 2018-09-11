@@ -12,7 +12,6 @@ global dirpath_data "$dirpath/data"
 	***** COME BACK AND FIX THIS STUFF LATER:
 	***** 1. Assign SAs to the proper groups 
 	***** 2. Fix rate AG-4B!!
-	***** 3. Get AG-ICE rates
 
 *******************************************************************************
 *******************************************************************************
@@ -81,6 +80,9 @@ use "$dirpath_data/pge_cleaned/billing_data_20180719.dta", clear
 gen pull = "20180719"
 merge 1:1 sa_uuid bill_start_dt using "$dirpath_data/pge_cleaned/billing_data_20180322.dta"
 replace pull = "20180322" if _merge==2
+drop _merge
+merge 1:1 sa_uuid bill_start_dt using "$dirpath_data/pge_cleaned/billing_data_20180827.dta"
+replace pull = "20180827" if _merge==2
 drop _merge
 
 ** Keep subset of bills that haven't already merged into rate data
