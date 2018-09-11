@@ -273,7 +273,7 @@ save "$dirpath_data/merged/ag_rates_for_merge.dta", replace
 *******************************************************************************
 
 ** 2. Merge in billing/interval data, looping over rates (MARCH DATA)
-if 1==1 {
+if 1==0 {
 
 local tag = "20180322"
 
@@ -1131,13 +1131,13 @@ assert _merge!=3 // because Step 2 above drops SAs in both data pulls to save ti
 replace pull = "20180322" if _merge==2
 drop _merge
 merge 1:1 sa_uuid bill_start_dt group using "$dirpath_data/merged/bills_rates_constructed_20180827.dta"
-assert _merge!=3 // confirm disjoint data pull
+unique sa_uuid if _merge==3 // 38 SAs overlap in otherwise disjoint data pulls
 replace pull = "20180827" if _merge==2
 drop _merge
 
 ** Check flags for peak/partial peak demand that were constructed (because missing for bill)
 gen month = month(bill_start_dt)
-tab flag_max_demand_constr, missing // missing for 54%, which means it was never created in the first place
+tab flag_max_demand_constr, missing // missing for 68%, which means it was never created in the first place
 replace flag_max_demand_constr = 0 if flag_max_demand_constr==.
 tab month flag_peak_demand_constr, missing // missing for winter bills where NO bills starting in that month extended into summer
 replace flag_peak_demand_constr = 0 if flag_peak_demand_constr==.
@@ -1215,6 +1215,13 @@ assert _merge>=3 if  pull=="20180322" & flag_interval_merge==1 & ///
 drop if _merge==2 // keep only bills with interval data (for this merge file)
 drop _merge
 
+merge 1:1 sa_uuid bill_start_dt using "$dirpath_data/pge_cleaned/billing_data_20180827.dta", update
+assert _merge!=1 if pull=="20180827"
+assert _merge>=3 if  pull=="20180827" & flag_interval_merge==1 & ///
+	regexm(rt_sched_cd,"AG")==1 
+drop if _merge==2 // keep only bills with interval data (for this merge file)
+drop _merge
+
 la var pull "Which data pull does this SA come from?"
 
 unique sa_uuid bill_start_dt
@@ -1224,46 +1231,46 @@ assert r(unique)==r(N)
 gen temp_bad_bill_match = total_bill_amount==. | total_bill_amount_constr==. | ///
 	total_bill_amount/total_bill_amount_constr > 5 | ///
 	total_bill_amount_constr/total_bill_amount > 5 
-tab temp_bad_bill_match // 3.37% (not great, not terrible)
-tab temp_bad_bill_match if flag_interval_merge==1 & flag_interval_disp20==0 // 2.98%
+tab temp_bad_bill_match // 3.13% (not great, not terrible)
+tab temp_bad_bill_match if flag_interval_merge==1 & flag_interval_disp20==0 // 2.74%
 tab temp_bad_bill_match if flag_interval_merge==1 & flag_interval_disp20==0 & ///
-	flag_nem==0 // 2.93%
+	flag_nem==0 // 2.67%
 tab temp_bad_bill_match if flag_interval_merge==1 & flag_interval_disp20==0 & ///
-	flag_nem==0 & flag_bad_tariff==0 // 2.93% (these basically all got dropped in interval merge)
+	flag_nem==0 & flag_bad_tariff==0 // 2.67% (these basically all got dropped in interval merge)
 tab temp_bad_bill_match if flag_interval_merge==1 & flag_interval_disp20==0 & ///
-	flag_nem==0 & flag_bad_tariff==0 & flag_multi_tariff==0 // 2.94% (5x threshold too big to matter here)
+	flag_nem==0 & flag_bad_tariff==0 & flag_multi_tariff==0 // 2.67% (5x threshold too big to matter here)
 tab temp_bad_bill_match if flag_interval_merge==1 & flag_interval_disp20==0 & ///
 	flag_nem==0 & flag_bad_tariff==0 & flag_multi_tariff==0 & flag_dup_bad_kwh==0 & ///
 	flag_dup_double_overlap==0 & flag_dup_partial_overlap==0 & flag_dup_overlap_missing==0 
-	// 2.94% (very few obs meet these added criteria after interval merge)
+	// 2.67% (very few obs meet these added criteria after interval merge)
 tab temp_bad_bill_match if flag_interval_merge==1 & flag_interval_disp20==0 & ///
 	flag_nem==0 & flag_bad_tariff==0 & flag_multi_tariff==0 & flag_dup_bad_kwh==0 & ///
 	flag_dup_double_overlap==0 & flag_dup_partial_overlap==0 & flag_dup_overlap_missing==0 & ///
-	flag_max_demand_constr+flag_peak_demand_const+flag_partpeak_demand_constr==0 // 3.62% (this is surprising!)
+	flag_max_demand_constr+flag_peak_demand_const+flag_partpeak_demand_constr==0 // 3.19% (this is surprising!)
 tab temp_bad_bill_match if flag_interval_merge==1 & flag_interval_disp20==0 & ///
 	flag_nem==0 & flag_bad_tariff==0 & flag_multi_tariff==0 & flag_dup_bad_kwh==0 & ///
 	flag_dup_double_overlap==0 & flag_dup_partial_overlap==0 & flag_dup_overlap_missing==0 & ///
 	flag_max_demand_constr+flag_peak_demand_const+flag_partpeak_demand_constr==0 & ///
-	flag_short_bill==0 & flag_long_bill==0 // 3.56% (not much difference)
+	flag_short_bill==0 & flag_long_bill==0 // 3.13% (not much difference)
 tab temp_bad_bill_match if flag_interval_merge==1 & flag_interval_disp20==0 & ///
 	flag_nem==0 & flag_bad_tariff==0 & flag_multi_tariff==0 & flag_dup_bad_kwh==0 & ///
 	flag_dup_double_overlap==0 & flag_dup_partial_overlap==0 & flag_dup_overlap_missing==0 & ///
 	flag_max_demand_constr+flag_peak_demand_const+flag_partpeak_demand_constr==0 & ///
 	flag_short_bill==0 & flag_long_bill==0 & flag_first_bill==0 & flag_last_bill==0 
-	// 3.56% (not much difference)
+	// 3.14% (not much difference)
 tab temp_bad_bill_match if flag_interval_merge==1 & flag_interval_disp20==0 & ///
 	flag_nem==0 & flag_bad_tariff==0 & flag_multi_tariff==0 & flag_dup_bad_kwh ==0 & ///
 	flag_dup_double_overlap==0 & flag_dup_partial_overlap==0 & flag_dup_overlap_missing==0 & ///
 	flag_max_demand_constr+flag_peak_demand_const+flag_partpeak_demand_constr==0 & ///
 	flag_short_bill==0 & flag_long_bill==0 & flag_first_bill==0 & flag_last_bill==0 & ///
-	total_bill_kwh>0 & total_bill_kwh!=. // 1.09% (zero kWh bills are most of the problem!)
+	total_bill_kwh>0 & total_bill_kwh!=. // 0.96% (zero kWh bills are most of the problem!)
 
 gen temp_regular_bill = flag_interval_merge==1 & flag_interval_disp20==0 & ///
 	flag_nem==0 & flag_bad_tariff==0 & flag_multi_tariff==0 & flag_dup_bad_kwh==0 & ///
 	flag_dup_double_overlap==0 & flag_dup_partial_overlap==0 & flag_dup_overlap_missing==0 & ///
 	flag_max_demand_constr+flag_peak_demand_const+flag_partpeak_demand_constr==0 & ///
 	flag_short_bill==0 & flag_long_bill==0 & flag_first_bill==0 & flag_last_bill==0 
-tab temp_regular_bill // 67.6% have no reason to suspect a problem
+tab temp_regular_bill // 69.8% have no reason to suspect a problem
 gen temp_year = year(bill_start_dt)
 tabstat temp_bad_bill_match, by(temp_year) 
 tabstat temp_bad_bill_match if temp_regular_bill==1, by(temp_year) 
@@ -1349,7 +1356,7 @@ twoway (scatter total_bill_amount_constr total_bill_amount ///
 		if temp_regular_bill==1 & total_bill_kwh!=0 & total_bill_kwh!=. & rt_sched_cd=="AG-4B" ///
 		& inlist(month(bill_start_dt),5,6,7,8,9,10) & inrange(year(bill_start_dt),2011,2015), msize(vsmall)) ///
 		(line total_bill_amount total_bill_amount if temp_regular_bill==1 & total_bill_kwh!=0 & total_bill_kwh!=. ///
-		& rt_sched_cd=="AG-4B" && inrange(year(bill_start_dt),2011,2015), msize(vsmall))///
+		& rt_sched_cd=="AG-4B" && inrange(year(bill_start_dt),2011,2015), msize(vsmall)) ///
 	, ///
 	title("AG-4B, Summer")	
 	
@@ -1372,7 +1379,7 @@ twoway (scatter total_bill_amount_constr total_bill_amount ///
 preserve
 gen temp_modate = ym(year(bill_start_dt),month(bill_start_dt))
 gen temp_month = month(bill_start_dt)
-gen temp_in_corr = temp_regular_bill2==1 & total_bill_kwh!=0 & total_bill_kwh!=. & rt_sched_cd=="AG-4D"
+gen temp_in_corr = temp_regular_bill2==1 & total_bill_kwh!=0 & total_bill_kwh!=. & rt_sched_cd=="AG-4B"
 drop if temp_in_corr==0
 *gsort temp_modate total_bill_amount_constr total_bill_amount
 *egen temp_corr = corr(total_bill_amount_constr total_bill_amount), by(temp_modate)
@@ -1428,15 +1435,14 @@ foreach tag in "20180322" "20180719" "20180827" {
 	keep if pull=="`tag'"
 	merge 1:m sa_uuid bill_start_dt group using "$dirpath_data/merged/bills_rates_constructed_`tag'.dta"
 	assert _merge!=1
-	assert inlist(rt_sched_cd,"AG-RA","AG-RB","AG-VA","AG-VB") if _merge==2
-	assert _merge==3 if !inlist(rt_sched_cd,"AG-RA","AG-RB","AG-VA","AG-VB")
+	tab rt_sched_cd if _merge==2
 	unique sa_uuid bill_start_dt
 	local uniq = r(unique)
 	drop if _merge==2
-	drop _merge==2
-	unique sa_uuid bill_start_st
+	drop _merge
+	unique sa_uuid bill_start_dt
 	assert r(unique)==r(N)
-	assert r(unique)==`uniq'
+	assert r(unique)==`uniq' | "`tag'"=="20180827" // a few overlapping SAs get dropped in the August pull
 	compress
 	save "$dirpath_data/merged/bills_rates_constructed_`tag'.dta", replace
 }
@@ -1471,7 +1477,7 @@ save "$dirpath_data/merged/hourly_with_prices_`tag'.dta", replace
 *******************************************************************************
 
 ** 8. Remove unmatched rate groups from hourly dataset (JULY DATA)
-if 1==0 {
+if 1==1 {
 local tag = "20180719"
 
 use "$dirpath_data/merged/bills_rates_constructed.dta", clear
@@ -1495,7 +1501,7 @@ save "$dirpath_data/merged/hourly_with_prices_`tag'.dta", replace
 *******************************************************************************
 
 ** 9. Remove unmatched rate groups from hourly dataset (JULY DATA)
-if 1==0 {
+if 1==1 {
 local tag = "20180827"
 
 use "$dirpath_data/merged/bills_rates_constructed.dta", clear
