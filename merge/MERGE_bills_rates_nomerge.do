@@ -9,9 +9,8 @@ set more off
 	***** COME BACK AND FIX THIS STUFF LATER:
 	***** 1. Assign SAs to groups, when we know the groups
 	***** 2. Fix rate AG-4B!!
-	***** 3. Get AG-ICE rates
-	***** 4. DOUBLE CHECK LIST OF EVENT DAYS
-	***** 5. Fix monthified to expand to the correct *days* within a month
+	***** 3. DOUBLE CHECK LIST OF EVENT DAYS
+	***** 4. Fix monthified to expand to the correct *days* within a month
 
 ** This script assigns min/max/average prices to ALL bills, not by merging into
 ** AMI data or taking averages. Rather, it takes prices *directly* from rate
@@ -49,11 +48,20 @@ unique rateschedule-minute
 assert r(unique)==r(N)
 
 ** Append ICE rates
-
+append using "$dirpath_data/pge_cleaned/ice_rates.dta"
+replace demandcharge = demandchargekw if rateschedule=="AG-ICE" & demandcharge==.
+replace energycharge = energychargekwh if rateschedule=="AG-ICE" & energycharge==.
+drop demandchargekw energychargekwh
+replace pdpcharge = 0 if pdpcharge==. & rateschedule=="AG-ICE"
+unique rateschedule-peak
+assert r(unique)==r(N)
+unique rateschedule-minute
+assert r(unique)==r(N)
 
 ** Populate group variable where missing
 assert group==. if tou==0
 replace group = 1 if group==. & tou==0
+replace group = 1 if group==. & rateschedule=="AG-ICE"
 assert group!=.
 
 ** Collapse from 30 min to 1 hour (which is the resolution of our AMI data)
@@ -343,11 +351,15 @@ gen pull = "20180719"
 merge 1:1 sa_uuid bill_start_dt using "$dirpath_data/pge_cleaned/billing_data_20180322.dta"
 replace pull = "20180322" if _merge==2
 drop _merge
+merge 1:1 sa_uuid bill_start_dt using "$dirpath_data/pge_cleaned/billing_data_20180827.dta"
+replace pull = "20180827" if _merge==2
+drop _merge
 
 ** Prep for merge into rate schedule data
 replace rt_sched_cd = subinstr(rt_sched_cd,"H","",1) if substr(rt_sched_cd,1,1)=="H"
 replace rt_sched_cd = subinstr(rt_sched_cd,"AG","AG-",1) if substr(rt_sched_cd,1,2)=="AG"
 drop if substr(rt_sched_cd,1,2)!="AG"
+drop if substr(rt_sched_cd,1,4)=="AG-6"
 
 ** Keep only essential variables (for purposes of this script)
 keep sa_uuid bill_start_dt bill_end_dt bill_length rt_sched_cd pull
@@ -385,7 +397,7 @@ drop temp_new temp_wt
 
 ** Merge into averge daily rates data
 merge m:1 rt_sched_cd date using "$dirpath_data/merged/ag_rates_avg_by_day.dta"
-assert date>date("01sep2017","DMY") if _merge==2
+assert (date>date("01sep2017","DMY") | year(date)==2007) if _merge==2
 drop if _merge==2
 
 ** Collapse back to bills
@@ -418,11 +430,15 @@ gen pull = "20180719"
 merge 1:1 sa_uuid modate using "$dirpath_data/pge_cleaned/billing_data_monthified_20180322.dta"
 replace pull = "20180322" if _merge==2
 drop _merge
+merge 1:1 sa_uuid modate using "$dirpath_data/pge_cleaned/billing_data_monthified_20180827.dta"
+replace pull = "20180827" if _merge==2
+drop _merge
 
 ** Prep for merge into rate schedule data
 replace rt_sched_cd = subinstr(rt_sched_cd,"H","",1) if substr(rt_sched_cd,1,1)=="H"
 replace rt_sched_cd = subinstr(rt_sched_cd,"AG","AG-",1) if substr(rt_sched_cd,1,2)=="AG"
 drop if substr(rt_sched_cd,1,2)!="AG"
+drop if substr(rt_sched_cd,1,4)=="AG-6"
 
 ** Keep only essential variables (for purposes of this script)
 keep sa_uuid modate days day_first day_last rt_sched_cd pull
@@ -450,7 +466,7 @@ assert r(unique)==r(N)
 
 ** Merge into averge daily rates data
 merge m:1 rt_sched_cd date using "$dirpath_data/merged/ag_rates_avg_by_day.dta"
-assert date>date("01sep2017","DMY") if _merge==2
+assert (date>date("01sep2017","DMY") | year(date)==2007) if _merge==2
 drop if _merge==2
 
 ** Collapse back to bills
