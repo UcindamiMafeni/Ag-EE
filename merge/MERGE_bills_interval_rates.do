@@ -1477,7 +1477,7 @@ save "$dirpath_data/merged/hourly_with_prices_`tag'.dta", replace
 *******************************************************************************
 
 ** 8. Remove unmatched rate groups from hourly dataset (JULY DATA)
-if 1==1 {
+if 1==0 {
 local tag = "20180719"
 
 use "$dirpath_data/merged/bills_rates_constructed.dta", clear
@@ -1507,16 +1507,16 @@ local tag = "20180827"
 use "$dirpath_data/merged/bills_rates_constructed.dta", clear
 keep if pull=="`tag'"
 keep sa_uuid bill_start_dt group
+unique sa_uuid bill_start_dt
+assert r(unique)==r(N)
 merge 1:m sa_uuid bill_start_dt group using "$dirpath_data/merged/hourly_with_prices_`tag'.dta"
 assert _merge!=1
-unique sa_uuid date hour
-local uniq = r(unique)
 drop if _merge==2
 drop _merge
+duplicates drop sa_uuid date hour, force 
 unique sa_uuid date hour
-assert r(unique)==`uniq'
+assert r(unique)==r(N)
 compress
-duplicates drop sa_uuid date hour, force // for some reason there are still a few dups?
 save "$dirpath_data/merged/hourly_with_prices_`tag'.dta", replace
 
 }
