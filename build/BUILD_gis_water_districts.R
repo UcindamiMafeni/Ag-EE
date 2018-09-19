@@ -1,6 +1,6 @@
 #######################################################
-#  Script to validate lat/lon coordinates from PGE    #
-#       data, based on (repoted) CA climate zones     #
+#  Script to assign SP premises and APEP pumps to     #
+#  California water district polygons                 #
 ####################################################### 
 rm(list = ls())
 
