@@ -142,6 +142,7 @@ replace wdist_area_sqmi = nearestwdist_area_sqmi if nearestwdist_area_sqmi!=. & 
 
 	// Drop nearest water district variables
 drop nearestwdist*	
+
 	// Label
 la var wdist "Water district (assigned by GIS)"	
 la var wdist_dist_miles "Distance to water district (cut off at 2.13 miles)"	
@@ -291,6 +292,141 @@ unique apeptestid test_date_stata crop
 assert r(unique)==r(N)
 compress
 save "$dirpath_data/pge_cleaned/apep_pump_gis.dta", replace
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 6. Assign SP coordinates to counties
+if 1==1{
+
+** Run auxilary GIS script "BUILD_gis_counties.R"
+
+** Import results from GIS script
+insheet using "$dirpath_data/misc/pge_prem_coord_polygon_counties.txt", double delim("%") clear
+drop prem_lat prem_lon longitude latitude bad_geocode_flag
+
+** Clean GIS variables
+tostring sp_uuid pull, replace
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+assert length(sp_uuid)==10 & real(sp_uuid)!=.
+unique sp_uuid pull
+assert r(unique)==r(N)
+
+foreach v of varlist county county_id {
+	replace `v' = "" if `v'=="NA"
+}
+
+	// Format county_id as FIPS code
+rename county_id county_fips
+replace county_fips =  "0" + county_fips if length(county_fips)<3 & in_county==1
+replace county_fips =  "0" + county_fips if length(county_fips)<3 & in_county==1
+assert length(county_fips)==3 if in_county==1
+
+	// Drop extraneous in_county indicator
+assert county=="" & county_fips=="" if in_county==0
+assert county!="" & county_fips!="" if in_county==1
+drop in_county
+	
+	// Label
+la var county "County name (assigned by GIS)"	
+la var county_fips "County FIPS (assigned by GIS)"	
+	
+	// Confirm uniqueness
+preserve
+keep county county_fips
+duplicates drop
+unique county_fips
+assert r(unique)==r(N)	
+restore
+	
+	// Save
+tempfile gis_out
+save `gis_out'
+
+** Merge results into merge back into main dataset
+use "$dirpath_data/pge_cleaned/sp_premise_gis.dta", clear
+merge 1:1 sp_uuid pull using `gis_out'	
+assert _merge!=2 // confirm everything merges in
+assert _merge==1 if prem_lat==. | prem_lon==. // confirm nothing merges if it has missing lat/lon
+assert (prem_lat==. | prem_lon==.) if _merge==1	// confirm that all non-merges have missing lat/lon
+drop _merge
+
+** Confirm uniqueness and save
+unique sp_uuid pull
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/pge_cleaned/sp_premise_gis.dta", replace	
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 7. Assign APEP coordinates to counties
+if 1==1{
+
+** Run auxilary GIS script "BUILD_gis_counties.R"
+
+** Import results from GIS script
+insheet using "$dirpath_data/misc/apep_pump_coord_polygon_counties.txt", double delim("%") clear
+drop pump_lat pump_lon longitude latitude
+
+** Clean GIS variables
+destring latlon_group, replace
+assert latlon_group!=.
+unique latlon_group
+assert r(unique)==r(N)
+
+foreach v of varlist county county_id {
+	replace `v' = "" if `v'=="NA"
+}
+
+	// Format county_id as FIPS code
+rename county_id county_fips
+replace county_fips =  "0" + county_fips if length(county_fips)<3 & in_county==1
+replace county_fips =  "0" + county_fips if length(county_fips)<3 & in_county==1
+assert length(county_fips)==3 if in_county==1
+
+	// Drop extraneous in_county indicator
+assert county=="" & county_fips=="" if in_county==0
+assert county!="" & county_fips!="" if in_county==1
+gen bad_geocode_flag = 1 - in_county
+drop in_county
+	
+	// Label
+la var county "County name (assigned by GIS)"	
+la var county_fips "County FIPS (assigned by GIS)"	
+la var bad_geocode_flag "Flag for APEP pumps with geocodes outside California"
+	
+	// Confirm uniqueness
+preserve
+keep county county_fips
+duplicates drop
+unique county_fips
+assert r(unique)==r(N)	
+restore
+
+	// Save
+tempfile gis_out
+save `gis_out'
+
+** Merge results into merge back into main dataset
+use "$dirpath_data/pge_cleaned/apep_pump_gis.dta", clear
+merge m:1 latlon_group using `gis_out'	
+assert _merge==3 // confirm everything merges
+drop _merge
+
+** Confirm uniqueness and save
+unique apeptestid crop test_date_stata
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/pge_cleaned/apep_pump_gis.dta", replace	
+
 }
 
 *******************************************************************************
