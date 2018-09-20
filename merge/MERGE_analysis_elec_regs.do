@@ -19,7 +19,7 @@ global dirpath_data "$dirpath/data"
 *******************************************************************************
 
 ** 1. Monthified billing data with prices, at SA and SP levels
-{
+if 1==0{
 
 ** Start with cleaned customer + monthified billing data (all three data pulls)
 foreach tag in 20180719 20180322 20180827 {
@@ -209,7 +209,7 @@ save "$dirpath_data/merged/sp_month_elec_panel.dta", replace
 *******************************************************************************	
 	
 ** 2. Billing data without prices, at SP level
-{
+if 1==0{
 
 ** Start with cleaned customer + monthified billing data (all three data pulls)
 foreach tag in 20180719 20180322 20180827 {
@@ -317,10 +317,10 @@ save "$dirpath_data/merged/sa_bill_elec_panel.dta", replace
 *******************************************************************************	
 	
 ** 3. Interval data with prices, at SP level
-{
+if 1==1{
 
 ** Merge with hourly data, for each data pull
-foreach tag in "20180719" "20180322" "20180827" {
+foreach tag in /*"20180719"*/ "20180322" "20180827" {
 
 	** Load full SA-bill panel dataset
 	use "$dirpath_data/merged/sa_bill_elec_panel.dta", clear
@@ -337,12 +337,13 @@ foreach tag in "20180719" "20180322" "20180827" {
 
 	** Merge into hourly interval data with prices
 	merge 1:m sa_uuid bill_start_dt using "$dirpath_data/merged/hourly_with_prices_`tag'.dta", ///
-		keep(3)
+		keep(2 3)
+	assert _merge!=2
 	cap drop group
 	tab pull
 	
 	** Drop unnecessary variables 
-	drop sa_uuid bill_start_dt rt_sched_cd _merge 	
+	drop sa_uuid bill_start_dt _merge 	
 		
 	** Collapse to SP-hour level
 	foreach v of varlist kwh {
@@ -351,7 +352,7 @@ foreach tag in "20180719" "20180322" "20180827" {
 		drop temp
 	}
 	foreach v of varlist p_kwh {
-		egen double temp = sum(`v'), by(sp_uuid date hour)
+		egen double temp = mean(`v'), by(sp_uuid date hour)
 		replace `v' = temp 
 		drop temp
 	}
@@ -362,7 +363,7 @@ foreach tag in "20180719" "20180322" "20180827" {
 	** Save
 	sort sp_uuid date hour
 	compress
-	save "$dirpath_data/merged/sp_month_elec_panel_`tag'.dta", replace
+	save "$dirpath_data/merged/sp_hourly_elec_panel_`tag'.dta", replace
 
 }
 

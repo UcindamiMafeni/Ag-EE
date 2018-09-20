@@ -94,7 +94,11 @@ do "$dirpath_code/merge/MERGE_bills_rate_nomerge.do"
 *** 4: MERGE CUSTOMER DETAILS & APEP DATASETS TO CONSTRUCT MASTER XSECTION(S) FOR EVENTUAL PANEL(S)
 do "$dirpath_code/merge/MERGE_customer_apep_units.do"
 
+*** 5. CONSTRUCT INSTRUMENTS FOR ELECTRICITY PRICE
+do "$dirpath_code/merge/MERGE_instruments.do"
 
+*** 6. CONSTRUCT PANEL DATASETS FOR ELECTRICITY REGRESSIONS
+do "$dirpath_code/merge/MERGE_analysis_elec_regs.do"
 
 
 
