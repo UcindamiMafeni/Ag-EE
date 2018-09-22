@@ -644,6 +644,11 @@ joinby rt_default using `rt_default', unmatch(both)
 assert _merge==3	
 drop _merge
 
+	// Add month-year variable
+gen modate = ym(year(date),month(date))
+format %tm modate
+la var modate "Year-month"	
+
 	// Clean up and save
 order rt_sched_cd date hour rt_default p_kwh_ag_default
 sort rt_sched_cd date hour 
