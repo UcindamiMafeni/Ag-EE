@@ -431,3 +431,206 @@ save "$dirpath_data/pge_cleaned/apep_pump_gis.dta", replace
 
 *******************************************************************************
 *******************************************************************************
+
+** 8. Build dataset of California water basins 
+if 1==1{
+
+** Import data table from GIS files of CA Water basins
+import delimited "$dirpath_data/misc/ca_water_basins_raw.txt", delimiter("%") clear
+
+** Clean and label variables
+rename objectid basin_object_id 
+rename basin_numb basin_id
+rename basin_subb basin_sub_id
+rename basin_su_1 basin_sub_name
+rename region_off basin_reg_off
+rename area_km2 basin_sub_area_sqmi
+replace basin_sub_area_sqmi = 0.386102*basin_sub_area_sqmi
+
+la var basin_object_id "Groundwater basin polygon identifier"
+la var basin_id "Groundwater basin identifier"
+la var basin_sub_id "Groundwater sub-basin identifier"
+la var basin_name "Groundwater basin name"
+la var basin_sub_name "Groundwater sub-basin name"
+la var basin_reg_off "Groundwater basin region office"
+la var basin_sub_area_sqmi "Groundwater sub-basin polygon area (sq miles)"
+
+foreach v of varlist basin_name basin_sub_name {
+	replace `v' = upper(trim(itrim(`v')))
+}
+
+** Confirm uniqueness
+unique basin_object_id
+assert r(unique)==r(N)
+drop globalid
+
+** Save
+sort basin_object_id
+compress
+save "$dirpath_data/groundwater/ca_water_basins.dta", replace
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 9. Assign SP coordinates to water basins
+if 1==1{
+
+** Run auxilary GIS script "BUILD_gis_water_basins.R"
+
+** Import results from GIS script
+insheet using "$dirpath_data/misc/pge_prem_coord_polygon_wbasn.txt", double delim("%") clear
+drop prem_lat prem_lon longitude latitude bad_geocode_flag
+
+** Clean GIS variables
+tostring sp_uuid pull, replace
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+assert length(sp_uuid)==10 & real(sp_uuid)!=.
+unique sp_uuid pull
+assert r(unique)==r(N)
+
+foreach v of varlist wbasn wbasn_id {
+	replace `v' = "" if `v'=="NA"
+}
+destring wbasn_id , replace
+
+foreach v of varlist nearestwbasn_id nearestwbasn_dist_km {
+	replace `v' = . if wbasn_id!=.
+}
+
+	// Convert from km to miles
+replace nearestwbasn_dist_km = nearestwbasn_dist_km*0.621371
+rename nearestwbasn_dist_km nearestwbasn_miles
+sum nearestwbasn_miles, detail // p90 = 11.75 miles, not great, not terrible
+local p90 = r(p90)
+
+	// Assign nearest water districts within 11.75 miles (vast majority not in APEP)
+assert inlist(in_wbasn,0,1)
+assert nearestwbasn_miles!=. if in_wbasn==0
+assert nearestwbasn_miles==. if in_wbasn==1
+rename in_wbasn wbasn_dist_miles
+replace wbasn_dist_miles = 1 - wbasn_dist_miles
+replace wbasn_dist_miles = nearestwbasn_miles if nearestwbasn_miles!=.	
+sum wbasn_dist_miles, det
+replace wbasn_id = nearestwbasn_id if nearestwbasn_id!=. & wbasn_dist_miles<=`p90'
+
+	// Drop nearest water district variables
+drop nearestwbasn*	
+
+	// Merge in water basin variables
+rename wbasn_id basin_object_id
+joinby basin_object_id using "$dirpath_data/groundwater/ca_water_basins.dta", unmatched(master)
+assert _merge==3 if basin_object_id!=.
+assert upper(wbasn)==basin_name if wbasn!=""
+drop _merge wbasn
+order wbasn_dist_miles, after(basin_object_id)
+rename wbasn_dist_miles basin_dist_miles
+
+	// Label
+la var basin_object_id "Groundwater basin polygon (assigned by GIS)"	
+la var basin_dist_miles "Distance to goundwater basin (cut off at 11.75 miles)"	
+	
+	// Save
+tempfile gis_out
+save `gis_out'
+
+** Merge results into merge back into main dataset
+use "$dirpath_data/pge_cleaned/sp_premise_gis.dta", clear
+merge 1:1 sp_uuid pull using `gis_out'	
+assert _merge!=2 // confirm everything merges in
+assert _merge==1 if prem_lat==. | prem_lon==. // confirm nothing merges if it has missing lat/lon
+assert (prem_lat==. | prem_lon==.) if _merge==1	// confirm that all non-merges have missing lat/lon
+drop _merge
+
+** Confirm uniqueness and save
+unique sp_uuid pull
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/pge_cleaned/sp_premise_gis.dta", replace	
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 10. Assign APEP coordinates to water basins
+if 1==1{
+
+** Run auxilary GIS script "BUILD_gis_water_basins.R"
+
+** Import results from GIS script
+insheet using "$dirpath_data/misc/apep_pump_coord_polygon_wbasn.txt", double delim("%") clear
+drop pump_lat pump_lon longitude latitude
+
+** Clean GIS variables
+destring latlon_group, replace
+assert latlon_group!=.
+unique latlon_group
+assert r(unique)==r(N)
+
+foreach v of varlist wbasn wbasn_id {
+	replace `v' = "" if `v'=="NA"
+}
+destring wbasn_id, replace
+
+foreach v of varlist nearestwbasn_id nearestwbasn_dist_km {
+	replace `v' = . if wbasn_id!=.
+}
+
+	// Convert from km to miles
+replace nearestwbasn_dist_km = nearestwbasn_dist_km*0.621371
+rename nearestwbasn_dist_km nearestwbasn_miles
+sum nearestwbasn_miles, detail // p90 = 11.00 miles, not great, not terrible
+local p90 = r(p90)
+
+	// Assign nearest water districts within 11.00 miles
+assert inlist(in_wbasn,0,1)
+assert nearestwbasn_miles!=. if in_wbasn==0
+assert nearestwbasn_miles==. if in_wbasn==1
+rename in_wbasn wbasn_dist_miles
+replace wbasn_dist_miles = 1 - wbasn_dist_miles
+replace wbasn_dist_miles = nearestwbasn_miles if nearestwbasn_miles!=.	
+sum wbasn_dist_miles, det
+replace wbasn_id = nearestwbasn_id if nearestwbasn_id!=. & wbasn_dist_miles<=`p90'
+
+	// Drop nearest water district variables
+drop nearestwbasn*	
+
+	// Merge in water basin variables
+rename wbasn_id basin_object_id
+joinby basin_object_id using "$dirpath_data/groundwater/ca_water_basins.dta", unmatched(master)
+assert _merge==3 if basin_object_id!=.
+assert upper(wbasn)==basin_name if wbasn!=""
+drop _merge wbasn
+order wbasn_dist_miles, after(basin_object_id)
+rename wbasn_dist_miles basin_dist_miles
+
+	// Label
+la var basin_object_id "Groundwater basin polygon (assigned by GIS)"	
+la var basin_dist_miles "Distance to goundwater basin (cut off at 11.75 miles)"	
+	
+	// Save
+tempfile gis_out
+save `gis_out'
+
+** Merge results into merge back into main dataset
+use "$dirpath_data/pge_cleaned/apep_pump_gis.dta", clear
+merge m:1 latlon_group using `gis_out'	
+assert _merge==3 // confirm everything merges
+drop _merge
+
+** Confirm uniqueness and save
+unique apeptestid crop test_date_stata
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/pge_cleaned/apep_pump_gis.dta", replace	
+
+}
+
+*******************************************************************************
+*******************************************************************************
