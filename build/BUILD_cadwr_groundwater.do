@@ -12,11 +12,15 @@ set more off
 global dirpath "S:/Matt/ag_pump"
 global dirpath_data "$dirpath/data"
 
+// PENDING
+	
+	* supplement with county-specific data pulls from CA DWR, if necessary???
+
 *******************************************************************************
 *******************************************************************************
 
 ** 1. Main groundwater level (GWL) dataset
-{
+if 1==0{
 ** Import GWL file
 insheet using "$dirpath_data/groundwater/Statewide_GWL_Data_20170905/gwl_file.csv", double comma clear
 
@@ -239,7 +243,9 @@ save "$dirpath_data/groundwater/ca_dwr_gwl.dta", replace
 *******************************************************************************
 
 ** 2. Main groundwater station (GST) dataset
-{
+if 1==0{
+
+
 ** Import GST file
 insheet using "$dirpath_data/groundwater/Statewide_GWL_Data_20170905/gst_file.csv", double comma clear
 
@@ -377,6 +383,24 @@ twoway ///
 	title("Groundwater stations by region", size(medium) color(black)) ///
 	graphregion(lcolor(white) fcolor(white) lstyle(none)) plotregion(fcolor(white) lcolor(white))
 	
+** True-up basin names with basin names from shapefile
+split basin_cd , gen(tempA) parse("-")
+split tempA2 , gen(tempB) parse(".")
+replace tempB1 = "0" + tempB1 if length(tempB1)<3
+replace tempB1 = "0" + tempB1 if length(tempB1)<3
+replace basin_cd = tempA1 + "-" + tempB1
+replace basin_cd = basin_cd + "." + tempB2 if tempB2!=""
+drop temp*
+rename basin_cd basin_sub_id
+rename basin_name basin_sub_name
+joinby basin_sub_id using "$dirpath_data/groundwater/ca_water_basins.dta", unmatched(master)
+tab _merge // only 35 unmatched stations
+tab basin_name if _merge==1 // only 4 unmatched, and 3 were already flagged as such
+drop _merge basin_object_id basin_reg_off
+la var basin_sub_id "Groundwater sub-basin identifier"
+la var basin_sub_name "Groundwater sub-basin name"
+order basin_sub_id basin_sub_name basin_sub_area_sqmi basin_id basin_name, after(loc_accuracy)
+	
 ** Extract lat/lon from site_code
 gen lat = substr(site_code,1,6)
 gen lon = substr(site_code,8,7)
@@ -397,7 +421,8 @@ save "$dirpath_data/groundwater/ca_dwr_gst.dta", replace
 *******************************************************************************
 
 ** 3. Merge groundwater datasets (GWL and GST), and save working dataset of all wells
-{
+if 1==0{
+
 ** Execute merge
 use "$dirpath_data/groundwater/ca_dwr_gwl.dta", clear
 merge m:1 casgem_station_id site_code using "$dirpath_data/groundwater/ca_dwr_gst.dta"
@@ -465,7 +490,279 @@ save "$dirpath_data/groundwater/ca_dwr_gwl_merged.dta", replace
 *******************************************************************************
 *******************************************************************************
 
+** 4. Construct monthly/quarterly panels of average groundwater depth by basin/sub-basin
+if 1==1{
 
-// PENDING
-	
-	* supplement with county-specific data pulls from CA DWR, if necessary???
+** Start with merged DWR dataset
+use "$dirpath_data/groundwater/ca_dwr_gwl_merged.dta", clear
+
+** Drop years prior to our sample
+drop if year<2008
+
+** Create month and quarter varables
+gen modate = ym(year(date), month(date))
+format %tm modate
+gen month = month(date)
+gen quarter = 1 if inlist(month(date),1,2,3)
+replace quarter = 2 if inlist(month(date),4,5,6)
+replace quarter = 3 if inlist(month(date),7,8,9)
+replace quarter = 4 if inlist(month(date),10,11,12)
+gen qtr = yq(year(date),quarter)
+format %tq qtr
+
+** Flag questionable measurements
+gen QUES = 0
+replace QUES = 1 if measurement_issue_class=="" // issues flagged as either Questionable or No measurement
+replace QUES = 1 if neg_depth==1 // negative depth
+	// other potential refinements:
+	//	- length/consistency of well's time series (for simple averages, not sure this is necessary)
+	// 	- method of measurement (if some are particularly bad??)
+	//  - location accuracy (but most seem pretty accurate)
+	//	- discriminate based on type of measurement issue
+
+** Mean/sd by basin/month, including all DWR measurements
+egen double gw_mth_bsn_mean1 = mean(gs_ws_depth), by(basin_id modate)
+egen double gw_mth_bsn_sd1 = sd(gs_ws_depth), by(basin_id modate)
+gen gw_mth_bsn_cnt1 = gs_ws_depth!=.
+
+** Mean/sd by basin/month, excluding questionable measurements
+egen double temp1 = mean(gs_ws_depth) if QUES==0, by(basin_id modate)
+egen double temp2 = sd(gs_ws_depth) if QUES==0, by(basin_id modate)
+egen double gw_mth_bsn_mean2 = mean(temp1), by(basin_id modate)
+egen double gw_mth_bsn_sd2 = mean(temp2), by(basin_id modate)
+drop temp*
+gen gw_mth_bsn_cnt2 = gs_ws_depth!=. & QUES==0
+
+** Mean/sd by basin/month, excluding questionable measurements and non-observational wells
+egen double temp1 = mean(gs_ws_depth) if QUES==0 & well_use_desc=="Observation", by(basin_id modate)
+egen double temp2 = sd(gs_ws_depth) if QUES==0 & well_use_desc=="Observation", by(basin_id modate)
+egen double gw_mth_bsn_mean3 = mean(temp1), by(basin_id modate)
+egen double gw_mth_bsn_sd3 = mean(temp2), by(basin_id modate)
+drop temp*
+gen gw_mth_bsn_cnt3 = gs_ws_depth!=. & QUES==0 & well_use_desc=="Observation"
+
+** Mean/sd by sub-basin/month, including all DWR measurements
+egen double gw_mth_sub_mean1 = mean(gs_ws_depth), by(basin_sub_id modate)
+egen double gw_mth_sub_sd1 = sd(gs_ws_depth), by(basin_sub_id modate)
+gen gw_mth_sub_cnt1 = gs_ws_depth!=.
+
+** Mean/sd by sub-basin/month, excluding questionable measurements
+egen double temp1 = mean(gs_ws_depth) if QUES==0, by(basin_sub_id modate)
+egen double temp2 = sd(gs_ws_depth) if QUES==0, by(basin_sub_id modate)
+egen double gw_mth_sub_mean2 = mean(temp1), by(basin_sub_id modate)
+egen double gw_mth_sub_sd2 = mean(temp2), by(basin_sub_id modate)
+drop temp*
+gen gw_mth_sub_cnt2 = gs_ws_depth!=. & QUES==0
+
+** Mean/sd by sub-basin/month, excluding questionable measurements and non-observational wells
+egen double temp1 = mean(gs_ws_depth) if QUES==0 & well_use_desc=="Observation", by(basin_sub_id modate)
+egen double temp2 = sd(gs_ws_depth) if QUES==0 & well_use_desc=="Observation", by(basin_sub_id modate)
+egen double gw_mth_sub_mean3 = mean(temp1), by(basin_sub_id modate)
+egen double gw_mth_sub_sd3 = mean(temp2), by(basin_sub_id modate)
+drop temp*
+gen gw_mth_sub_cnt3 = gs_ws_depth!=. & QUES==0 & well_use_desc=="Observation"
+
+** Mean/sd by basin/quarter, including all DWR measurements
+egen double gw_qtr_bsn_mean1 = mean(gs_ws_depth), by(basin_id qtr)
+egen double gw_qtr_bsn_sd1 = sd(gs_ws_depth), by(basin_id qtr)
+gen gw_qtr_bsn_cnt1 = gs_ws_depth!=.
+
+** Mean/sd by basin/quarter, excluding questionable measurements
+egen double temp1 = mean(gs_ws_depth) if QUES==0, by(basin_id qtr)
+egen double temp2 = sd(gs_ws_depth) if QUES==0, by(basin_id qtr)
+egen double gw_qtr_bsn_mean2 = mean(temp1), by(basin_id qtr)
+egen double gw_qtr_bsn_sd2 = mean(temp2), by(basin_id qtr)
+drop temp*
+gen gw_qtr_bsn_cnt2 = gs_ws_depth!=. & QUES==0
+
+** Mean/sd by basin/quarter, excluding questionable measurements and non-observational wells
+egen double temp1 = mean(gs_ws_depth) if QUES==0 & well_use_desc=="Observation", by(basin_id qtr)
+egen double temp2 = sd(gs_ws_depth) if QUES==0 & well_use_desc=="Observation", by(basin_id qtr)
+egen double gw_qtr_bsn_mean3 = mean(temp1), by(basin_id qtr)
+egen double gw_qtr_bsn_sd3 = mean(temp2), by(basin_id qtr)
+drop temp*
+gen gw_qtr_bsn_cnt3 = gs_ws_depth!=. & QUES==0 & well_use_desc=="Observation"
+
+** Mean/sd by sub-basin/quarter, including all DWR measurements
+egen double gw_qtr_sub_mean1 = mean(gs_ws_depth), by(basin_sub_id qtr)
+egen double gw_qtr_sub_sd1 = sd(gs_ws_depth), by(basin_sub_id qtr)
+gen gw_qtr_sub_cnt1 = gs_ws_depth!=.
+
+** Mean/sd by sub-basin/quarter, excluding questionable measurements
+egen double temp1 = mean(gs_ws_depth) if QUES==0, by(basin_sub_id qtr)
+egen double temp2 = sd(gs_ws_depth) if QUES==0, by(basin_sub_id qtr)
+egen double gw_qtr_sub_mean2 = mean(temp1), by(basin_sub_id qtr)
+egen double gw_qtr_sub_sd2 = mean(temp2), by(basin_sub_id qtr)
+drop temp*
+gen gw_qtr_sub_cnt2 = gs_ws_depth!=. & QUES==0
+
+** Mean/sd by sub-basin/quarter, excluding questionable measurements and non-observational wells
+egen double temp1 = mean(gs_ws_depth) if QUES==0 & well_use_desc=="Observation", by(basin_sub_id qtr)
+egen double temp2 = sd(gs_ws_depth) if QUES==0 & well_use_desc=="Observation", by(basin_sub_id qtr)
+egen double gw_qtr_sub_mean3 = mean(temp1), by(basin_sub_id qtr)
+egen double gw_qtr_sub_sd3 = mean(temp2), by(basin_sub_id qtr)
+drop temp*
+gen gw_qtr_sub_cnt3 = gs_ws_depth!=. & QUES==0 & well_use_desc=="Observation"
+
+** Labels
+la var gw_mth_bsn_mean1 "Depth (mean ft), basin/month, all measurements"	
+la var gw_mth_bsn_sd1 "Depth (sd ft), basin/month, all measurements"	
+la var gw_mth_bsn_mean2 "Depth (mean ft), basin/month, non-questionable measurements"	
+la var gw_mth_bsn_sd2 "Depth (sd ft), basin/month, non-questionable measurements"	
+la var gw_mth_bsn_mean3 "Depth (mean ft), basin/month, observational non-questionable measurements"	
+la var gw_mth_bsn_sd3 "Depth (sd ft), basin/month, observational non-questionable measurements"	
+la var gw_mth_sub_mean1 "Depth (mean ft), sub-basin/month, all measurements"	
+la var gw_mth_sub_sd1 "Depth (sd ft), sub-basin/month, all measurements"	
+la var gw_mth_sub_mean2 "Depth (mean ft), sub-basin/month, non-questionable measurements"	
+la var gw_mth_sub_sd2 "Depth (sd ft), sub-basin/month, non-questionable measurements"	
+la var gw_mth_sub_mean3 "Depth (mean ft), sub-basin/month, observational non-questionable measurements"	
+la var gw_mth_sub_sd3 "Depth (sd ft), sub-basin/month, observational non-questionable measurements"	
+la var gw_qtr_bsn_mean1 "Depth (mean ft), basin/quarter, all measurements"	
+la var gw_qtr_bsn_sd1 "Depth (sd ft), basin/quarter, all measurements"	
+la var gw_qtr_bsn_mean2 "Depth (mean ft), basin/quarter, non-questionable measurements"	
+la var gw_qtr_bsn_sd2 "Depth (sd ft), basin/quarter, non-questionable measurements"	
+la var gw_qtr_bsn_mean3 "Depth (mean ft), basin/quarter, observational non-questionable measurements"	
+la var gw_qtr_bsn_sd3 "Depth (sd ft), basin/quarter, observational non-questionable measurements"	
+la var gw_qtr_sub_mean1 "Depth (mean ft), sub-basin/quarter, all measurements"	
+la var gw_qtr_sub_sd1 "Depth (sd ft), sub-basin/quarter, all measurements"	
+la var gw_qtr_sub_mean2 "Depth (mean ft), sub-basin/quarter, non-questionable measurements"	
+la var gw_qtr_sub_sd2 "Depth (sd ft), sub-basin/quarter, non-questionable measurements"	
+la var gw_qtr_sub_mean3 "Depth (mean ft), sub-basin/quarter, observational non-questionable measurements"	
+la var gw_qtr_sub_sd3 "Depth (sd ft), sub-basin/quarter, observational non-questionable measurements"	
+la var modate "Year-Month"
+la var month "Month"
+la var qtr "Year-Quarter"
+la var quarter "Quarter"
+
+** Save basin/month panel
+preserve
+drop if basin_id=="" | modate==.
+collapse (sum) gw_mth_bsn_cnt?, by(modate year month basin_id basin_name  ///
+	gw_mth_bsn_mean? gw_mth_bsn_sd?) fast
+unique basin_id modate
+assert r(unique)==r(N)
+la var gw_mth_bsn_cnt1 "Number of basin/month measurements (all)"	
+la var gw_mth_bsn_cnt2 "Number of basin/month measurements (non-questionable)"	
+la var gw_mth_bsn_cnt3 "Number of basin/month measurements (non-questionable, observation wells)"	
+order basin_id basin_name year month modate *1 *2 *3
+sort basin_id modate
+compress
+save "$dirpath_data/groundwater/avg_groundwater_depth_basin_month.dta", replace
+restore
+
+** Save sub-basin/month panel
+preserve
+drop if basin_sub_id=="" | basin_id=="" | modate==.
+collapse (sum) gw_mth_sub_cnt?, by(modate year month basin_id basin_name  ///
+	basin_sub_id basin_sub_name gw_mth_sub_mean? gw_mth_sub_sd?) fast
+unique basin_sub_id modate
+assert r(unique)==r(N)
+la var gw_mth_sub_cnt1 "Number of sub-basin/month measurements (all)"	
+la var gw_mth_sub_cnt2 "Number of sub-basin/month measurements (non-questionable)"	
+la var gw_mth_sub_cnt3 "Number of sub-basin/month measurements (non-questionable, observation wells)"	
+order basin_id basin_name basin_sub_id basin_sub_name year month modate *1 *2 *3
+sort basin_id basin_sub_id modate
+compress
+save "$dirpath_data/groundwater/avg_groundwater_depth_subbasin_month.dta", replace
+restore
+
+** Save basin/quarter panel
+preserve
+drop if basin_id=="" | qtr==.
+collapse (sum) gw_qtr_bsn_cnt?, by(qtr year quarter basin_id basin_name  ///
+	gw_qtr_bsn_mean? gw_qtr_bsn_sd?) fast
+unique basin_id qtr
+assert r(unique)==r(N)
+la var gw_qtr_bsn_cnt1 "Number of basin/quarter measurements (all)"	
+la var gw_qtr_bsn_cnt2 "Number of basin/quarter measurements (non-questionable)"	
+la var gw_qtr_bsn_cnt3 "Number of basin/quarter measurements (non-questionable, observation wells)"	
+order basin_id basin_name year quarter qtr *1 *2 *3
+sort basin_id qtr
+compress
+save "$dirpath_data/groundwater/avg_groundwater_depth_basin_quarter.dta", replace
+restore
+
+** Save sub-basin/quarter panel
+preserve
+drop if basin_sub_id=="" | basin_id=="" | qtr==.
+collapse (sum) gw_qtr_sub_cnt?, by(qtr year quarter basin_id basin_name  ///
+	basin_sub_id basin_sub_name gw_qtr_sub_mean? gw_qtr_sub_sd?) fast
+unique basin_sub_id qtr
+assert r(unique)==r(N)
+la var gw_qtr_sub_cnt1 "Number of sub-basin/quarter measurements (all)"	
+la var gw_qtr_sub_cnt2 "Number of sub-basin/quarter measurements (non-questionable)"	
+la var gw_qtr_sub_cnt3 "Number of sub-basin/quarter measurements (non-questionable, observation wells)"	
+order basin_id basin_name basin_sub_id basin_sub_name year quarter qtr *1 *2 *3
+sort basin_id basin_sub_id qtr
+compress
+save "$dirpath_data/groundwater/avg_groundwater_depth_subbasin_quarter.dta", replace
+restore
+
+** Diagnostics: coverage by basin/quarter
+use "$dirpath_data/pge_cleaned/sp_premise_gis.dta", clear
+gen N_sps = 1
+collapse (sum) N_sps, by(basin_id basin_name) fast
+unique basin_id
+assert r(unique)==r(N)
+sum N_sps if N_sps>1000
+local rsum = r(sum)
+sum N_sps
+di `rsum'/r(sum) // 93% of SPs are in a basin with at least 1000 other SPs
+merge 1:m basin_id using "$dirpath_data/groundwater/avg_groundwater_depth_basin_quarter.dta"
+tab _merge
+sum N_sps if _merge==1
+di r(sum) // 4429 SPs are in basins that don't merge into DWR data
+drop if _merge==2
+tabstat N_sps, by(_merge) s(sum)
+keep if _merge==3
+gen N_qtrs1 = gw_qtr_bsn_mean1!=.
+gen N_qtrs2 = gw_qtr_bsn_mean2!=.
+gen N_qtrs3 = gw_qtr_bsn_mean3!=.
+collapse (sum) N_qtrs?, by(N_sps basin_id basin_name) fast
+sum N_sps if N_qtrs1>30
+local rsum = r(sum)
+sum N_sps
+di `rsum'/r(sum) // 90% of SPs are in basins with at least 30 quarters of readings
+
+** Diagnostics: coverage by sub-basin/quarter
+use "$dirpath_data/pge_cleaned/sp_premise_gis.dta", clear
+gen N_sps = 1
+collapse (sum) N_sps, by(basin_id basin_name basin_sub_id basin_sub_name) fast
+unique basin_sub_id
+assert r(unique)==r(N)
+sum N_sps if N_sps>1000
+local rsum = r(sum)
+sum N_sps
+di `rsum'/r(sum) // 85% of SPs are in a sub-basin with at least 1000 other SPs
+merge 1:m basin_sub_id using "$dirpath_data/groundwater/avg_groundwater_depth_subbasin_quarter.dta"
+tab _merge
+sum N_sps if _merge==1
+di r(sum) // 5063 SPs are in sub-basins that don't merge into DWR data
+drop if _merge==2
+tabstat N_sps, by(_merge) s(sum)
+keep if _merge==3
+gen N_qtrs1 = gw_qtr_sub_mean1!=.
+gen N_qtrs2 = gw_qtr_sub_mean2!=.
+gen N_qtrs3 = gw_qtr_sub_mean3!=.
+collapse (sum) N_qtrs?, by(N_sps basin_id basin_name basin_sub_id basin_sub_name) fast
+sum N_sps if N_qtrs1>30
+local rsum = r(sum)
+sum N_sps
+di `rsum'/r(sum) // 73% of SPs are in basins with at least 30 quarters of readings
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 5. Rasterize panels of groundwater depth
+
+
+quarterly(?) rasters of groundwater depth
+
+
+2 to 20 measurements per 100 square miles
+monthly is ideally what we want
+
+{observation wells only with no issues; any use wells with no issues}
+{rasters}
