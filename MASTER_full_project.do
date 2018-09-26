@@ -70,14 +70,16 @@ do "$dirpath_code/build/BUILD_clean_rate_data.do"
 *** 17: BUILD EVENT DAY DATASET
 do "$dirpath_code/build/BUILD_event_days.do"
 
-*** 18: CLEAN CA DWR GROUNDWATER DATA
-do "$dirpath_code/build/BUILD_clean_cadwr_groundwater.do"
-
-*** 19: ASSIGN SPS AND APEP PUMPS TO VARIOUS POLYGONS
+*** 18: ASSIGN SPS AND APEP PUMPS TO VARIOUS POLYGONS
 do "$dirpath_code/build/BUILD_assign_gis_polygons.do"
 	// calls auxilary GIS scripts "BUILD_gis_water_districts.R" 
 	//                        and "BUILD_gis_counties.R"
+	//                        and "BUILD_gis_water_basins.R"
 
+*** 19: CLEAN CA DWR GROUNDWATER DATA
+do "$dirpath_code/build/BUILD_clean_cadwr_groundwater.do"
+	// calls auxilary GIS scripts "BUILD_gis_gw_depth_raster.R" 
+	//                        and "BUILD_gis_gw_depth_extract.R"
 
 
 *************** MERGE ****************
