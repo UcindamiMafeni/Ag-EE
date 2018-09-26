@@ -233,10 +233,97 @@ replace lon = -lon/10000
 la var lat "Site latitude (extracted from site_code)"
 la var lon "Site longitude (extracted from site_code)"
 
-** Save
-sort site_code date
+** Drop duplicates with multiple records, but otherwise identical
+order elevation_id
+duplicates t casgem_station_id-lon, gen(dup)
+tab dup
+duplicates drop casgem_station_id-lon, force
+drop dup
+
+** Average dups with multiple readings on the same date, but otherwise identical
+duplicates t casgem_station_id-year measurement_issue_id-lon, gen(dup)
+tab dup
+foreach v of varlist rp_elevation-ws_elevation {
+	egen double temp = mean(`v'), by(casgem_station_id-year measurement_issue_id-lon)
+	replace `v' = temp if dup>0
+	drop temp
+}
+duplicates drop casgem_station_id-lon, force
+drop dup
+
+** Drop dups with multiple readings on the same date, where one reading is missing/questionable
+duplicates t casgem_station_id site_code date, gen(dup)
+tab dup
+unique casgem_station_id site_code date
+local uniq = r(unique)
+egen temp_minN = min(measurement_issue_class=="N"), by(casgem_station_id site_code date)
+egen temp_maxN = max(measurement_issue_class=="N"), by(casgem_station_id site_code date)
+drop if dup>0 & temp_minN<temp_maxN & measurement_issue_class=="N"
+egen temp_minQ = min(measurement_issue_class=="Q"), by(casgem_station_id site_code date)
+egen temp_maxQ = max(measurement_issue_class=="Q"), by(casgem_station_id site_code date)
+drop if dup>0 & temp_minQ<temp_maxQ & measurement_issue_class=="Q"
+unique casgem_station_id site_code date
+assert r(unique)==`uniq'
+drop dup temp*
+
+** Drop dups with multiple readings on the same date, where one reading's method is unknown
+duplicates t casgem_station_id site_code date, gen(dup)
+tab dup
+unique casgem_station_id site_code date
+local uniq = r(unique)
+egen temp_min = min(measurement_method_desc=="Unknown"), by(casgem_station_id site_code date)
+egen temp_max = max(measurement_method_desc=="Unknown"), by(casgem_station_id site_code date)
+drop if dup>0 & temp_min<temp_max & measurement_method_desc=="Unknown"
+unique casgem_station_id site_code date
+assert r(unique)==`uniq'
+drop dup temp*
+
+** Drop dups with multiple readings on the same date, where one reading's accuracy is worse 
+duplicates t casgem_station_id site_code date, gen(dup)
+tab dup
+unique casgem_station_id site_code date
+local uniq = r(unique)
+egen temp_min = min(measurement_accuracy_desc=="Unknown"), by(casgem_station_id site_code date)
+egen temp_max = max(measurement_accuracy_desc=="Unknown"), by(casgem_station_id site_code date)
+drop if dup>0 & temp_min<temp_max & measurement_accuracy_desc=="Unknown"
+unique casgem_station_id site_code date
+assert r(unique)==`uniq'
+drop dup temp*
+
+** Drop dups with multiple readings on the same date, where one reading's accuracy is listed as more accurate
+duplicates t casgem_station_id site_code date, gen(dup)
+tab dup
+unique casgem_station_id site_code date
+local uniq = r(unique)
+egen temp_min = min(real(word(measurement_accuracy_desc,1))), by(casgem_station_id site_code date)
+egen temp_max = max(real(word(measurement_accuracy_desc,1))), by(casgem_station_id site_code date)
+drop if dup>0 & temp_min<temp_max & real(word(measurement_accuracy_desc,1))==temp_max
+unique casgem_station_id site_code date
+assert r(unique)==`uniq'
+drop dup temp*
+
+** Average reading of remaining dups
+duplicates t casgem_station_id site_code date, gen(dup)
+tab dup
+unique casgem_station_id site_code date
+local uniq = r(unique)
+foreach v of varlist rp_elevation-ws_elevation {
+	egen double temp = mean(`v'), by(casgem_station_id site_code date)
+	replace `v' = temp if dup>0
+	drop temp
+}
+duplicates drop casgem_station_id date, force
+unique casgem_station_id site_code date
+assert r(unique)==`uniq'
+drop dup
+
+** Confirm uniqueness
+unique casgem_station_id date
+assert r(unique)==r(N)
+sort casgem_station_id date
 compress
 save "$dirpath_data/groundwater/ca_dwr_gwl.dta", replace
+
 }
 
 *******************************************************************************
@@ -411,6 +498,11 @@ gen temp_lat = abs(latitude-lat)
 gen temp_lon = abs(longitude-lon)
 sum temp_lat temp_lon, detail // the VAST majority are identical, save significant figures
 drop temp* lat lon
+
+** Create lat/lon group, to reduce the number of observations to rasterize
+egen latlon_group = group(latitude longitude)
+la var latlon_group	"Group by lat/lon, because multiple stations have identical lat/lon"
+unique latlon_group
 	
 ** Save
 compress
@@ -481,6 +573,10 @@ la var flag_gwl_unmerged "GWL readings at stations missing from GST dataset"
 drop elevation_id casgem_reading org_id org_name coop_org_id coop_org_name state_well_number ///
 	local_well_designation is_voluntary_reporting completion_rpt_nbr
 
+** Confirm uniqueness
+unique casgem_station_id date
+assert r(unique)==r(N)
+	
 ** Save
 compress
 save "$dirpath_data/groundwater/ca_dwr_gwl_merged.dta", replace
@@ -491,7 +587,7 @@ save "$dirpath_data/groundwater/ca_dwr_gwl_merged.dta", replace
 *******************************************************************************
 
 ** 4. Construct monthly/quarterly panels of average groundwater depth by basin/sub-basin
-if 1==1{
+if 1==0{
 
 ** Start with merged DWR dataset
 use "$dirpath_data/groundwater/ca_dwr_gwl_merged.dta", clear
@@ -512,7 +608,7 @@ format %tq qtr
 
 ** Flag questionable measurements
 gen QUES = 0
-replace QUES = 1 if measurement_issue_class=="" // issues flagged as either Questionable or No measurement
+replace QUES = 1 if measurement_issue_class!="" // issues flagged as either Questionable or No measurement
 replace QUES = 1 if neg_depth==1 // negative depth
 	// other potential refinements:
 	//	- length/consistency of well's time series (for simple averages, not sure this is necessary)
@@ -756,13 +852,94 @@ di `rsum'/r(sum) // 73% of SPs are in basins with at least 30 quarters of readin
 *******************************************************************************
 
 ** 5. Rasterize panels of groundwater depth
+if 1==0{
 
+** Start with merged DWR dataset
+use "$dirpath_data/groundwater/ca_dwr_gwl_merged.dta", clear
 
-quarterly(?) rasters of groundwater depth
+** Drop years prior to our sample
+drop if year<2008
 
+** Create month and quarter varables
+gen modate = ym(year(date), month(date))
+format %tm modate
+gen month = month(date)
+gen quarter = 1 if inlist(month(date),1,2,3)
+replace quarter = 2 if inlist(month(date),4,5,6)
+replace quarter = 3 if inlist(month(date),7,8,9)
+replace quarter = 4 if inlist(month(date),10,11,12)
+gen qtr = yq(year(date),quarter)
+format %tq qtr
 
-2 to 20 measurements per 100 square miles
-monthly is ideally what we want
+** Flag questionable measurements
+gen QUES = 0
+replace QUES = 1 if measurement_issue_class!="" // issues flagged as either Questionable or No measurement
+replace QUES = 1 if neg_depth==1 // negative depth
 
-{observation wells only with no issues; any use wells with no issues}
-{rasters}
+** Collapse to the latlon-month, and export
+preserve
+drop if latlon_group==. | modate==.
+egen gs_ws_depth_1 = mean(gs_ws_depth), by(modate latlon_group)
+egen temp2 = mean(gs_ws_depth) if QUES==0, by(modate latlon_group)
+egen gs_ws_depth_2 = mean(temp2), by(modate latlon_group)
+egen temp3 = mean(gs_ws_depth) if QUES==0 & well_use_desc=="Observation", by(modate latlon_group)
+egen gs_ws_depth_3 = mean(temp3), by(modate latlon_group)
+keep latlon_group modate year month latitude longitude basin_id gs_ws_depth_?
+order latlon_group modate year month latitude longitude basin_id gs_ws_depth_?
+sort latlon_group modate year month latitude longitude basin_id gs_ws_depth_?
+drop if gs_ws_depth_1==. & gs_ws_depth_2==. & gs_ws_depth_3==.
+duplicates drop
+unique latlon_group modate
+assert r(unique)==r(N)
+
+outsheet using "$dirpath_data/misc/ca_dwr_depth_latlon_month.txt", comma replace
+restore
+
+** Collapse to the station-quarter, and export
+preserve
+drop if latlon_group==. | qtr==.
+egen gs_ws_depth_1 = mean(gs_ws_depth), by(qtr latlon_group)
+egen temp2 = mean(gs_ws_depth) if QUES==0, by(qtr latlon_group)
+egen gs_ws_depth_2 = mean(temp2), by(qtr latlon_group)
+egen temp3 = mean(gs_ws_depth) if QUES==0 & well_use_desc=="Observation", by(qtr latlon_group)
+egen gs_ws_depth_3 = mean(temp3), by(qtr latlon_group)
+keep latlon_group qtr year quarter latitude longitude basin_id gs_ws_depth_?
+order latlon_group qtr year quarter latitude longitude basin_id gs_ws_depth_?
+sort latlon_group qtr year quarter latitude longitude basin_id gs_ws_depth_?
+duplicates drop
+drop if gs_ws_depth_1==. & gs_ws_depth_2==. & gs_ws_depth_3==.
+unique latlon_group qtr
+assert r(unique)==r(N)
+outsheet using "$dirpath_data/misc/ca_dwr_depth_latlon_quarter.txt", comma replace
+restore
+
+** Run "BUILD_gis_gw_depth_raster.R" to rasterize monthly/quarterly cross-sections 
+**   of groundwater depth!
+
+** Run "BUILD_gis_gw_depth_extract.R" to extract groundwater depths from each 
+**   monthly/quarterly raster, for SP lat/lons and APEP pump lat/lons!
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 6. Constrct panels of groundwater depth for SPs (monthly/quarterly)
+if 1==1{
+
+PENDING
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 7. Constrct panels of groundwater depth for APEP pumps (monthly/quarterly)
+if 1==1{
+
+PENDING
+
+}
+
+*******************************************************************************
+*******************************************************************************
