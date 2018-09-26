@@ -1,6 +1,5 @@
 #############################################################
 # Script to rasterize DWR groundwater data by quarter/month #
-#   and predict groundwater depth for SPs and APEP pumps    #
 #############################################################
 
 rm(list = ls())
@@ -61,7 +60,7 @@ for (ym in levels(gwmth$modate)) {
   rast <- raster() # define raster
   extent(rast) <- extent(c(temp_bbox1[1,1]-grd_step/2, temp_bbox1[2,1]+grd_step/2, 
                            temp_bbox1[1,2]-grd_step/2, temp_bbox1[2,2]+grd_step/2)) # make raster same size as IDW grid
-  res(rast) <- grd_step # set resolution of raster to be same as resolutio nof IDW grid
+  res(rast) <- grd_step # set resolution of raster to be same as resolution of IDW grid
   temp_rast1 <- rasterize(temp_idw1, rast, temp_idw1$gw, fun=mean) # RASTERIZE!
   assign(paste0("gwmth_1_",ym),temp1) # store subseted monthly dataset
   assign(paste0("gwmth_rast_1_",ym),temp_rast1) # store monthly raster
@@ -87,7 +86,7 @@ for (ym in levels(gwmth$modate)) {
   rast <- raster() # define raster
   extent(rast) <- extent(c(temp_bbox2[1,1]-grd_step/2, temp_bbox2[2,1]+grd_step/2, 
                            temp_bbox2[1,2]-grd_step/2, temp_bbox2[2,2]+grd_step/2)) # make raster same size as IDW grid
-  res(rast) <- grd_step # set resolution of raster to be same as resolutio nof IDW grid
+  res(rast) <- grd_step # set resolution of raster to be same as resolution of IDW grid
   temp_rast2 <- rasterize(temp_idw2, rast, temp_idw2$gw, fun=mean) # RASTERIZE!
   assign(paste0("gwmth_2_",ym),temp2) # store subseted monthly dataset
   assign(paste0("gwmth_rast_2_",ym),temp_rast2) # store monthly raster
@@ -113,7 +112,7 @@ for (ym in levels(gwmth$modate)) {
   rast <- raster() # define raster
   extent(rast) <- extent(c(temp_bbox3[1,1]-grd_step/2, temp_bbox3[2,1]+grd_step/2, 
                            temp_bbox3[1,2]-grd_step/2, temp_bbox3[2,2]+grd_step/2)) # make raster same size as IDW grid
-  res(rast) <- grd_step # set resolution of raster to be same as resolutio nof IDW grid
+  res(rast) <- grd_step # set resolution of raster to be same as resolution of IDW grid
   temp_rast3 <- rasterize(temp_idw3, rast, temp_idw3$gw, fun=mean) # RASTERIZE!
   assign(paste0("gwmth_3_",ym),temp3) # store subseted monthly dataset
   assign(paste0("gwmth_rast_3_",ym),temp_rast3) # store monthly raster
@@ -153,7 +152,7 @@ for (yq in levels(gwqtr$qtr)) {
   rast <- raster() # define raster
   extent(rast) <- extent(c(temp_bbox1[1,1]-grd_step/2, temp_bbox1[2,1]+grd_step/2, 
                            temp_bbox1[1,2]-grd_step/2, temp_bbox1[2,2]+grd_step/2)) # make raster same size as IDW grid
-  res(rast) <- grd_step # set resolution of raster to be same as resolutio nof IDW grid
+  res(rast) <- grd_step # set resolution of raster to be same as resolution of IDW grid
   temp_rast1 <- rasterize(temp_idw1, rast, temp_idw1$gw, fun=mean) # RASTERIZE!
   assign(paste0("gwqtr_1_",yq),temp1) # store subseted quarterly dataset
   assign(paste0("gwqtr_rast_1_",yq),temp_rast1) # store quarterly raster
@@ -179,7 +178,7 @@ for (yq in levels(gwqtr$qtr)) {
   rast <- raster() # define raster
   extent(rast) <- extent(c(temp_bbox2[1,1]-grd_step/2, temp_bbox2[2,1]+grd_step/2, 
                            temp_bbox2[1,2]-grd_step/2, temp_bbox2[2,2]+grd_step/2)) # make raster same size as IDW grid
-  res(rast) <- grd_step # set resolution of raster to be same as resolutio nof IDW grid
+  res(rast) <- grd_step # set resolution of raster to be same as resolution of IDW grid
   temp_rast2 <- rasterize(temp_idw2, rast, temp_idw2$gw, fun=mean) # RASTERIZE!
   assign(paste0("gwqtr_2_",yq),temp2) # store subseted quarterly dataset
   assign(paste0("gwqtr_rast_2_",yq),temp_rast2) # store quarterly raster
@@ -205,7 +204,7 @@ for (yq in levels(gwqtr$qtr)) {
   rast <- raster() # define raster
   extent(rast) <- extent(c(temp_bbox3[1,1]-grd_step/2, temp_bbox3[2,1]+grd_step/2, 
                            temp_bbox3[1,2]-grd_step/2, temp_bbox3[2,2]+grd_step/2)) # make raster same size as IDW grid
-  res(rast) <- grd_step # set resolution of raster to be same as resolutio nof IDW grid
+  res(rast) <- grd_step # set resolution of raster to be same as resolution of IDW grid
   temp_rast3 <- rasterize(temp_idw3, rast, temp_idw3$gw, fun=mean) # RASTERIZE!
   assign(paste0("gwqtr_3_",yq),temp3) # store subseted quarterly dataset
   assign(paste0("gwqtr_rast_3_",yq),temp_rast3) # store quarterly raster
@@ -222,92 +221,3 @@ for (yq in levels(gwqtr$qtr)) {
 save.image(file = "S:/Matt/ag_pump/data/misc/temp_gw_idw_rasters.RData")
 
 
-#####################################################################################
-### 2. Extract groundwater depths for each SP, from each monthly/quarterly raster ###
-#####################################################################################
-
-
-
-#Transform monthly panels to spatial objects an
-grd_step <- 0.01
-usgs_2 <- usgs
-usgs_2$x <- as.numeric(usgs_2$longitude)
-usgs_2$y <- as.numeric(usgs_2$latitude)
-usgs_2$from_depth <- as.numeric(usgs_2$from_depth)
-usgs_2$thickness <- as.numeric(usgs_2$thickness)
-coordinates(usgs_2) = ~x + y #set spatial coordinates to create a Spatial object
-#plot(usgs_2, cex=1.5)
-#bubble(obj=usgs_2,zcol="from_depth",fill=FALSE)
-usgs_2_box <- t(usgs_2@bbox)
-grd <- expand.grid(x = seq(from = usgs_2_box[1,1], to = usgs_2_box[2,1], by = grd_step), 
-                   y = seq(from = usgs_2_box[1,2], to = usgs_2_box[2,2], by = grd_step)) # expand points to grid
-coordinates(grd) <- ~x + y 
-gridded(grd) <- TRUE
-#plot(grd, cex = 1.5, col="gray")
-#points(usgs_2, pch = 1, col = "red", cex = 1.5)
-
-
-#Inverse distance weighted spatial interpolation (with different weights)
-idw <- idw(formula=from_depth ~ 1, locations=usgs_2, 
-           newdata=grd, idp=2) # apply idw model for the depth data
-idw <- as.data.frame(idw)[,1:3]
-names(idw)[1:3] <- c("x", "y", "depth_idw2") 
-
-
-
-
-
-
-
-#Reformat mines lat/lon
-mines_2 <- mines[c("msha_id","longitude","latitude")]
-mines_2$longitude <- as.numeric(mines_2$longitude)
-mines_2$latitude <- as.numeric(mines_2$latitude)
-mines_2$x <- as.numeric(mines_2$longitude)
-mines_2$y <- as.numeric(mines_2$latitude)
-mines_2$x <- sapply(mines_2$x, function(x) max(usgs_2_box[1,1]+grd_step/4,x))
-mines_2$x <- sapply(mines_2$x, function(x) min(usgs_2_box[2,1]-grd_step/4,x))
-mines_2$y <- sapply(mines_2$y, function(x) max(usgs_2_box[1,2]+grd_step/4,x))
-mines_2$y <- sapply(mines_2$y, function(x) min(usgs_2_box[2,2]-grd_step/4,x))
-# 0.5% of observations are outside the USGS grid, and I correct 
-# these lat/lons to bring them to the edge of the grid
-mines_3 <- mines_2[c("msha_id","x","y")]
-coordinates(mines_3) <- ~x + y
-
-
-#Extract raster values to mine coordinates, looping over IDW variables
-for (i in names(idw)[3:ncol(idw)]){
-  print(i)
-  
-  #Convert IDW values into a SpatialPointsDataFrame
-  idw_temp <- idw[c("x","y",i)]
-  names(idw_temp)[3] <- "idw_value"
-  coordinates(idw_temp) <- ~x + y
-  
-  #Define raster with same grid size and resolution as USGS grid
-  rast <- raster()
-  extent(rast) <- extent(c(usgs_2_box[1,1]-grd_step/2,
-                           usgs_2_box[2,1]+grd_step/2,
-                           usgs_2_box[1,2]-grd_step/2,
-                           usgs_2_box[2,2]+grd_step/2))
-  res(rast) <- grd_step
-  
-  #Rasterize!
-  rast_temp <- rasterize(idw_temp, rast, idw_temp$idw_value, fun=mean)
-  
-  #Extract raster values for each pair of mine coordinates (simple)
-  name_temp <- paste0(i,"_sim")
-  mines_2[[name_temp]] <- extract(rast_temp,mines_3,method='simple',df=TRUE)$layer
-  
-  #Extract raster values for each pair of mine coordinates (bilinear)
-  name_temp <- paste0(i,"_bil")
-  mines_2[[name_temp]] <- extract(rast_temp,mines_3,method='bilinear',df=TRUE)$layer
-}  
-
-
-#Export results to CSV
-filename <- paste0("mine_depth_thickness_idw_grd",gsub("[.]","",grd_step),".csv")
-write.csv(mines_2, file=filename , row.names=FALSE, quote=FALSE)
-
-plot(rast_temp,xlim=c(-83,-82),ylim=c(36.5,38.5))
-mines_2_na <- mines_2[is.na(mines_2$depth_idw2_sim)==TRUE,]
