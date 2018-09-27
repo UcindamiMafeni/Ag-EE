@@ -846,6 +846,98 @@ local rsum = r(sum)
 sum N_sps
 di `rsum'/r(sum) // 73% of SPs are in basins with at least 30 quarters of readings
 
+** Fill out basin/month panel
+use "$dirpath_data/groundwater/avg_groundwater_depth_basin_month.dta", clear
+egen temp = group(basin_id basin_name)
+tsset temp modate
+tsfill
+foreach v of varlist basin_id basin_name {
+	replace `v' = `v'[_n-1] if temp==temp[_n-1] & mi(`v')
+	assert !mi(`v')
+}
+replace year = real(substr(string(modate,"%tm"),1,4)) if year==.
+replace month = real(substr(string(modate,"%tm"),6,2)) if month==.
+foreach v of varlist gw_mth_bsn_mean? {
+	by temp: ipolate `v' modate, gen(temp1)
+	replace `v' = temp1 if `v'==.
+	drop temp1
+}
+drop *_sd? *_cnt? temp
+drop if gw_mth_bsn_mean1==. & gw_mth_bsn_mean2==. & gw_mth_bsn_mean3==. 
+unique basin_id modate
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/groundwater/avg_groundwater_depth_basin_month_full.dta", replace
+
+** Fill out basin/quarter panel
+use "$dirpath_data/groundwater/avg_groundwater_depth_basin_quarter.dta", clear
+egen temp = group(basin_id basin_name)
+tsset temp qtr
+tsfill
+foreach v of varlist basin_id basin_name {
+	replace `v' = `v'[_n-1] if temp==temp[_n-1] & mi(`v')
+	assert !mi(`v')
+}
+replace year = real(substr(string(qtr,"%tq"),1,4)) if year==.
+replace quarter = real(substr(string(qtr,"%tq"),6,1)) if quarter==.
+foreach v of varlist gw_qtr_bsn_mean? {
+	by temp: ipolate `v' qtr, gen(temp1)
+	replace `v' = temp1 if `v'==.
+	drop temp1
+}
+drop *_sd? *_cnt? temp
+drop if gw_qtr_bsn_mean1==. & gw_qtr_bsn_mean2==. & gw_qtr_bsn_mean3==. 
+unique basin_id qtr
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/groundwater/avg_groundwater_depth_basin_quarter_full.dta", replace
+
+** Fill out sub-basin/month panel
+use "$dirpath_data/groundwater/avg_groundwater_depth_subbasin_month.dta", clear
+egen temp = group(basin_id basin_name basin_sub_id basin_sub_name)
+tsset temp modate
+tsfill
+foreach v of varlist basin_id basin_name basin_sub_id basin_sub_name {
+	replace `v' = `v'[_n-1] if temp==temp[_n-1] & mi(`v')
+	assert !mi(`v')
+}
+replace year = real(substr(string(modate,"%tm"),1,4)) if year==.
+replace month = real(substr(string(modate,"%tm"),6,2)) if month==.
+foreach v of varlist gw_mth_sub_mean? {
+	by temp: ipolate `v' modate, gen(temp1)
+	replace `v' = temp1 if `v'==.
+	drop temp1
+}
+drop *_sd? *_cnt? temp
+drop if gw_mth_sub_mean1==. & gw_mth_sub_mean2==. & gw_mth_sub_mean3==. 
+unique basin_id basin_sub_id modate
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/groundwater/avg_groundwater_depth_subbasin_month_full.dta", replace
+
+** Fill out sub-basin/quarter panel
+use "$dirpath_data/groundwater/avg_groundwater_depth_subbasin_quarter.dta", clear
+egen temp = group(basin_id basin_name basin_sub_id basin_sub_name)
+tsset temp qtr
+tsfill
+foreach v of varlist basin_id basin_name basin_sub_id basin_sub_name {
+	replace `v' = `v'[_n-1] if temp==temp[_n-1] & mi(`v')
+	assert !mi(`v')
+}
+replace year = real(substr(string(qtr,"%tq"),1,4)) if year==.
+replace quarter = real(substr(string(qtr,"%tq"),6,1)) if quarter==.
+foreach v of varlist gw_qtr_sub_mean? {
+	by temp: ipolate `v' qtr, gen(temp1)
+	replace `v' = temp1 if `v'==.
+	drop temp1
+}
+drop *_sd? *_cnt? temp
+drop if gw_qtr_sub_mean1==. & gw_qtr_sub_mean2==. & gw_qtr_sub_mean3==. 
+unique basin_id basin_sub_id qtr
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/groundwater/avg_groundwater_depth_subbasin_quarter_full.dta", replace
+
 }
 
 *******************************************************************************
