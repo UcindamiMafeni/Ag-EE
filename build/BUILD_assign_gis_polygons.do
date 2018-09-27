@@ -634,3 +634,23 @@ save "$dirpath_data/pge_cleaned/apep_pump_gis.dta", replace
 
 *******************************************************************************
 *******************************************************************************
+
+** 11. Make SP coordinates unique by SP
+if 1==1{
+
+use "$dirpath_data/pge_cleaned/sp_premise_gis.dta", clear
+duplicates t sp_uuid, gen(dup)
+egen temp_max = max(pull=="20180322"), by(sp_uuid)
+unique sp_uuid
+local uniq = r(unique)
+drop if temp_max==1 & pull!="20180322"
+unique sp_uuid
+assert r(unique)==`uniq'
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/pge_cleaned/sp_premise_gis.dta", replace	
+
+}
+
+*******************************************************************************
+*******************************************************************************
