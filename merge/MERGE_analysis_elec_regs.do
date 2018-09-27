@@ -586,7 +586,7 @@ save "$dirpath_data/merged/sp_rate_switchers.dta", replace
 *******************************************************************************
 
 ** 6. Merge GIS vars, SP vars, gw depth, and switchers in to collapsed SP-hour panels
-if 1==1{
+if 1==0{
 
 foreach tag in "20180719" "20180322" "20180827" {
 	
@@ -657,7 +657,7 @@ foreach tag in "20180719" "20180322" "20180827" {
 *******************************************************************************
 
 ** 7. Transform Q and P, and merge GIS vars in to collapsed SP-month panel
-{
+if 1==1{
 
 ** Load monthly dataset
 use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
@@ -742,6 +742,16 @@ la var cz_group "Climate zone (numeric)"
 cap drop flag_geocode_badmiss
 gen flag_geocode_badmiss = bad_geocode_flag==1 | missing_geocode_flag==1
 la var flag_geocode_badmiss "SP geocode either missing or not in California"
+
+** Create flag for irregular bills
+cap drop flag_irregular_bill
+gen temp = flag_dup_partial_overlap!=0
+egen flag_irregular_bill = rowmax(flag_multi_tariff flag_bad_tariff ///
+	temp flag_dup_double_overlap flag_dup_bad_kwh flag_dup_overlap_missing ///
+	flag_first_bill flag_last_bill flag_long_bill flag_short_bill flag_date_gap)
+assert inlist(flag_irregular_bill,0,1)
+la var flag_irregular_bill "Flag combining all weird bill indicators"
+drop temp
 
 ** Save
 order sp_uuid modate
