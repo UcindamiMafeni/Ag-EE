@@ -753,6 +753,18 @@ assert inlist(flag_irregular_bill,0,1)
 la var flag_irregular_bill "Flag combining all weird bill indicators"
 drop temp
 
+** Create summer dummy
+gen summer = inlist(month,5,6,7,8,9,10)
+la var summer "Summer dummy"
+
+** Log-transform prices to be used as instruments
+cap drop ln*_p_*
+foreach v of varlist p_kwh_e1* *p_kwh_e20 *p_kwh_ag_default {
+	local lab: var label `v'
+	gen log_`v' = ln(`v')
+	la var log_`v' "Log `lab'"
+}	
+
 ** Save
 order sp_uuid modate
 sort sp_uuid modate
