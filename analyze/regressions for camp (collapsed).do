@@ -102,3 +102,45 @@ reghdfe ihs_mwh log_p if kwh>=0, absorb(sp_id##month##hour modate##cz hour) vce(
 collapse (sum) fwt (mean) ihs_mwh, by(log_p sp_id modate hour year month cz log_p_peak log_p_peak_summer peak summer) fast
 reghdfe ihs_mwh log_p [fw=fwt], absorb(sp_id##month##hour modate##cz hour) vce(cluster sp_id modate)
 reghdfe ihs_mwh log_p [fw=fwt], absorb(sp_id##month##hour modate##cz sp_id##c.year) vce(cluster sp_id modate)
+
+****************
+****************
+
+qui use "$dirpath_data/merged/sp_hour_panel_apep2_CAMP.dta", clear 
+qui gen fwt = 1
+qui drop if kwh<0
+qui gen ihs_mwh =  ln(1000000*kwh + sqrt((1000000*kwh)^2+1))
+di c(current_time)
+reghdfe ihs_mwh log_p, absorb(sp_id##month##hour modate##cz hour) vce(cluster sp_id modate)
+di c(current_time)
+describe
+
+qui use "$dirpath_data/merged/sp_hour_panel_apep2_CAMP.dta", clear 
+qui gen fwt = 1
+qui drop if kwh<0
+qui gen ihs_mwh =  ln(1000000*kwh + sqrt((1000000*kwh)^2+1))
+qui collapse (sum) fwt (mean) ihs_mwh, by(log_p sp_id modate hour year month cz) fast
+di c(current_time)
+reghdfe ihs_mwh log_p [fw=fwt], absorb(sp_id##month##hour modate##cz hour) vce(cluster sp_id modate)
+di c(current_time)
+describe
+
+qui use "$dirpath_data/merged/sp_hour_panel_apep2_CAMP.dta", clear 
+qui gen fwt = 1
+qui drop if kwh<0
+qui gen ihs_mwh =  ln(1000000*kwh + sqrt((1000000*kwh)^2+1))
+qui collapse (sum) fwt (mean) ihs_mwh log_p, by(sp_id modate hour year month cz) fast
+di c(current_time)
+reghdfe ihs_mwh log_p [fw=fwt], absorb(sp_id##month##hour modate##cz hour) vce(cluster sp_id modate)
+di c(current_time)
+describe
+*************************
+*************************
+
+use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
+
+di c(current_time)
+reghdfe ihs_kwh c.log_p_mean#i.summer if pull=="20180719", absorb(sp_group#month modate) vce(cluster sp_group modate)
+di c(current_time)
+ivreghdfe ihs_kwh (log_p_mean = log_m*_p_kwh_ag_default) if pull=="20180719", absorb(sp_group#month modate) cluster(sp_group modate)
+di c(current_time)
