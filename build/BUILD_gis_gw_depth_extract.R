@@ -14,66 +14,164 @@ library(raster)
 library(dplyr)
 
 
-#####################################################################################
-### 1. Extract groundwater depths for each SP, from each monthly/quarterly raster ###
-#####################################################################################
+##################################################################################
+### Extract groundwater depths for each SP, from each monthly/quarterly raster ###
+##################################################################################
 
 
+#Load monthly/quarterly rasters
+setwd("S:/Matt/ag_pump/data/misc")
+load("temp_gw_idw_rasters.RData")
 
+#Read PGE coordinates
+setwd("S:/Matt/ag_pump/data/misc")
+prems <- read.delim2("pge_prem_coord_3pulls.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
+prems$x <- as.numeric(prems$prem_lon)
+prems$y <- as.numeric(prems$prem_lat)
 
-load "S:/Matt/ag_pump/data/misc/temp_gw_idw_rasters.RData"
+#Read APEP coordinates
+setwd("S:/Matt/ag_pump/data/misc")
+pumps <- read.delim2("apep_pump_coord.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
+pumps$x <- as.numeric(pumps$pump_lon)
+pumps$y <- as.numeric(pumps$pump_lat)
 
+#Create SpatialPointsDataFrame analogs
+prems_2 <- prems
+coordinates(prems_2) <- ~ x + y
+proj4string(prems_2) <- CRS("+proj=longlat +datum=WGS84 +units=m +ellps=WGS84 +towgs84=0,0,0")
+pumps_2 <- pumps
+coordinates(pumps_2) <- ~ x + y
+proj4string(pumps_2) <- CRS("+proj=longlat +datum=WGS84 +units=m +ellps=WGS84 +towgs84=0,0,0")
 
+#Loop over months to extract monthly groundwater depths
+for (ym in levels(gwmth$modate)) {
 
-#Reformat mines lat/lon
-mines_2 <- mines[c("msha_id","longitude","latitude")]
-mines_2$longitude <- as.numeric(mines_2$longitude)
-mines_2$latitude <- as.numeric(mines_2$latitude)
-mines_2$x <- as.numeric(mines_2$longitude)
-mines_2$y <- as.numeric(mines_2$latitude)
-mines_2$x <- sapply(mines_2$x, function(x) max(usgs_2_box[1,1]+grd_step/4,x))
-mines_2$x <- sapply(mines_2$x, function(x) min(usgs_2_box[2,1]-grd_step/4,x))
-mines_2$y <- sapply(mines_2$y, function(x) max(usgs_2_box[1,2]+grd_step/4,x))
-mines_2$y <- sapply(mines_2$y, function(x) min(usgs_2_box[2,2]-grd_step/4,x))
-# 0.5% of observations are outside the USGS grid, and I correct 
-# these lat/lons to bring them to the edge of the grid
-mines_3 <- mines_2[c("msha_id","x","y")]
-coordinates(mines_3) <- ~x + y
-
-
-#Extract raster values to mine coordinates, looping over IDW variables
-for (i in names(idw)[3:ncol(idw)]){
-  print(i)
+  #Store ym's monthly rasters
+  temp_ra1 <- get(paste0("gwmth_rast_1_",ym))
+  temp_ra2 <- get(paste0("gwmth_rast_2_",ym))
+  temp_ra3 <- get(paste0("gwmth_rast_3_",ym))
   
-  #Convert IDW values into a SpatialPointsDataFrame
-  idw_temp <- idw[c("x","y",i)]
-  names(idw_temp)[3] <- "idw_value"
-  coordinates(idw_temp) <- ~x + y
+  #Create names for extracted values from rasters
+  name_1s <- paste0("depth_1s_",ym)
+  name_1b <- paste0("depth_1b_",ym)
+  name_2s <- paste0("depth_2s_",ym)
+  name_2b <- paste0("depth_2b_",ym)
+  name_3s <- paste0("depth_3s_",ym)
+  name_3b <- paste0("depth_3b_",ym)
   
-  #Define raster with same grid size and resolution as USGS grid
-  rast <- raster()
-  extent(rast) <- extent(c(usgs_2_box[1,1]-grd_step/2,
-                           usgs_2_box[2,1]+grd_step/2,
-                           usgs_2_box[1,2]-grd_step/2,
-                           usgs_2_box[2,2]+grd_step/2))
-  res(rast) <- grd_step
+  #Extract groundwater dephts from rasters (SP lat/lons)
+  prems[[name_1s]] <- extract(temp_ra1,prems_2,method='simple'  ,df=TRUE)$layer
+  prems[[name_1b]] <- extract(temp_ra1,prems_2,method='bilinear',df=TRUE)$layer
+  prems[[name_2s]] <- extract(temp_ra2,prems_2,method='simple'  ,df=TRUE)$layer
+  prems[[name_2b]] <- extract(temp_ra2,prems_2,method='bilinear',df=TRUE)$layer
+  prems[[name_3s]] <- extract(temp_ra3,prems_2,method='simple'  ,df=TRUE)$layer
+  prems[[name_3b]] <- extract(temp_ra3,prems_2,method='bilinear',df=TRUE)$layer
+
+  #Extract groundwater dephts from rasters (pump lat/lons)
+  pumps[[name_1s]] <- extract(temp_ra1,pumps_2,method='simple'  ,df=TRUE)$layer
+  pumps[[name_1b]] <- extract(temp_ra1,pumps_2,method='bilinear',df=TRUE)$layer
+  pumps[[name_2s]] <- extract(temp_ra2,pumps_2,method='simple'  ,df=TRUE)$layer
+  pumps[[name_2b]] <- extract(temp_ra2,pumps_2,method='bilinear',df=TRUE)$layer
+  pumps[[name_3s]] <- extract(temp_ra3,pumps_2,method='simple'  ,df=TRUE)$layer
+  pumps[[name_3b]] <- extract(temp_ra3,pumps_2,method='bilinear',df=TRUE)$layer
   
-  #Rasterize!
-  rast_temp <- rasterize(idw_temp, rast, idw_temp$idw_value, fun=mean)
+  #Store ym's monthly data frames
+  temp_df1 <- get(paste0("gwmth_1_",ym))
+  temp_df2 <- get(paste0("gwmth_2_",ym))
+  temp_df3 <- get(paste0("gwmth_3_",ym))
   
-  #Extract raster values for each pair of mine coordinates (simple)
-  name_temp <- paste0(i,"_sim")
-  mines_2[[name_temp]] <- extract(rast_temp,mines_3,method='simple',df=TRUE)$layer
+  #Reproject spatial data frames to put units in meters
+  temp_df1 <- spTransform(temp_df1,"+proj=longlat +datum=WGS84 +units=m +ellps=WGS84 +towgs84=0,0,0")
+  temp_df2 <- spTransform(temp_df2,"+proj=longlat +datum=WGS84 +units=m +ellps=WGS84 +towgs84=0,0,0")
+  temp_df3 <- spTransform(temp_df3,"+proj=longlat +datum=WGS84 +units=m +ellps=WGS84 +towgs84=0,0,0")
   
-  #Extract raster values for each pair of mine coordinates (bilinear)
-  name_temp <- paste0(i,"_bil")
-  mines_2[[name_temp]] <- extract(rast_temp,mines_3,method='bilinear',df=TRUE)$layer
+  #Create names for distances to nearest groundwater reading
+  name_1d <- paste0("distkm_1_",ym)
+  name_2d <- paste0("distkm_2_",ym)
+  name_3d <- paste0("distkm_3_",ym)
+  
+  #Calculate distance to nearest groundwater reading (SP lat/lons)
+  prems[[name_1d]] <- do.call(pmin, as.data.frame(pointDistance(prems_2,temp_df1,lonlat=TRUE)))/1000
+  prems[[name_2d]] <- do.call(pmin, as.data.frame(pointDistance(prems_2,temp_df2,lonlat=TRUE)))/1000
+  prems[[name_3d]] <- do.call(pmin, as.data.frame(pointDistance(prems_2,temp_df3,lonlat=TRUE)))/1000
+  
+  #Calculate distance to nearest groundwater reading (pump lat/lons)
+  pumps[[name_1d]] <- do.call(pmin, as.data.frame(pointDistance(pumps_2,temp_df1,lonlat=TRUE)))/1000
+  pumps[[name_2d]] <- do.call(pmin, as.data.frame(pointDistance(pumps_2,temp_df2,lonlat=TRUE)))/1000
+  pumps[[name_3d]] <- do.call(pmin, as.data.frame(pointDistance(pumps_2,temp_df3,lonlat=TRUE)))/1000
+  
+  #Intermediate output
+  print(paste(ym,"  ",Sys.time()))
+  
+}  
+  
+#Loop over quarters to extract quarterly groundwater depths
+for (yq in levels(gwqtr$qtr)) {
+  
+  #Store yq's quarterly rasters
+  temp_ra1 <- get(paste0("gwqtr_rast_1_",yq))
+  temp_ra2 <- get(paste0("gwqtr_rast_2_",yq))
+  temp_ra3 <- get(paste0("gwqtr_rast_3_",yq))
+  
+  #Create names for extracted values from rasters
+  name_1s <- paste0("depth_1s_",yq)
+  name_1b <- paste0("depth_1b_",yq)
+  name_2s <- paste0("depth_2s_",yq)
+  name_2b <- paste0("depth_2b_",yq)
+  name_3s <- paste0("depth_3s_",yq)
+  name_3b <- paste0("depth_3b_",yq)
+  
+  #Extract groundwater dephts from rasters (SP lat/lons)
+  prems[[name_1s]] <- extract(temp_ra1,prems_2,method='simple'  ,df=TRUE)$layer
+  prems[[name_1b]] <- extract(temp_ra1,prems_2,method='bilinear',df=TRUE)$layer
+  prems[[name_2s]] <- extract(temp_ra2,prems_2,method='simple'  ,df=TRUE)$layer
+  prems[[name_2b]] <- extract(temp_ra2,prems_2,method='bilinear',df=TRUE)$layer
+  prems[[name_3s]] <- extract(temp_ra3,prems_2,method='simple'  ,df=TRUE)$layer
+  prems[[name_3b]] <- extract(temp_ra3,prems_2,method='bilinear',df=TRUE)$layer
+  
+  #Extract groundwater dephts from rasters (pump lat/lons)
+  pumps[[name_1s]] <- extract(temp_ra1,pumps_2,method='simple'  ,df=TRUE)$layer
+  pumps[[name_1b]] <- extract(temp_ra1,pumps_2,method='bilinear',df=TRUE)$layer
+  pumps[[name_2s]] <- extract(temp_ra2,pumps_2,method='simple'  ,df=TRUE)$layer
+  pumps[[name_2b]] <- extract(temp_ra2,pumps_2,method='bilinear',df=TRUE)$layer
+  pumps[[name_3s]] <- extract(temp_ra3,pumps_2,method='simple'  ,df=TRUE)$layer
+  pumps[[name_3b]] <- extract(temp_ra3,pumps_2,method='bilinear',df=TRUE)$layer
+  
+  #Store yq's quarterly data frames
+  temp_df1 <- get(paste0("gwqtr_1_",yq))
+  temp_df2 <- get(paste0("gwqtr_2_",yq))
+  temp_df3 <- get(paste0("gwqtr_3_",yq))
+  
+  #Reproject spatial data frames to put units in meters
+  temp_df1 <- spTransform(temp_df1,"+proj=longlat +datum=WGS84 +units=m +ellps=WGS84 +towgs84=0,0,0")
+  temp_df2 <- spTransform(temp_df2,"+proj=longlat +datum=WGS84 +units=m +ellps=WGS84 +towgs84=0,0,0")
+  temp_df3 <- spTransform(temp_df3,"+proj=longlat +datum=WGS84 +units=m +ellps=WGS84 +towgs84=0,0,0")
+  
+  #Create names for distances to nearest groundwater reading
+  name_1d <- paste0("distkm_1_",yq)
+  name_2d <- paste0("distkm_2_",yq)
+  name_3d <- paste0("distkm_3_",yq)
+  
+  #Calculate distance to nearest groundwater reading (SP lat/lons)
+  prems[[name_1d]] <- do.call(pmin, as.data.frame(pointDistance(prems_2,temp_df1,lonlat=TRUE)))/1000
+  prems[[name_2d]] <- do.call(pmin, as.data.frame(pointDistance(prems_2,temp_df2,lonlat=TRUE)))/1000
+  prems[[name_3d]] <- do.call(pmin, as.data.frame(pointDistance(prems_2,temp_df3,lonlat=TRUE)))/1000
+  
+  #Calculate distance to nearest groundwater reading (pump lat/lons)
+  pumps[[name_1d]] <- do.call(pmin, as.data.frame(pointDistance(pumps_2,temp_df1,lonlat=TRUE)))/1000
+  pumps[[name_2d]] <- do.call(pmin, as.data.frame(pointDistance(pumps_2,temp_df2,lonlat=TRUE)))/1000
+  pumps[[name_3d]] <- do.call(pmin, as.data.frame(pointDistance(pumps_2,temp_df3,lonlat=TRUE)))/1000
+  
+  #Intermediate output
+  print(paste(yq,"  ",Sys.time()))
+  
 }  
 
+#Export SP and pump results to CSV
+setwd("S:/Matt/ag_pump/data/misc")
+filename <- paste0("prems_gw_depths_from_rasters.csv")
+write.csv(prems, file=filename , row.names=FALSE, quote=FALSE)
+filename <- paste0("pumps_gw_depths_from_rasters.csv")
+write.csv(pumps, file=filename , row.names=FALSE, quote=FALSE)
 
-#Export results to CSV
-filename <- paste0("mine_depth_thickness_idw_grd",gsub("[.]","",grd_step),".csv")
-write.csv(mines_2, file=filename , row.names=FALSE, quote=FALSE)
 
-plot(rast_temp,xlim=c(-83,-82),ylim=c(36.5,38.5))
-mines_2_na <- mines_2[is.na(mines_2$depth_idw2_sim)==TRUE,]
