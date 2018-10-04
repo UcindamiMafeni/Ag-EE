@@ -765,6 +765,12 @@ foreach v of varlist p_kwh_e1* *p_kwh_e20 *p_kwh_ag_default {
 	la var log_`v' "Log `lab'"
 }	
 
+** Construct instrument of 12-month-lagged prices
+cap drop log_p_mean_lag12
+tsset sp_group modate 
+gen log_p_mean_lag12 = L12.log_p_mean
+la var log_p_mean_lag12 "Avg SP-specific marg elec price (log $/kWh), lagged 12 months"
+
 ** Save
 order sp_uuid modate
 sort sp_uuid modate
