@@ -883,9 +883,10 @@ gen linked_to_project = flag_date_problem==.
 la var linked_to_project "Indicator for pump tests at a pump that ever received a subsidized APEP project"
 
 ** Order and sort
-order apeptestid_uniq_anon test_year customertype-proj_date_test_subs2 economicanalysis run ofruns ///
-	totlift mtrload kwhaf af24hrs avgcost ope_numeric idealope ope ope_after flow flow_after ///
-	pwl pwl_after hp hp_numeric hp_after afpumped af_after tdh tdh_after annualcost annualcost_after
+order apeptestid_uniq_anon test_year linked_to_project customertype-proj_date_test_subs2 ///
+	economicanalysis run ofruns totlift mtrload kwhaf af24hrs avgcost ope_numeric idealope ///
+	ope ope_after flow flow_after pwl pwl_after hp hp_numeric hp_after afpumped af_after ///
+	tdh tdh_after annualcost annualcost_after
 sort apeptestid_uniq_anon
 
 ** Save
