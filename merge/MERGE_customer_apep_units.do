@@ -851,7 +851,46 @@ sort apeptestid_uniq
 unique apeptestid_uniq
 assert r(unique)==r(N)
 
+** Keep year of test date
+gen test_year = year(test_date_stata)
+la var test_year "Year of pump test"
+drop test_date_stata
+
+** Create re-anonymized resoted identifier and crosswalk
+gen temp = runiform()
+sort temp
+gen apeptestid_uniq_anon = _n
+la var apeptestid_uniq_anon "Anonymized unique ID for observatiosn in APEP test dataset"
+sort apeptestid_uniq
+preserve 
+keep apeptestid_uniq apeptestid_uniq_anon
+save "$dirpath_data/merged/apep_proj_merged_anon_xwalk.dta", replace
+restore
+drop apeptestid_uniq temp
+
+** Keep pump test project indicators and subsidies only, not dates
+/*
+br customertype-proj_date_test_subs economicanalysis run ofruns totlift mtrload kwhaf af24hrs ///
+	ope_numeric idealope ope ope_after flow flow_after pwl pwl_after hp hp_after afpumped af_after ///
+	tdh tdh_after annualcost* if flag_date_problem==.
+	& proj_date_test_post==1 & ///
+	proj_date_test_subs==1
+gen annualcost_diff = annualcost_after - annualcost
+sum annualcost_diff if proj_date_test_subs==1, detail
+*/
+drop date_proj_finish date_test_pre date_test_post date_proj_finish2 date_test_pre2 date_test_post2
+gen linked_to_project = flag_date_problem==.
+la var linked_to_project "Indicator for pump tests at a pump that ever received a subsidized APEP project"
+
+** Order and sort
+order apeptestid_uniq_anon test_year customertype-proj_date_test_subs2 economicanalysis run ofruns ///
+	totlift mtrload kwhaf af24hrs avgcost ope_numeric idealope ope ope_after flow flow_after ///
+	pwl pwl_after hp hp_numeric hp_after afpumped af_after tdh tdh_after annualcost annualcost_after
+sort apeptestid_uniq_anon
+
 ** Save
+unique apeptestid_uniq_anon
+assert r(unique)==r(N)
 compress
 save "$dirpath_data/merged/apep_proj_merged_anon.dta", replace
 
