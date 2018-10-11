@@ -814,3 +814,48 @@ save "$dirpath_data/merged/sp_apep_proj_merged.dta", replace
 
 *******************************************************************************
 *******************************************************************************
+
+** 2. Create anonymized APEP test/project dataset for determining APEP eligibility/subsidies
+{
+
+** Start with harmonized pump test and project dataset
+use "$dirpath_data/merged/sp_apep_proj_merged.dta", clear
+
+** Drop all PGE electricity variables
+drop prsn_uuid-mtr_remove_date
+
+** Merge in APEP-specific variables
+merge 1:1 customertype farmtype waterenduse apeptestid using ///
+	"$dirpath_data/pge_cleaned/pump_test_data.dta", keep(3) nogen
+	
+** Drop non-essential and/or identifying variables
+drop farmtype apeptestid crop pumplatnew pumplongnew pge_badge_nbr mtrsn ratesch ///
+	mtrmake pumpmke gearheadmake apep_proj_count
+
+** Verify no identifying information in notes
+replace notes = trim(itrim(notes))
+br notes if notes!="" // looks fine
+br 
+
+** Verify no identifying information in afterloadoutofrange
+tab afterloadoutofrange // was a dropdown menu
+
+** Verfity no identifying information in memo
+replace memo = trim(itrim(memo))
+br memo if memo!="" // not as clean so I'm dropping it
+drop memo
+br
+
+** Sort by anonymized APEP test id
+sort apeptestid_uniq
+unique apeptestid_uniq
+assert r(unique)==r(N)
+
+** Save
+compress
+save "$dirpath_data/merged/apep_proj_merged_anon.dta", replace
+
+}
+
+*******************************************************************************
+*******************************************************************************
