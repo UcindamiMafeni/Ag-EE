@@ -879,7 +879,7 @@ gen annualcost_diff = annualcost_after - annualcost
 sum annualcost_diff if proj_date_test_subs==1, detail
 */
 drop date_proj_finish date_test_pre date_test_post date_proj_finish2 date_test_pre2 date_test_post2
-gen linked_to_project = flag_date_problem==.
+gen linked_to_project = flag_date_problem!=.
 la var linked_to_project "Indicator for pump tests at a pump that ever received a subsidized APEP project"
 
 ** Order and sort
