@@ -904,3 +904,86 @@ save "$dirpath_data/merged/apep_proj_merged_anon.dta", replace
 
 *******************************************************************************
 *******************************************************************************
+
+** 3. Compare SP vs APEP coordinates
+{
+
+** Start with SP-APEP merge
+use "$dirpath_data/merged/sp_apep_proj_merged.dta", clear
+
+** Merge in SP-level GIS data
+merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/sp_premise_gis.dta", keep(1 3) nogen ///
+	keepusing(prem_lat prem_long bad_geocode_flag missing_geocode_flag wdist_id county_fips ///
+	basin_id basin_sub_id)
+foreach v of varlist bad_geocode_flag missing_geocode_flag wdist_id county_fips basin_id basin_sub_id {
+	rename `v' `v'SP
+}
+
+** Merge in pump-level GIS data
+merge 1:1 apeptestid customertype farmtyp waterenduse test_date_stata using ///
+	"$dirpath_data/pge_cleaned/pump_test_data.dta", keep(1 3) nogen keepusing(crop)
+merge m:1 apeptestid crop using "$dirpath_data/pge_cleaned/apep_pump_gis.dta", keep(1 3) nogen ///
+	keepusing(pumplatnew pumplongnew bad_geocode_flag wdist_id county_fips basin_id basin_sub_id)
+
+	
+** Calculate distance between the 2 competing geocodes
+geodist prem_lat prem_long pumplatnew pumplongnew, miles gen(sp_miles_from_pump)
+assert sp_miles_from_pump==. if missing_geocode_flagSP==1
+
+hist sp_miles_from_pump
+sum sp_miles_from_pump, detail // median is 10.6 miles, which is Not Great Bob!
+
+hist sp_miles_from_pump if bad_geocode_flagSP==0
+sum sp_miles_from_pump if bad_geocode_flagSP==0, detail
+
+hist sp_miles_from_pump if bad_geocode_flagSP==0 & bad_geocode_flag==0
+sum sp_miles_from_pump if bad_geocode_flagSP==0 & bad_geocode_flag==0, detail
+
+egen temp_tagSP = tag(sp_uuid)
+hist sp_miles_from_pump if bad_geocode_flagSP==0 & bad_geocode_flag==0 & temp_tagSP // not really an over/under sampling issue
+sum sp_miles_from_pump if bad_geocode_flagSP==0 & bad_geocode_flag==0 & temp_tagSP, detail
+
+hist sp_miles_from_pump if bad_geocode_flagSP==0 & bad_geocode_flag==0 & temp_tagSP & ///
+	customertype=="Individ Farms"
+sum sp_miles_from_pump if bad_geocode_flagSP==0 & bad_geocode_flag==0 & temp_tagSP & ///
+	customertype=="Individ Farms", detail // removing water districts, meadin drops to 8.4 miles
+
+hist sp_miles_from_pump if bad_geocode_flagSP==0 & bad_geocode_flag==0 & temp_tagSP & ///
+	customertype=="Individ Farms" & waterenduse=="agriculture"
+sum sp_miles_from_pump if bad_geocode_flagSP==0 & bad_geocode_flag==0 & temp_tagSP & ///
+	customertype=="Individ Farms" & waterenduse=="agriculture", detail // same
+	
+hist sp_miles_from_pump if bad_geocode_flagSP==0 & bad_geocode_flag==0 & temp_tagSP & ///
+	customertype=="Individ Farms" & waterenduse=="agriculture" & subsidy_proj!=.
+sum sp_miles_from_pump if bad_geocode_flagSP==0 & bad_geocode_flag==0 & temp_tagSP & ///
+	customertype=="Individ Farms" & waterenduse=="agriculture" & subsidy_proj!=., detail 
+	// keeping only farms that received projects, median falls to 5.9 miles
+
+** See if 2 competing geocodes are assign to the same polygons
+gen temp_county_match = county_fipsSP==county_fips
+gen temp_basin_match = basin_idSP==basin_id
+gen temp_basin_sub_match = basin_idSP==basin_id & basin_sub_idSP==basin_sub_id
+gen temp_wdist_match = wdist_idSP==wdist_id
+
+sum temp_*_match // ehhhhhh Not Great Bob
+sum temp_*_match if temp_tagSP
+sum temp_*_match if temp_tagSP & bad_geocode_flagSP==0
+sum temp_*_match if temp_tagSP & bad_geocode_flagSP==0 & bad_geocode_flag==0
+sum temp_*_match if temp_tagSP & bad_geocode_flagSP==0 & bad_geocode_flag==0 & ///
+	customertype=="Individ Farms"
+sum temp_*_match if temp_tagSP & bad_geocode_flagSP==0 & bad_geocode_flag==0 & ///
+	customertype=="Individ Farms" & waterenduse=="agriculture"
+sum temp_*_match if temp_tagSP & bad_geocode_flagSP==0 & bad_geocode_flag==0 & ///
+	customertype=="Individ Farms" & waterenduse=="agriculture"& subsidy_proj!=.
+	// Water Districts NEVER get over 50%, dammit.
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 4. Compare APEP recoreded depth vs rasterized groundwater depth
+
+*******************************************************************************
+*******************************************************************************
+
