@@ -14,12 +14,9 @@ global dirpath_data_pge_raw "$dirpath_data/pge_raw"
 global dirpath_data_pge_cleaned "$dirpath_data/pge_cleaned"
 
 ************************************************
-***** 1: PUMP TEST PROJECT DATA
-*use "$dirpath_data_pge/pump_test_project_data.dta", clear
 
-
-***** 2: PUMP TEST DATA
-use "$dirpath_data_pge_raw/pump_test_data.dta", clear
+***** PUMP TEST DATA
+use "$dirpath_data_pge_raw/pump_test_data_20180322.dta", clear
 
 rename *, lower
 
@@ -152,10 +149,10 @@ label variable afterloadoutofrange "reason why after load >115% or <80%"
 rename text862 memoforreport
 label variable memoforreport "memo for report"
 
-rename text569 annualcost
+rename text567 annualcost
 label variable annualcost "annual cost ($)"
 
-rename text567 annualcostafter
+rename text569 annualcostafter
 label variable annualcostafter "annual cost ($) after upgrade"
 
 rename ope ope_numeric
@@ -345,5 +342,10 @@ replace annualcost_after = . if annualcost_after == 0
 rename date_stata test_date_stata
 format test_date_stata %td
 
+foreach v of varlist * {
+	cap replace `v' = trim(itrim(`v'))
+}
+
+compress
 save "$dirpath_data_pge_cleaned/pump_test_data.dta", replace
 
