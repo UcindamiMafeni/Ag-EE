@@ -1239,7 +1239,7 @@ la var depth_3b "Extracted gw depth (obs non-ques measurements, bilinear, feet)"
 la var dist_miles_1 "Miles to nearest gw measurement in raster (all)"
 la var dist_miles_2 "Miles to nearest gw measurement in raster (non-ques)"
 la var dist_miles_3 "Miles to nearest gw measurement in raster (obs non-ques)"
-rename depth_?? gw_raster_depth_qtr_??
+rename depth_?? gw_rast_depth_qtr_??
 rename dist_miles_? gw_rast_dist_qtr_?
 drop _merge
 
