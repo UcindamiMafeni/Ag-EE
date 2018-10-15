@@ -619,7 +619,9 @@ la var subsidy_for_test "Subisdy ($) received for pump test"
 la var run "Run number"
 la var ofruns "Total number of runs"
 rename ofruns nbr_of_runs
-la var test_date_stata "Date of pump test"
+rename testsectiondiameter pump_diameter 
+la var pump_diameter "Diameter of pump (inches; section of pump tested)"
+la var test_date_stata "Date of APEP pump test"
 
 sort TEMP_SORT
 drop TEMP_SORT
