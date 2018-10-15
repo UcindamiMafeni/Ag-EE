@@ -347,6 +347,9 @@ foreach v of varlist * {
 }
 
 // SOME BETTER LABELING!
+gen TEMP_SORT = _n
+
+
 assert phgpm==tstgpm
 drop phgpm
 rename tstgpm flow_gpm
@@ -616,8 +619,10 @@ la var subsidy_for_test "Subisdy ($) received for pump test"
 la var run "Run number"
 la var ofruns "Total number of runs"
 rename ofruns nbr_of_runs
+la var test_date_stata "Date of pump test"
 
-
+sort TEMP_SORT
+drop TEMP_SORT
 
 compress
 save "$dirpath_data_pge_cleaned/pump_test_data.dta", replace
