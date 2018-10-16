@@ -17,7 +17,7 @@ global dirpath_data "$dirpath/data"
 { 
 
 // Loop over data pulls
-foreach pull in /*"20180719"*/ "20180322" "20180827" "combined" {
+foreach pull in "20180719" "20180322" "20180827" /*"combined"*/ {
 
 	// Load monthly panel
 	use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
@@ -28,7 +28,7 @@ foreach pull in /*"20180719"*/ "20180322" "20180827" "combined" {
 	}
 	
 	// Loop through sample restrictions
-	foreach ifs in 5 6 {
+	foreach ifs in 1 5 7 9 11 13 {
 	
 		if `ifs'==1 {
 			local if_sample = ""
@@ -52,29 +52,29 @@ foreach pull in /*"20180719"*/ "20180322" "20180827" "combined" {
 			local if_sample = "if sp_same_rate_dumbsmart==1"
 		}
 		if `ifs'==8 {
-			local if_sample = "if sp_same_in_cat==1"
+			local if_sample = "if sp_same_rate_in_cat==1"
 		}
 		if `ifs'==9 {
 			local if_sample = "if sp_same_rate_dumbsmart==0"
 		}
 		if `ifs'==10 {
-			local if_sample = "if sp_same_in_cat==0"
+			local if_sample = "if sp_same_rate_in_cat==0"
 		}
 		if `ifs'==11 {
 			local if_sample = "if sp_same_rate_dumbsmart==1 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
 		}
 		if `ifs'==12 {
-			local if_sample = "if sp_same_in_cat==1 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
+			local if_sample = "if sp_same_rate_in_cat==1 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
 		}
 		if `ifs'==13 {
 			local if_sample = "if sp_same_rate_dumbsmart==0 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
 		}
 		if `ifs'==14 {
-			local if_sample = "if sp_same_in_cat==0 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
+			local if_sample = "if sp_same_rate_in_cat==0 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
 		}
 		
 		// Loop over different combinations of fixed effects and interactions thereof
-		foreach fe in 1 2 4 6 8 10 12 14 {
+		foreach fe in 1 2 5 7 9 11 13 17 {
 		
 			if `fe'==1 {
 				local FEs = "sp_group modate"
@@ -124,9 +124,15 @@ foreach pull in /*"20180719"*/ "20180322" "20180827" "combined" {
 			if `fe'==16 {
 				local FEs = "sp_group#month sp_group#year rt_group#modate"
 			}
+			if `fe'==17 {
+				local FEs = "sp_group#month#rt_group modate"
+			}
+			if `fe'==18 {
+				local FEs = "sp_group#month#rt_group sp_group#year modate"
+			}
 
 			// Loop over alternative RHS specifications, including IVs
-			foreach rhs in 1 4 7 8 {
+			foreach rhs in 1 4 9 10 11 {
 			
 				if `rhs'==1 {
 					local RHS = "log_p_mean"
@@ -152,15 +158,27 @@ foreach pull in /*"20180719"*/ "20180322" "20180827" "combined" {
 				if `rhs'==8 {
 					local RHS = "(log_p_mean = log_mean_p_kwh_ag_default log_min_p_kwh_ag_default log_max_p_kwh_ag_default)"
 				}
+				if `rhs'==9 {
+					local RHS = "c.log_p_mean#i.sp_same_rate_dumbsmart"
+				}
+				if `rhs'==10 {
+					local RHS = "(log_p_mean = log_p_mean_lag12)"
+				}
+				if `rhs'==11 {
+					local RHS = "(log_p_mean = log_p_m*_lag12 log_p_m*_lag6)"
+				}
 
 				// Skip combinations of IV and switchers/rate FE interactions
 				local skip = ""
-				if regexm("`if_sample'","sp_same")==1 & regexm("`RHS'"," = ") {
+				*if regexm("`if_sample'","sp_same")==1 & regexm("`RHS'"," = ") {
+				*	local skip = "skip"
+				*}
+				if regexm("`if_sample'","sp_same")==1 & regexm("`RHS'","sp_same") {
 					local skip = "skip"
 				}
-				if regexm("`FEs'","rt_group")==1 & regexm("`RHS'"," = ") {
-					local skip = "skip"
-				}
+				*if regexm("`FEs'","rt_group")==1 & regexm("`RHS'"," = ") {
+				*	local skip = "skip"
+				*}
 				
 				// Skip regressions that are already stored in output file
 				preserve
@@ -192,7 +210,7 @@ foreach pull in /*"20180719"*/ "20180322" "20180827" "combined" {
 					gen sample = "`if_sample'"
 					gen fes = "`FEs'"
 					gen rhs = "`RHS'"
-					if regexm("`RHS'","log_p_mean") & "`RHS'"!="c.log_p_mean#i.summer" {
+					if regexm("`RHS'","log_p_mean") & "`RHS'"!="c.log_p_mean#i.summer" & "`RHS'"!="c.log_p_mean#i.sp_same_rate_dumbsmart" {
 						gen beta_log_p_mean = _b[log_p_mean]
 						gen se_log_p_mean = _se[log_p_mean]
 						gen t_log_p_mean =  _b[log_p_mean]/_se[log_p_mean]
@@ -211,9 +229,17 @@ foreach pull in /*"20180719"*/ "20180322" "20180827" "combined" {
 						gen beta_log_p_mean_summer = _b[1.summer#c.log_p_mean]
 						gen se_log_p_mean_summer = _se[1.summer#c.log_p_mean]
 						gen t_log_p_mean_summer =  _b[1.summer#c.log_p_mean]/_se[1.summer#c.log_p_mean]
-						gen beta_log_p_mean_wintr = _b[0.summer#c.log_p_mean]
+						gen beta_log_p_mean_winter = _b[0.summer#c.log_p_mean]
 						gen se_log_p_mean_winter = _se[0.summer#c.log_p_mean]
 						gen t_log_p_mean_winter =  _b[0.summer#c.log_p_mean]/_se[0.summer#c.log_p_mean]
+					}
+					if "`RHS'"=="c.log_p_mean#i.sp_same_rate_dumbsmart" {
+						gen beta_log_p_mean_stayer = _b[1.sp_same_rate_dumbsmart#c.log_p_mean]
+						gen se_log_p_mean_stayer = _se[1.sp_same_rate_dumbsmart#c.log_p_mean]
+						gen t_log_p_mean_stayer =  _b[1.sp_same_rate_dumbsmart#c.log_p_mean]/_se[1.sp_same_rate_dumbsmart#c.log_p_mean]
+						gen beta_log_p_mean_switcher = _b[0.sp_same_rate_dumbsmart#c.log_p_mean]
+						gen se_log_p_mean_switcher = _se[0.sp_same_rate_dumbsmart#c.log_p_mean]
+						gen t_log_p_mean_switcher =  _b[0.sp_same_rate_dumbsmart#c.log_p_mean]/_se[0.sp_same_rate_dumbsmart#c.log_p_mean]
 					}
 					gen n_obs = e(N)
 					gen n_SPs = e(N_clust1)
