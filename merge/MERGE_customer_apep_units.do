@@ -834,7 +834,8 @@ drop farmtype apeptestid crop pumplatnew pumplongnew pge_badge_nbr mtrsn ratesch
 
 ** Verify no identifying information in notes
 replace notes = trim(itrim(notes))
-br notes if notes!="" // looks fine
+br notes if notes!="" // looks fine, but i'm dropping it anyways
+drop notes
 br 
 
 ** Verify no identifying information in afterloadoutofrange
@@ -899,6 +900,7 @@ unique apeptestid_uniq_anon
 assert r(unique)==r(N)
 compress
 save "$dirpath_data/merged/apep_proj_merged_anon.dta", replace
+save "$dirpath_data/merged/data.dta", replace
 
 }
 
