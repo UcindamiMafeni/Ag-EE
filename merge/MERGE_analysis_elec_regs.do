@@ -458,7 +458,6 @@ use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
 	// Note: I checked for cases of multiple rates within an SP-month, and they
 	// are EXCEEDINGLY rare. That means that identifying switchers at the SP 
 	// level will be virtually identical to identifying switchers at the SA levels
-keep if in_interval
 keep sp_uuid modate rt_sched_cd
 encode rt_sched_cd, gen(rt_group)
 
@@ -586,7 +585,7 @@ save "$dirpath_data/merged/sp_rate_switchers.dta", replace
 *******************************************************************************
 
 ** 6. Merge GIS vars, SP vars, gw depth, and switchers in to collapsed SP-hour panels
-if 1==0{
+if 1==1{
 
 foreach tag in "20180719" "20180322" "20180827" {
 	
@@ -620,11 +619,11 @@ foreach tag in "20180719" "20180322" "20180827" {
 	egen basin_group = group(basin_id)
 	la var basin_group "Groundwater basin (numeric)"
 	drop county_fips
-		
+	
 	** Merge in switchers indicators
 	cap drop sp_same_rate_*
-	merge m:1 sp_uuid using "$dirpath_data/merged/sp_rate_switchers.dta", ///
-		nogen keep(1 3) keepusing(sp_same_rate_dumbsmart sp_same_rate_in_cat)
+	merge m:1 sp_uuid using "$dirpath_data/merged/sp_rate_switchers.dta", nogen ///
+		keep(1 3) keepusing(sp_same_rate_always sp_same_rate_dumbsmart sp_same_rate_in_cat)
 		
 	** Merge in average groundwater depths (basin-by-quarter)
 	cap drop gw_qtr_bsn_*
@@ -657,7 +656,7 @@ foreach tag in "20180719" "20180322" "20180827" {
 *******************************************************************************
 
 ** 7. Transform Q and P, and merge GIS vars in to collapsed SP-month panel
-if 1==1{
+if 1==0{
 
 ** Load monthly dataset
 use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
@@ -695,7 +694,7 @@ cap drop *_p_kwh_e20
 merge m:1 modate using "$dirpath_data/merged/e20_prices_monthly.dta", nogen keep(1 3)
 	
 ** Merge in instrument: default ag rates
-cap drop rt_efault *_p_kwh_ag_default
+cap drop rt_default *_p_kwh_ag_default
 merge m:1 rt_sched_cd modate using "$dirpath_data/merged/ag_default_prices_monthly.dta", ///
 	nogen keep(1 3)
 
@@ -712,8 +711,8 @@ la var basin_group "Groundwater basin (numeric)"
 		
 ** Merge in switchers indicators
 cap drop sp_same_rate_*
-merge m:1 sp_uuid using "$dirpath_data/merged/sp_rate_switchers.dta", ///
-	nogen keep(1 3) keepusing(sp_same_rate_dumbsmart sp_same_rate_in_cat)
+merge m:1 sp_uuid using "$dirpath_data/merged/sp_rate_switchers.dta", nogen ///
+	keep(1 3) keepusing(sp_same_rate_always sp_same_rate_dumbsmart sp_same_rate_in_cat)
 		
 ** Merge in average groundwater depths (basin-by-quarter)
 cap drop gw_qtr_bsn_*
