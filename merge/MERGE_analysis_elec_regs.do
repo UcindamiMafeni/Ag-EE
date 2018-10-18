@@ -780,6 +780,56 @@ la var log_p_mean_lag6 "Avg SP-specific marg elec price (log $/kWh), lagged 6 mo
 la var log_p_min_lag6 "Min SP-specific marg elec price (log $/kWh), lagged 6 months"
 la var log_p_max_lag6 "Max SP-specific marg elec price (log $/kWh), lagged 6 months"
 
+** Create instrument: initial price
+cap drop *_init
+egen temp_min_date = min(modate), by(sp_uuid)
+gen temp_first_rt1 = rt_sched_cd if modate==temp_min_date
+egen temp_first_rt2 = mode(temp_first_rt1), by(sp_uuid)
+foreach v of varlist rt_sched_cd mean_p_kwh min_p_kwh max_p_kwh {
+	rename `v' `v'_TEMP
+}
+rename temp_first_rt2 rt_sched_cd
+merge m:1 rt_sched_cd modate using "$dirpath_data/merged/ag_rates_avg_by_month.dta", ///
+	nogen keep(1 3)
+foreach v of varlist rt_sched_cd mean_p_kwh min_p_kwh max_p_kwh {
+	rename `v' `v'_init
+	local vlab1: variable label `v'_init
+	local vlab2 = subinstr("`vlab1'","rate","SP's initial rate",1)
+	la var `v'_init "`vlab2'"
+}
+foreach v of varlist *_p_kwh_init {
+	gen log_`v' = ln(`v')
+	local vlab: variable label `v'
+	la var log_`v' "Log `vlab'"
+}
+foreach v of varlist *_TEMP {
+	local v2 = subinstr("`v'","_TEMP","",1)
+	rename `v' `v2'
+}
+la var rt_sched_cd_init "Rate schedule for SP's initial month in dataset"
+drop temp*
+
+** Merge in residuals for control function (actual and initial rates)
+cap drop ctrl_fxn*
+merge m:1 rt_sched_cd modate using "$dirpath_data/merged/ag_rates_ctrl_fxn_monthly.dta", ///
+	nogen keep(1 3)
+foreach v of varlist rt_sched_cd ctrl_fxn* {
+	rename `v' TEMP_`v'
+}
+rename rt_sched_cd_init rt_sched_cd
+merge m:1 rt_sched_cd modate using "$dirpath_data/merged/ag_rates_ctrl_fxn_monthly.dta", ///
+	nogen keep(1 3)
+foreach v of varlist rt_sched_cd ctrl_fxn* {
+	rename `v' `v'_init
+	local vlab: variable label `v'_init
+	la var `v'_init "`vlab' (SP's initial rate)"
+}
+foreach v of varlist TEMP_* {
+	local v2 = subinstr("`v'","TEMP_","",1) 
+	rename `v' `v2'
+}
+	
+	
 ** Save
 order sp_uuid modate
 sort sp_uuid modate
