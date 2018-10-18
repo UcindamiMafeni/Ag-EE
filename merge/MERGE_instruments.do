@@ -914,3 +914,40 @@ save "$dirpath_data/merged/ag_rates_ctrl_fxn_monthly.dta", replace
 
 *******************************************************************************
 *******************************************************************************
+
+** 8. Prepare monthly ag rates, to be merged in as initial-rate instrument
+if 1==1{
+
+** Start with ag rages by day
+use "$dirpath_data/merged/ag_rates_avg_by_day.dta", clear
+drop mean_p_kw_*
+
+** Collapse to the month level
+gen modate = ym(year(date), month(date))
+format %tm modate
+foreach v of varlist m*_p_kwh {
+	local fxn = subinstr(substr("`v'",1,4),"_","",1)
+	egen temp = `fxn'(`v'), by(rt_sched modate)
+	replace `v' = temp
+	local vlab1: variable label `v'
+	local vlab2 = subinstr("`vlab1'","daily","monthly",1)
+	la var `v' "`vlab2'"
+	drop temp
+}
+drop date
+duplicates drop
+unique rt_sched_cd modate
+assert r(unique)==r(N)
+
+	// Clean up and save
+la var modate "Year-Month"
+order rt_sched_cd modate *
+sort rt_sched_cd modate
+compress
+save "$dirpath_data/merged/ag_rates_avg_by_month.dta", replace
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
