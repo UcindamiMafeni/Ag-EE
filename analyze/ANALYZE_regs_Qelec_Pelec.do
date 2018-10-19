@@ -28,7 +28,7 @@ foreach pull in "20180719" "20180322" "20180827" /*"combined"*/ {
 	}
 	
 	// Loop through sample restrictions
-	foreach ifs in 1 5 7 9 11 13 {
+	foreach ifs in 1 5 7 9 11 13 15 16 {
 	
 		if `ifs'==1 {
 			local if_sample = ""
@@ -72,9 +72,15 @@ foreach pull in "20180719" "20180322" "20180827" /*"combined"*/ {
 		if `ifs'==14 {
 			local if_sample = "if sp_same_rate_in_cat==0 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
 		}
+		if `ifs'==15 {
+			local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & summer==1"
+		}
+		if `ifs'==16 {
+			local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & summer==1"
+		}
 		
 		// Loop over different combinations of fixed effects and interactions thereof
-		foreach fe in 1 2 5 7 9 11 13 17 {
+		foreach fe in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 17 18 {
 		
 			if `fe'==1 {
 				local FEs = "sp_group modate"
@@ -132,7 +138,7 @@ foreach pull in "20180719" "20180322" "20180827" /*"combined"*/ {
 			}
 
 			// Loop over alternative RHS specifications, including IVs
-			foreach rhs in 1 4 9 10 11 {
+			foreach rhs in 1 4 7 8 9 10 11 12 13 14 {
 			
 				if `rhs'==1 {
 					local RHS = "log_p_mean"
@@ -167,6 +173,15 @@ foreach pull in "20180719" "20180322" "20180827" /*"combined"*/ {
 				if `rhs'==11 {
 					local RHS = "(log_p_mean = log_p_m*_lag12 log_p_m*_lag6)"
 				}
+				if `rhs'==12 {
+					local RHS = "(log_p_mean = log_mean_p_kwh_init)"
+				}
+				if `rhs'==13 {
+					local RHS = "(log_p_mean = log_m*_p_kwh_init)"
+				}
+				if `rhs'==14 {
+					local RHS = "log_p_mean ctrl_fxn_logs"
+				}
 
 				// Skip combinations of IV and switchers/rate FE interactions
 				local skip = ""
@@ -174,6 +189,9 @@ foreach pull in "20180719" "20180322" "20180827" /*"combined"*/ {
 				*	local skip = "skip"
 				*}
 				if regexm("`if_sample'","sp_same")==1 & regexm("`RHS'","sp_same") {
+					local skip = "skip"
+				}
+				if regexm("`if_sample'","summer")==1 & regexm("`RHS'","summer") {
 					local skip = "skip"
 				}
 				*if regexm("`FEs'","rt_group")==1 & regexm("`RHS'"," = ") {
