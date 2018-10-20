@@ -860,7 +860,7 @@ foreach tag in "20180719" "20180322" "20180827" {
 	gen log_p_lag6 = L6.mean_log_p
 	la var log_p_lag12 "Avg SP-specific marg elec price (log $/kWh), lagged 12 months"
 	la var log_p_lag6 "Avg SP-specific marg elec price (log $/kWh), lagged 6 months"
-	drop temp*
+	drop temp* mean_log_p
 	tempfile lagged_p
 	save `lagged_p'
 	restore
