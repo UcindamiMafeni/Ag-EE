@@ -28,7 +28,7 @@ foreach pull in "20180719" "20180322" "20180827" /*"combined"*/ {
 	}
 	
 	// Loop through sample restrictions
-	foreach ifs in 1 5 7 9 11 13 15 16 {
+	foreach ifs in 1 5 7 10 11 12 15 16 17 18 {
 	
 		if `ifs'==1 {
 			local if_sample = ""
@@ -61,26 +61,32 @@ foreach pull in "20180719" "20180322" "20180827" /*"combined"*/ {
 			local if_sample = "if sp_same_rate_in_cat==0"
 		}
 		if `ifs'==11 {
-			local if_sample = "if sp_same_rate_dumbsmart==1 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
+			local if_sample = "if sp_same_rate_dumbsmart==0 & sp_same_rate_in_cat==1"
 		}
 		if `ifs'==12 {
-			local if_sample = "if sp_same_rate_in_cat==1 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
+			local if_sample = "if sp_same_rate_dumbsmart==1 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
 		}
 		if `ifs'==13 {
-			local if_sample = "if sp_same_rate_dumbsmart==0 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
+			local if_sample = "if sp_same_rate_in_cat==1 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
 		}
 		if `ifs'==14 {
-			local if_sample = "if sp_same_rate_in_cat==0 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
+			local if_sample = "if sp_same_rate_dumbsmart==0 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
 		}
 		if `ifs'==15 {
-			local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & summer==1"
+			local if_sample = "if sp_same_rate_in_cat==0 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
 		}
 		if `ifs'==16 {
+			local if_sample = "if sp_same_rate_dumbsmart==0 & sp_same_rate_in_cat==1 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
+		}
+		if `ifs'==17 {
 			local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & summer==1"
+		}
+		if `ifs'==18 {
+			local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & summer==0"
 		}
 		
 		// Loop over different combinations of fixed effects and interactions thereof
-		foreach fe in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 17 18 {
+		foreach fe in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 17 18 19 {
 		
 			if `fe'==1 {
 				local FEs = "sp_group modate"
@@ -135,6 +141,9 @@ foreach pull in "20180719" "20180322" "20180827" /*"combined"*/ {
 			}
 			if `fe'==18 {
 				local FEs = "sp_group#month#rt_group sp_group#year modate"
+			}
+			if `fe'==19 {
+				local FEs = "sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate"
 			}
 
 			// Loop over alternative RHS specifications, including IVs
