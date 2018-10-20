@@ -863,6 +863,7 @@ foreach tag in "20180719" "20180322" "20180827" {
 	drop temp*
 	tempfile lagged_p
 	save `lagged_p'
+	restore
 	merge m:1 sp_uuid hour weekend modate using `lagged_p', nogen keep(1 3)
 	
 	** Save
