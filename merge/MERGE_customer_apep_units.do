@@ -923,7 +923,7 @@ foreach v of varlist bad_geocode_flag missing_geocode_flag wdist_id county_fips 
 
 ** Merge in pump-level GIS data
 merge 1:1 apeptestid customertype farmtyp waterenduse test_date_stata using ///
-	"$dirpath_data/pge_cleaned/pump_test_data.dta", keep(1 3) nogen keepusing(crop totlift pwl swl rwl)
+	"$dirpath_data/pge_cleaned/pump_test_data.dta", keep(1 3) nogen //keepusing(crop totlift pwl swl rwl)
 merge m:1 apeptestid crop using "$dirpath_data/pge_cleaned/apep_pump_gis.dta", keep(1 3) nogen ///
 	keepusing(pumplatnew pumplongnew latlon_group bad_geocode_flag wdist_id county_fips basin_id basin_sub_id)
 
@@ -1403,6 +1403,25 @@ WE COULD MACHINE-LEARN BOTH (1) AND (2).
 FOR (2), WE HAVE ~250 PUMPS WHERE WE OBSERVE DRAWDOWN AT DIFFERENT POINTS IN TIME...
 */
 
+lassoregress swl_pwl_diff mtreff meterkh pump_diameter pf pwl ///
+	dchpres_psi dchlvl_ft gaugecor_ft gaugeheight_ft otherlosses_ft totlift ///
+	flow_gpm kw_input hp mtrload ope water_hp crosssection flow_veloc_fts totlift_gap
+
+foreach v1 of varlist mtreff meterkh pump_diameter pf pwl ///
+	dchpres_psi dchlvl_ft gaugecor_ft gaugeheight_ft otherlosses_ft totlift ///
+	flow_gpm kw_input hp mtrload ope water_hp crosssection flow_veloc_fts totlift_gap {
+	
+	foreach v2 of varlist mtreff meterkh pump_diameter pf pwl ///
+		dchpres_psi dchlvl_ft gaugecor_ft gaugeheight_ft otherlosses_ft totlift ///
+		flow_gpm kw_input hp mtrload ope water_hp crosssection flow_veloc_fts totlift_gap {
+
+		gen I_`v1'_`v2' = `v1'*`v2'
+	}
+}
+	
+lassoregress swl_pwl_diff mtreff meterkh pump_diameter pf pwl ///
+	dchpres_psi dchlvl_ft gaugecor_ft gaugeheight_ft otherlosses_ft totlift ///
+	flow_gpm kw_input hp mtrload ope water_hp crosssection flow_veloc_fts totlift_gap I_*
 
 }
 
