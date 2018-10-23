@@ -223,4 +223,28 @@ ivreghdfe ihs_kwh ( log_p_mean = log_p_m*_lag* ) if pull=="20180719" & sp_same_r
 	absorb(sp_group#month modate) cluster(sp_group modate)
 
 	
+reghdfe ihs_kwh c.log_p_mean#i.summer if pull=="20180719" & sp_same_rate_group==0, ///
+	absorb(sp_group#month modate) vce(cluster sp_group modate)	
+reghdfe ihs_kwh c.log_p_mean#i.summer if pull=="20180719" & sp_same_rate_group==0, ///
+	absorb(sp_group#month basin_group#year modate) vce(cluster sp_group modate)	
+reghdfe ihs_kwh c.log_p_mean#i.summer if pull=="20180719" & sp_same_rate_group==0, ///
+	absorb(sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year modate) vce(cluster sp_group modate)
+reghdfe ihs_kwh c.log_p_mean#i.summer if pull=="20180719" & sp_same_rate_group==0, ///
+	absorb(sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate) vce(cluster sp_group modate)
+	
+	
+reghdfe ihs_kwh c.log_p_mean#i.rt_group if pull=="20180719", ///
+	absorb(sp_group#month modate) vce(cluster sp_group modate)	
+reghdfe ihs_kwh c.log_p_mean#i.rt_group if pull=="20180719", ///
+	absorb(sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate) vce(cluster sp_group modate)	
+
+
+gen ln_gw = ln(gw_qtr_bsn_mean2)
+reghdfe ihs_kwh log_p_mean if pull=="20180719" & sp_same_rate_group==0,  ///
+	absorb(sp_group#month##c.ln_gw basin_group#year wdist_group#year modate) cluster(sp_group modate)
+ivreghdfe ihs_kwh ( log_p_mean = log_p_m*_lag* ) if pull=="20180719" & sp_same_rate_group==1,  ///
+	absorb(sp_group#month##c.ln_gw basin_group#year wdist_group#year modate) cluster(sp_group modate)
+ivreghdfe ihs_kwh ( log_p_mean = log_m*_p_kwh_ag_default ) if pull=="20180719" & sp_same_rate_group==2,  ///
+	absorb(sp_group#month##c.ln_gw basin_group#year wdist_group#year modate) cluster(sp_group modate)
+
 	
