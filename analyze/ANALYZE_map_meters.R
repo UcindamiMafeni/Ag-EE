@@ -67,6 +67,8 @@ myThemeStuff <- theme(panel.background = element_rect(fill = NA),
 
 # custom colors for graphing
 myBlue <- rgb(0/255, 128/255, 255/255, 1)
+dknavy<- rgb(30/255, 45/255, 83/255, 1)
+eltblue <- rgb(130/255, 192/255, 233/255, 1)
 myGray <- rgb(224/255, 224/255, 224/255, 1)
 
 ################################################################
@@ -92,7 +94,13 @@ caDF <- mapToDF(ca)
 pgeDF <- filter(utilityDF, id == 3, piece == 1)
 
 
-customerDF <- read_dta(paste(dataDir, "/pge_cleaned/pge_cust_detail.dta", sep = "")) %>%
+customerDF_1 <- read_dta(paste(dataDir, "/pge_cleaned/pge_cust_detail_20180719.dta", sep = "")) %>%
+  filter(in_pge == 1)
+
+customerDF_2 <- read_dta(paste(dataDir, "/pge_cleaned/pge_cust_detail_20180322.dta", sep = "")) %>%
+  filter(in_pge == 1)
+
+customerDF_3 <- read_dta(paste(dataDir, "/pge_cleaned/pge_cust_detail_20180827.dta", sep = "")) %>%
   filter(in_pge == 1)
 
 
@@ -105,8 +113,12 @@ meterMap <- ggplot() +
                color = 'gray75', fill = 'NA') +
   geom_polygon(data = caDF, aes(x = long, y = lat, group = group),
                color = 'black', fill = 'NA') +
-  geom_point(data = customerDF, aes(x = prem_long, y = prem_lat),
-             size = 0.05, color = myBlue, shape = 21)  +
+  geom_point(data = customerDF_2, aes(x = prem_long, y = prem_lat),
+             size = 0.05, color = eltblue, shape = 21)  +
+  geom_point(data = customerDF_3, aes(x = prem_long, y = prem_lat),
+             size = 0.05, color = eltblue, shape = 21)  +
+  geom_point(data = customerDF_1, aes(x = prem_long, y = prem_lat),
+             size = 0.05, color = dknavy, shape = 21)  +
   coord_fixed(ratio = 1.25) +
   guides(colour = guide_legend(""),
          shape = guide_legend("")) +
