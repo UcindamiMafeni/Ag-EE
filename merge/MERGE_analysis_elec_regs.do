@@ -865,7 +865,28 @@ foreach tag in "20180719" "20180322" "20180827" {
 	save `lagged_p'
 	restore
 	merge m:1 sp_uuid hour weekend modate using `lagged_p', nogen keep(1 3)
-	
+
+	** Merge in flag for interval disparities with billed kWh
+	cap drop flag_interval_disp20
+	merge m:1 sp_uuid modate using "$dirpath_data/merged/sp_month_elec_panel.dta", nogen keep(1 3) ///
+		keepusing(flag_interval_disp20)
+		
+	** Merge in average SA-wise correlation b/tw billing and interval kWh
+	cap drop interval_bill_corr
+	preserve
+	use sp_uuid interval_bill_corr using "$dirpath_data/merged/sp_month_elec_panel.dta", clear
+	duplicates drop
+	egen temp = mean(interval_bill_corr), by(sp_uuid)
+	replace interval_bill_corr = temp
+	drop temp
+	duplicates drop
+	unique sp_uuid
+	assert r(unique)==r(N)
+	tempfile bill_corr
+	save `bill_corr'
+	restore
+	merge m:1 sp_uuid using `bill_corr', nogen keep(1 3)
+		
 	** Save
 	unique sp_uuid hour log_p modate year month weekend log_p_kwh_e1_?? log_p_kwh_e20 log_p_kwh_ag_default
 	assert r(unique)==r(N)
