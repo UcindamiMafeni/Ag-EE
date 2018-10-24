@@ -24,7 +24,14 @@ foreach var of varlist * {
  label variable `var' ""
 }
 
+
 ** drop variables that are always missing
+assert mi(yield) 
+assert mi(text859)
+assert mi(list527)
+assert mi(text857)
+assert mi(frmbustype)
+assert mi(txthoursafter)
 drop yield text859 list527 text857 frmbustype txthoursafter
 
 ** drop variables that are identical to other variables always
@@ -452,6 +459,8 @@ assert inrange(temp,-0.55,0.5)
 gen temp2 = flow_gpm*60*24/325900
 br af24hrs temp2 temp // same thing, with more sig figs!
 replace af24hrs = temp2
+gen af24hrs_after = flow_gpm_after*60*24/325900
+la var af24hrs_after "Acre-feet per 24 hours, after project (derived from flow_gpm_after)"
 drop temp*
 
 correlate cubicft flow_gpm
@@ -475,9 +484,12 @@ sum temp*, detail
 gen temp5 = flow_gpm*totlift*8.34/60/550	
 gen temp6 = hp*ope_numeric/100
 br temp5 temp6
-correlate temp5 temp6
-	// But that works?!
+correlate temp5 temp6 // But that works?!
 di (8.34/60/550)^(-1)/100 // AHA I figured it out! Take that physics!
+gen temp7 = flow_gpm_after*tdh_after*8.34/60/550
+gen temp8 = hp_after*ope_after/100	
+br temp5 temp6 temp7 temp8
+correlate temp7 temp8 //  Also works!
 rename hpi hpi1
 la var hpi1 "Horsepower input 1 (of up to 3)"	
 la var hpi2 "Horsepower input 2 (of up to 3)"
@@ -494,6 +506,8 @@ gen temp = 100*water_hp/hp
 br water_hp hp temp ope 
 count if abs(temp-ope)>1 // only 11 of 21851
 	// OPE is defined as water HP / HP, or HP out / HP in
+gen water_hp_after = hp_after*ope_after
+la var water_hp "Water horsepower output after project (assumed, from hp_afer ope_after)"
 drop temp*	
 	
 la var mtreff "Motor efficiency (%)"	
@@ -512,19 +526,24 @@ gen temp = kw_input/hp
 sum temp, detail
 sort temp
 br hp kw_input temp // this variable is a mess, so i'm gonna fix it
-replace kw_input = hp*0.746 if !inrange(temp,0.745,0.747)
+replace kw_input = hp*0.7457 if !inrange(temp,0.745,0.747)
 gen temp2 = kw_input/hp
 sort temp2 temp
-br hp kw_input temp temp2 // this variable is a mess, so i'm gonna fix it
+br hp kw_input temp temp2 
+gen kw_input_after = hp_after*0.7457
+la var  kw_input "Kilowatt input to motor after project (assumed, derived from hp_after)"
 drop temp*
 
 la var kwhaf "Kilowatt-hours per acre-foot, given test conditions"
-gen temp = kwhaf * af24hr/24
-br kwhaf af24hr kw_input temp
+gen temp = kwhaf * af24hrs/24
+br kwhaf af24hrs kw_input temp
 correlate kw_input temp // perfectly correlated
-reg temp kw_input, nocons // dead on, except roundisng!
+reg temp kw_input, nocons // dead on, except rounding!
 gen temp2 = kw_input - temp
 sort temp2
+gen kwhaf_after = kw_input_after * 24/af24hrs
+br kw_input kw_input_after af24hrs af24hrs_after kwhaf kwhaf_after temp2
+la var kwhaf_after "Kilowatt-hours per acre-foot after project (assumed, derived from kw_input_after af24hrs_after)"
 drop temp*
 
 rename avgcost avgcost_kwh
@@ -564,8 +583,28 @@ drop temp*
 rename saidhours hrs_per_year
 la var hrs_per_year "Hours pumping per year (assumed/elicited, pre-project)"
 
+gen kwhperyr = afperyr*kwhaf
+gen kwhperyr_after = afperyr_after*kwhaf_after
+/*br afperyr afperyr_after kwhaf kwhaf_after kwhperyr kwhperyr_after hrs_per_year ///
+	kw_input kw_input_after hp hp_after ope ope_after flow_gpm flow_gpm_after ///
+	tdh tdh_after if ope_after-ope>10 & abs(flow_gpm_after-flow_gpm)<1 & ///
+	abs(tdh_after-tdh)<1
+*/
+la var kwhperyr "KWH per year, derived from afperyer*kwhaf"
+la var kwhperyr_after "KWH per year after projct, derived from afperyer_after*kwhaf_after"
+
 la var annualcost "Annual cost ($), under current operating conditions/assumptions"
 la var annualcost_after "Annual cost ($) after upgrades (assumed)"
+gen temp1 = annualcost/kwhperyr
+gen temp2 = annualcost_after/kwhperyr_after
+gen temp3 = temp1 - avgcost_kwh
+gen temp4 = temp2 - avgcost_kwh
+br annualcost annualcost_after kwhperyr kwhperyr_after avgcost_kwh temp1 temp3 temp2 temp4
+correlate temp1 avgcost_kwh // GREAT!
+correlate temp2 avgcost_kwh // TERRIBLE!
+rename temp2 avgcost_kwh_after 
+la var avgcost_kwh_after "Avg elec cost ($/kWh) after project (derived as annualcost_after/kwhperyr_after)"
+drop temp*
 
 la var directreadkw "Direct-read kW input to motor (often missing)"
 la var kwik "Disk-read kW input to motor (often missing)"
