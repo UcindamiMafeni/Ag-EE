@@ -821,6 +821,20 @@ save "$dirpath_data/merged/sp_apep_proj_merged.dta", replace
 ** Start with harmonized pump test and project dataset
 use "$dirpath_data/merged/sp_apep_proj_merged.dta", clear
 
+** Create anonymized SP ID
+preserve
+keep sp_uuid 
+duplicates drop
+gen temp = runiform()
+sort temp
+gen sp_id_anon = _n
+drop temp
+tempfile sp_anon
+save `sp_anon'
+restore
+merge m:1 sp_uuid using `sp_anon', nogen keep(1 3) 
+la var sp_id_anon "Anonymized service point ID (think of this as the exact location of the pump)"
+
 ** Drop all PGE electricity variables
 drop prsn_uuid-mtr_remove_date
 
@@ -855,6 +869,8 @@ assert r(unique)==r(N)
 ** Keep year of test date
 gen test_year = year(test_date_stata)
 la var test_year "Year of pump test"
+gen test_month = month(test_date_stata)
+la var test_month "Month of pump test"
 drop test_date_stata
 
 ** Create re-anonymized resoted identifier and crosswalk
@@ -879,6 +895,14 @@ br customertype-proj_date_test_subs economicanalysis run nbr_of_runs totlift mtr
 gen annualcost_diff = annualcost_after - annualcost
 sum annualcost_diff if proj_date_test_subs==1, detail
 */
+gen proj_year = year(date_proj_finish)
+la var proj_year "Year of project finish"
+gen proj_month = month(date_proj_finish)
+la var proj_month "Month of project finish"
+gen proj_year2 = year(date_proj_finish)
+la var proj_year2 "Year of project 2 finish"
+gen proj_month2 = month(date_proj_finish)
+la var proj_month2 "Month of project 2 finish"
 drop date_proj_finish date_test_pre date_test_post date_proj_finish2 date_test_pre2 date_test_post2
 gen linked_to_project = flag_date_problem!=.
 la var linked_to_project "Indicator for pump tests at a pump that ever received a subsidized APEP project"
@@ -889,11 +913,16 @@ la var end_use_ag "Dummy for water end use listed as 'ag' or 'irrigation' "
 drop waterenduse
 
 ** Order and sort
-order apeptestid_uniq_anon test_year linked_to_project customertype end_use_ag ///
-	flag_date_problem-proj_date_test_subs2 economicanalysis run nbr_of_runs totlift mtrload kwhaf ///
-	af24hrs avgcost ope ope_ideal ope_round ope_after flow_gpm flow_gpm_after pwl pwl_after hp ///
-	hp_after afperyr afperyr_after tdh tdh_after annualcost annualcost_after
-sort apeptestid_uniq_anon
+order sp_id_anon apeptestid_uniq_anon test_year test_month linked_to_project customertype end_use_ag ///
+	flag_date_problem-proj_date_test_subs proj_year proj_month flag_date_problem2-proj_date_test_subs2 ///
+	proj_year2 proj_month2 economicanalysis run nbr_of_runs pwl pwl_after tdh tdh_after flow_gpm ///
+	flow_gpm_after ope ope_after hp hp_after kw_input kw_input_after af24hrs af24hrs_after ///
+	kwhaf kwhaf_after avgcost_kwh avgcost_kwh_after afperyr afperyr_after kwhperyr kwhperyr_after ///
+	annualcost annualcost_after water_hp water_hp_after ope_ideal ope_round totlift mtrload 
+sort sp_id_anon apeptestid_uniq_anon
+
+** Drop seemingly meaningless subsidized test indicators
+drop proj_date_test_subs proj_date_test_subs2
 
 ** Save
 unique apeptestid_uniq_anon
@@ -901,6 +930,7 @@ assert r(unique)==r(N)
 compress
 save "$dirpath_data/merged/apep_proj_merged_anon.dta", replace
 save "$dirpath_data/merged/data.dta", replace
+
 
 }
 
