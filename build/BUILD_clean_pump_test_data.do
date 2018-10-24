@@ -507,7 +507,7 @@ br water_hp hp temp ope
 count if abs(temp-ope)>1 // only 11 of 21851
 	// OPE is defined as water HP / HP, or HP out / HP in
 gen water_hp_after = hp_after*ope_after
-la var water_hp "Water horsepower output after project (assumed, from hp_afer ope_after)"
+la var water_hp_after "Water horsepower output after project (assumed, from hp_afer ope_after)"
 drop temp*	
 	
 la var mtreff "Motor efficiency (%)"	
@@ -531,7 +531,7 @@ gen temp2 = kw_input/hp
 sort temp2 temp
 br hp kw_input temp temp2 
 gen kw_input_after = hp_after*0.7457
-la var  kw_input "Kilowatt input to motor after project (assumed, derived from hp_after)"
+la var kw_input_after "Kilowatt input to motor after project (assumed, derived from hp_after)"
 drop temp*
 
 la var kwhaf "Kilowatt-hours per acre-foot, given test conditions"
