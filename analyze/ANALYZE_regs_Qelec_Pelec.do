@@ -17,7 +17,7 @@ global dirpath_data "$dirpath/data"
 { 
 
 // Loop over data pulls
-foreach pull in "20180719" "20180322" "20180827" /*"combined"*/ {
+foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 
 	// Load monthly panel
 	use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
@@ -28,7 +28,7 @@ foreach pull in "20180719" "20180322" "20180827" /*"combined"*/ {
 	}
 	
 	// Loop through sample restrictions
-	foreach ifs in 1 5 7 10 11 12 15 16 17 18 {
+	foreach ifs in 7 10 11 12 15 16 {
 	
 		if `ifs'==1 {
 			local if_sample = ""
@@ -86,7 +86,7 @@ foreach pull in "20180719" "20180322" "20180827" /*"combined"*/ {
 		}
 		
 		// Loop over different combinations of fixed effects and interactions thereof
-		foreach fe in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 17 18 19 {
+		foreach fe in 20 21 {
 		
 			if `fe'==1 {
 				local FEs = "sp_group modate"
@@ -145,9 +145,15 @@ foreach pull in "20180719" "20180322" "20180827" /*"combined"*/ {
 			if `fe'==19 {
 				local FEs = "sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate"
 			}
+			if `fe'==20 {
+				local FEs = "sp_group#month sp_group#c.gw_qtr_bsn_mean2 basin_group#year modate"
+			}
+			if `fe'==21 {
+				local FEs = "sp_group#month sp_group#c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate"
+			}
 
 			// Loop over alternative RHS specifications, including IVs
-			foreach rhs in 1 4 7 8 9 10 11 12 13 14 {
+			foreach rhs in 1 8 11 {
 			
 				if `rhs'==1 {
 					local RHS = "log_p_mean"
