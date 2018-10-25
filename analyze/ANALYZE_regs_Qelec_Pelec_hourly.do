@@ -16,20 +16,20 @@ global dirpath_data "$dirpath/data"
 ** 1. Hourly regressions
 { 
 
+// Outfile
+local outfile = "regs_Qelec_Pelec_hourly6"
+
 // Loop over data pulls
 foreach pull in "20180719" /*"20180322" "20180827"*/ {
 
-	// Load monthly panel
-	use "$dirpath_data/merged/sp_hourly_elec_panel_collapsed_20180719.dta", clear
-		
 	// Loop through sample restrictions
-	foreach ifs in 3 4 5 {
+	foreach ifs in 3 {
 	
 		if `ifs'==1 {
 			local if_sample = ""
 		}
 		if `ifs'==2 {
-			local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
+			local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_interval_disp20==0 & inrange(interval_bill_corr,0.9,1)"
 		}
 		if `ifs'==3 {
 			local if_sample = "if sp_same_rate_dumbsmart==1"
@@ -41,17 +41,23 @@ foreach pull in "20180719" /*"20180322" "20180827"*/ {
 			local if_sample = "if sp_same_rate_in_cat==0"
 		}
 		if `ifs'==6 {
-			local if_sample = "if sp_same_rate_dumbsmart==1 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
+			local if_sample = "if sp_same_rate_dumbsmart==1 & flag_nem==0 & flag_geocode_badmiss==0 & flag_interval_disp20==0 & inrange(interval_bill_corr,0.9,1)"
 		}
 		if `ifs'==7 {
-			local if_sample = "if sp_same_rate_dumbsmart==0 & sp_same_rate_in_cat==1 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
+			local if_sample = "if sp_same_rate_dumbsmart==0 & sp_same_rate_in_cat==1 & flag_nem==0 & flag_geocode_badmiss==0 & flag_interval_disp20==0 & inrange(interval_bill_corr,0.9,1)"
 		}
 		if `ifs'==8 {
-			local if_sample = "if sp_same_rate_in_cat==0 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
+			local if_sample = "if sp_same_rate_in_cat==0 & flag_nem==0 & flag_geocode_badmiss==0 & flag_interval_disp20==0 & inrange(interval_bill_corr,0.9,1)"
+		}
+		
+		// Load monthly panel
+		use "$dirpath_data/merged/sp_hourly_elec_panel_collapsed_`pull'.dta", clear
+		if "`if_sample'"!="" {
+			keep `if_sample'
 		}
 		
 		// Loop over different combinations of fixed effects and interactions thereof
-		foreach fe in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 17 18 19 {
+		foreach fe in 11 12 13 14 15 16 {
 		
 			if `fe'==1 {
 				local FEs = "sp_group#month modate"
@@ -60,13 +66,46 @@ foreach pull in "20180719" /*"20180322" "20180827"*/ {
 				local FEs = "sp_group#month basin_group#year modate"
 			}
 			if `fe'==3 {
-				local FEs = "sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year modate"
+				local FEs  = "sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year modate"
 			}
 			if `fe'==4 {
 				local FEs = "sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate"
 			}
 			if `fe'==5 {
 				local FEs = "sp_group#month##c.gw_qtr_bsn_mean2 sp_group#year modate"
+			}
+			if `fe'==6 {
+				local FEs = "sp_group#month#hour modate"
+			}
+			if `fe'==7 {
+				local FEs = "sp_group#month#hour basin_group#year modate"
+			}
+			if `fe'==8 {
+				local FEs  = "sp_group#month#hour##c.gw_qtr_bsn_mean2 basin_group#year modate"
+			}
+			if `fe'==9 {
+				local FEs = "sp_group#month#hour##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate"
+			}
+			if `fe'==10 {
+				local FEs = "sp_group#month#hour##c.gw_qtr_bsn_mean2 sp_group#year modate"
+			}
+			if `fe'==11 {
+				local FEs  = "sp_group#month#hour sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year modate"
+			}
+			if `fe'==12 {
+				local FEs = "sp_group#month#hour sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate"
+			}
+			if `fe'==13 {
+				local FEs = "sp_group#month#hour sp_group#month##c.gw_qtr_bsn_mean2 sp_group#year modate"
+			}
+			if `fe'==14 {
+				local FEs  = "sp_group#month#hour sp_group##c.gw_qtr_bsn_mean2 basin_group#year modate"
+			}
+			if `fe'==15 {
+				local FEs = "sp_group#month#hour sp_group##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate"
+			}
+			if `fe'==16 {
+				local FEs = "sp_group#month#hour sp_group##c.gw_qtr_bsn_mean2 sp_group#year modate"
 			}
 
 			// Loop over alternative RHS specifications, including IVs
@@ -109,7 +148,7 @@ foreach pull in "20180719" /*"20180322" "20180827"*/ {
 				// Skip regressions that are already stored in output file
 				preserve
 				cap {
-					use "$dirpath_data/results/regs_Qelec_Pelec_hourly.dta", clear
+					use "$dirpath_data/results/`outfile'.dta", clear
 					count if panel=="hourly" & pull=="`pull'" & sample=="`if_sample'" & fes=="`FEs'" & rhs=="`RHS'"
 					if r(N)==1 {
 						local skip = "skip"
@@ -127,7 +166,7 @@ foreach pull in "20180719" /*"20180322" "20180827"*/ {
 				if "`skip'"=="" & "`iv'"=="" {
 				
 					// Run regression
-					reghdfe ihs_kwh `RHS' `if_sample' [fw=fwt], absorb(`FEs') vce(cluster sp_group modate)
+					reghdfe ihs_kwh `RHS' [fw=fwt], absorb(`FEs') vce(cluster sp_group modate)
 
 					// Store output
 					preserve
@@ -163,10 +202,10 @@ foreach pull in "20180719" /*"20180322" "20180827"*/ {
 					gen n_SPs = e(N_clust1)
 					gen n_modates = e(N_clust2)
 					gen dof = e(df_r)
-					cap append using "$dirpath_data/results/regs_Qelec_Pelec_hourly.dta"
+					cap append using "$dirpath_data/results/`outfile'.dta"
 					duplicates drop 
 					compress
-					save "$dirpath_data/results/regs_Qelec_Pelec_hourly.dta", replace
+					save "$dirpath_data/results/`outfile'.dta", replace
 					restore
 				}
 				
@@ -174,7 +213,7 @@ foreach pull in "20180719" /*"20180322" "20180827"*/ {
 				if "`skip'"=="" & "`iv'"=="iv" {
 				
 					// Run regression
-					ivreghdfe ihs_kwh `RHS' `if_sample' [fw=fwt], absorb(`FEs') cluster(sp_group modate)
+					ivreghdfe ihs_kwh `RHS' [fw=fwt], absorb(`FEs') cluster(sp_group modate)
 
 					// Store output
 					preserve
@@ -194,10 +233,10 @@ foreach pull in "20180719" /*"20180322" "20180827"*/ {
 					gen dof = e(df_r)
 					gen fstat_rk = e(rkf)
 					gen fstat_cd = e(cdf)
-					cap append using "$dirpath_data/results/regs_Qelec_Pelec_hourly.dta"
+					cap append using "$dirpath_data/results/`outfile'.dta"
 					duplicates drop 
 					compress
-					save "$dirpath_data/results/regs_Qelec_Pelec_hourly.dta", replace
+					save "$dirpath_data/results/`outfile'.dta", replace
 					restore
 				}		
 			}
