@@ -258,7 +258,7 @@ graph export "$dirpath/output/hourly_hist_prices_choosers.eps", replace
 ************************************************
 ************************************************
 
-** 4. Hourly reg coefficient plot
+** 6. Hourly reg coefficient plot
 {
 use "$dirpath/output/hourly_regs_season.dta", clear
 rename hr hour
@@ -288,20 +288,6 @@ twoway ///
 graph export "$dirpath/output/hourly_regs.eps", replace
 
 	
-twoway ///
-	(bar kwh hour if seas=="summer", lw(medium) lcolor(black) color(dknavy)) ///
-	(bar kwh hour if seas=="winter", lw(medium) lcolor(black) color(eltblue)) ///
-	, ///
-	xscale(r(0,23)) xlab(0(2)23, labsize(large)) ///
-	xtitle("Hour", size(large)) ///
-	ylab(,nogrid angle(0) labsize(large)) ///
-	ytitle("kWh density", size(large)) ///
-	graphr(color(white) lc(white)) ///
-	/// title("Price Elasticities by Hour/Season ", size(vlarge) color(black)) ///
-	legend(order(1 "Summer"	2 "Winter")  col(2) size(medlarge)) ///
-	aspectratio(0.55)
-graph export "$dirpath/output/hourly_kwh.eps", replace
-
 
 sum total_bill_mwh_top50, detail
 
