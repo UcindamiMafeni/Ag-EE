@@ -259,3 +259,24 @@ ivreghdfe ihs_kwh ( log_p_mean = log_m*_p_kwh_ag_default ) if pull=="20180719" &
 ivreghdfe ihs_kwh ( log_p_mean = log_m*_p_kwh_ag_default ) if pull=="20180719" & sp_same_rate_group==2,  ///
 	absorb(sp_group#month##c.gw_qtr_bsn_mean2 sp_group#year modate) cluster(sp_group modate)
 	
+	
+*************************
+*************************
+
+use "$dirpath_data/merged/sp_hourly_elec_panel_20180719.dta", clear
+drop if kwh<0
+gen log_p = ln(p_kwh)
+gen ihs_kwh =  ln(1000000*kwh + sqrt((1000000*kwh)^2+1))
+gen modate = ym(year(date), month(date))
+format %tm modate
+gen year = year(date)
+gen month = month(date)
+egen sp_group = group(sp_uuid)
+reghdfe ihs_kwh log_p, absorb(sp_group#month#hour modate) vce(cluster sp_group modate)
+
+use "$dirpath_data/merged/sp_hourly_elec_panel_collapsed_20180719.dta", clear
+reghdfe ihs_kwh log_p [fw=fwt], absorb(sp_group#month#hour modate) vce(cluster sp_group modate)
+
+
+
+	
