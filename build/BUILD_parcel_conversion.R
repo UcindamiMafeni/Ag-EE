@@ -9,6 +9,7 @@ library(stringr)
 library(lwgeom)
 library(data.table)
 library(readr)
+library(fst)
 
 if(Sys.getenv("USERNAME") == "Yixin Sun"){
 	root_gh <- "C:/Users/Yixin Sun/Documents/Github/Ag-EE"
@@ -38,15 +39,20 @@ county_count <-
 # function for reading in shapefiles and saving to the parallel folder
 read_parcel <- function(path){
 	county_name <- basename(dirname(path))
-	outpath <- file.path(raw_spatial, "Parcels_R", county_name,  paste0(county_name, ".RDS"))
-	output <- st_read(path, stringsAsFactors = FALSE)
+	out_name <- paste0(str_replace_all(county_name, " ", "_"), ".RDS")
+	outpath <- file.path(raw_spatial, "Parcels_R", county_name,  out_name)
+	output <- 
+	  st_read(path, stringsAsFactors = FALSE) %>%
+	  st_transform(main_crs)
 	saveRDS(output, file = outpath)
 }
 
 read_mult <- function(path){
 	county_name <- basename(dirname(path))
 	outpath <- file.path(raw_spatial, "Parcels_R", county_name,  paste0(str_replace(basename(path), ".shp", ""), ".RDS"))
-	output <- st_read(path, stringsAsFactors = FALSE)
+	output <- 
+	  st_read(path, stringsAsFactors = FALSE) %>%
+	  st_transform(main_crs)
 	saveRDS(output, file = outpath)
 }
 
@@ -59,8 +65,6 @@ county_count %>%
   file.path(raw_spatial, "Parcels", .) %>% 
   list.files(., pattern = "*.shp$", full.names = TRUE) %>%
   walk(read_parcel) 
-
-gc()
 
 # ===========================================================================
 # read in and save files for counties with multiple shapefiles
@@ -77,9 +81,10 @@ colusa_res <-
 
 colusa <- 
   bind_rows(colusa_ind, colusa_res) %>%
-  st_sf()
+  st_sf() %>%
+  st_transform(main_crs)
 
-save(colusa, file = file.path(raw_spatial, "Parcels_R", "Colusa", "Colusa.Rda"))
+saveRDS(colusa, file = file.path(raw_spatial, "Parcels_R", "Colusa", "Colusa.RDS"))
 
 # ----------------------------------------
 # Kern - read in all years of parcel data and save as one file
@@ -132,8 +137,9 @@ plumas <-
   list.files(pattern = ".*shp$", full.names = TRUE) %>%
   map(function(x) st_read(x, stringsAsFactors = FALSE) %>% 
   		  			mutate(year = str_extract(basename(x), "[0-9]+"))) %>%
-  rbindlist(use.names = TRUE, fill = TRUE)
-saveRDS(plumas, file = file.path(raw_spatial, "Parcels_R", "Plumas", "Plumas.Rds"))
+  rbindlist(use.names = TRUE, fill = TRUE) %>%
+  st_transform(main_crs)
+saveRDS(plumas, file = file.path(raw_spatial, "Parcels_R", "Plumas", "Plumas.RDS"))
 
 # ----------------------------------------
 file.path(raw_spatial, "Parcels/Santa Clara") %>%
@@ -145,29 +151,57 @@ yolo <-
   file.path(raw_spatial, "Parcels/Yolo") %>%
   list.files(pattern = "Crops(.*)shp$", full.names = TRUE) %>%
   map(~ st_read(., stringsAsFactors = F)) %>%
-  reduce(rbind)
-saveRDS(yolo, file = file.path(raw_spatial, "Parcels_R", "Yolo", "Yolo.Rds"))
+  reduce(rbind) %>%
+  st_transform(main_crs)
+saveRDS(yolo, file = file.path(raw_spatial, "Parcels_R", "Yolo", "Yolo.RDS"))
 
 yolo_tax_parcels <- 
   file.path(raw_spatial, "Parcels/Yolo/Tax Parcels 071615.shp") %>%
-  st_read(stringsAsFactors = FALSE) 
-saveRDS(yolo_tax_parcels, file = file.path(raw_spatial, "Parcels_R", "Yolo", "yolo_tax_parcels.Rds"))
+  st_read(stringsAsFactors = FALSE) %>%
+  st_transform(main_crs)
+saveRDS(yolo_tax_parcels, file = file.path(raw_spatial, "Parcels_R", "Yolo", "yolo_tax_parcels.RDS"))
 
 
   
 # ===========================================================================
 # Read in geodatabase files
 # ===========================================================================
-# 2014 Parcels - just read in merged file that houses shapes from every county
-parcels14 <- 
-  file.path(raw_spatial, "Parcels/2014/Parcels_CA_2014.gdb") %>%
-  st_read(layer = "CA_Merged", stringsAsFactors = FALSE)
-saveRDS(parcels14, file = file.path(raw_spatial, "Parcels_R/2014/parcels14.Rds"))
-
-
 # Los Angeles
 los_angeles <- 
-  file.path(raw_spatial, "Parcels/Los Angeles/Parcels_2014.gdb") %>%
-  st_read(stringsAsFactors = FALSE)
-saveRDS(los_angeles, file = file.path(raw_spatial, "Parcels_R/Los Angeles/Los_Angeles.Rds"))
+  file.path(raw_spatial, "Parcels/Los Angeles/Parcels_CA_2014.gdb") %>%
+  st_read(stringsAsFactors = FALSE) %>%
+  st_transform(main_crs)
+saveRDS(los_angeles, file = file.path(raw_spatial, "Parcels_R/Los Angeles/Los_Angeles.RDS"))
+
+
+# 2014 Parcels - just read in merged file that houses shapes from every county
+# file is huge - save as fst and use random access to read in only necessary rows
+#parcels14 <- 
+#  file.path(raw_spatial, "Parcels/2014/Parcels_CA_2014.gdb") %>%
+#  st_read(layer = "CA_Merged", stringsAsFactors = FALSE) %>%
+#  st_transform(main_crs) %>%
+#  st_zm()
+#setDT(parcels14)
+#parcels14[, geometry := as.character(Shape)]
+#parcels14[, -Shape]
+#write.fst(parcels14, file.path(raw_spatial, "Parcels_R/2014/parcels14.fst")) # revisit using fst when it can store lists in a dataframe
+#saveRDS(parcels14, file = file.path(raw_spatial, "Parcels_R/2014/parcels14.RDS"))
+
+# store each county from the Parcels .gdb separately
+read14 <- function(layer){
+	temp <- 
+	  st_read(file.path(raw_spatial, "Parcels/2014/Parcels_CA_2014.gdb"), 
+	  layer = layer, stringsAsFactors = F) %>%
+	  st_transform(main_crs) %>%
+	  rename(APN = PARNO)
+	outpath <- paste0(basename(layer), ".RDS")
+	saveRDS(temp, file = file.path(raw_spatial, "Parcels_R/2014", outpath))
+}
+
+cover_counties <- st_layers(file.path(raw_spatial, "Parcels/2014/Parcels_CA_2014.gdb"))[[1]] 
+drop_counties <- c("CA_Merged", "ParcelInfo")
+cover_counties[-which(cover_counties %in% drop_counties)] %>%
+  walk(read14)
+
+
 
