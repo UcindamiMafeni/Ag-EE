@@ -9,7 +9,7 @@ library(stringr)
 library(lwgeom)
 library(data.table)
 library(readr)
-library(fst)
+library(tigris)
 
 if(Sys.getenv("USERNAME") == "Yixin Sun"){
 	root_gh <- "C:/Users/Yixin Sun/Documents/Github/Ag-EE"
@@ -202,6 +202,5 @@ cover_counties <- st_layers(file.path(raw_spatial, "Parcels/2014/Parcels_CA_2014
 drop_counties <- c("CA_Merged", "ParcelInfo")
 cover_counties[-which(cover_counties %in% drop_counties)] %>%
   walk(read14)
-
 
 
