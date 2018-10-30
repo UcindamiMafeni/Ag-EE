@@ -76,7 +76,11 @@ do "$dirpath_code/build/BUILD_assign_gis_polygons.do"
 	//                        and "BUILD_gis_counties.R"
 	//                        and "BUILD_gis_water_basins.R"
 
-*** 19: CLEAN CA DWR GROUNDWATER DATA
+*** 19: ASSIGN DAILY MIN/MAX TEMPERATURE TO EACH SP AND APEP PUMP
+do "$dirpath_code/build/BUILD_daily_temperatures.do"
+	// calls auxilary GIS scripts "BUILD_prism_daily_temperature.R" 
+
+*** 20: CLEAN CA DWR GROUNDWATER DATA
 do "$dirpath_code/build/BUILD_clean_cadwr_groundwater.do"
 	// calls auxilary GIS scripts "BUILD_gis_gw_depth_raster.R" 
 	//                        and "BUILD_gis_gw_depth_extract.R"
