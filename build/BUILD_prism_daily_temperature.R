@@ -35,20 +35,15 @@ date.dt[, day_id := 1:dim(date.dt)[1]]
 date.dt[, date.char := as.character(date)]
 date.dt[, date.url := gsub("-", "", date.char)]
 
-type <- c('tmin', 'tmax')
-#type <- c('tmax')
-
 date.df <- as.data.frame(date.dt)
-type <- as.data.frame(type)
 
+date.df$urls_tmax <- paste0("http://services.nacse.org/prism/data/public/4km/", 
+                            "tmax", "/", date.df$date.url)
+date.df$urls_tmin <- paste0("http://services.nacse.org/prism/data/public/4km/", 
+                            "tmin", "/", date.df$date.url)
 
-
-date.df <- merge(date.df, type, allow.cartesian=TRUE)
-
-date.df$urls <- paste0("http://services.nacse.org/prism/data/public/4km/", 
-                      date.df$type, "/", date.df$date.url)
-
-date.df$filenames <- paste0("./prism/raw/", date.df$type, date.df$date.url, ".zip")
+date.df$filenames_tmax <- paste0("./prism/raw/", "tmax", date.df$date.url, ".zip")
+date.df$filenames_tmin <- paste0("./prism/raw/", "tmin", date.df$date.url, ".zip")
 
 # urls <- list("http://services.nacse.org/prism/data/public/4km/tmin/20090405",
 #             "http://services.nacse.org/prism/data/public/4km/tmax/20090405")
@@ -66,8 +61,10 @@ down.fun <- function(url, filename){
   return(NULL)
 }
 
-mapply(down.fun, url = date.df$urls,
-       filename=date.df$filenames)
+mapply(down.fun, url = date.df$urls_tmax,
+       filename=date.df$filenames_tmax)
+mapply(down.fun, url = date.df$urls_tmin,
+       filename=date.df$filenames_tmin)
 
 
 ############################################################################
@@ -126,7 +123,6 @@ output <- as.data.frame(cbind(output$facilid, output$lon, output$lat, output$dat
 names(output) <- c("facilid","lon","lat","date","tmax")
 
 write.csv(output, file="./prism/prism_daily_max_temperature.csv")
-
 
 
 ############################################################################
