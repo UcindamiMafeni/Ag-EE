@@ -88,7 +88,7 @@ mapply(unzip.fun, zip.names=zip.names,
 ############################################################################
 ############################################################################
 
-## 3. Stack rasters, read in SP coordinates and assign each a daily max temperature
+## 3. Stack rasters, read in SP coordinates and assign each a daily max/min temperature
 
 raster.names <- list.files(path="./prism/unzipped", pattern=".bil$", full.names=TRUE, recursive=TRUE)
 raster.stack <- stack(raster.names)
@@ -115,14 +115,52 @@ names(value) <- gsub("PRISM_(.*)_stable_4kmD1_(.*)_bil", "\\1\\2", names(value))
 
 output <- cbind(map.data, value)
 output <- melt(output, id.vars=c("sp_uuid", "lon", "lat", "ID"))
-output$date_tmax <- gsub("PRISM_tmax_stable_4kmD1_", "", output$variable)
-output$date_tmin <- gsub("PRISM_tmin_stable_4kmD1_", "", output$variable)
-output$date_tmax <- gsub("_bil", "", output$date_tmax)
-output$date_tmin <- gsub("_bil", "", output$date_tmin)
-output <- as.data.frame(cbind(output$facilid, output$lon, output$lat, output$date, output$value))
-names(output) <- c("facilid","lon","lat","date","tmax")
+output$which <- substring(output$variable,1,4)
+output$date <- substring(output$variable,5,12)
+output <- as.data.frame(cbind(output$sp_uuid, output$lon, output$lat, output$date, output$which, output$value))
+names(output) <- c("sp_uuid","lon","lat","date","which","degrees")
 
-write.csv(output, file="./prism/prism_daily_max_temperature.csv")
+write.csv(output, file="./misc/pge_prem_coord_daily_temperatures.csv")
+rm(list = ls())
+
+
+############################################################################
+############################################################################
+
+## 4. Stack rasters, read in pump coordinates and assign each a daily max/min temperature
+
+raster.names <- list.files(path="./prism/unzipped", pattern=".bil$", full.names=TRUE, recursive=TRUE)
+raster.stack <- stack(raster.names)
+
+coords <- read.csv(file="./misc/apep_pump_coord.txt")
+coords <- coords[names(coords) %in% c("latlon_group","pump_lat","pump_long")]
+coords <- coords[is.na(coords$pump_lat)==0,]
+coords <- coords[is.na(coords$pump_long)==0,]
+coords <- as.data.frame(cbind(coords$latlon_group, coords$pump_long, coords$pump_lat))
+names(coords) <- c("latlon_group","lon","lat")
+map.data <- as.data.table(coords)
+map.data <- map.data[,list(latlon_group, lon, lat)]
+map.data <- map.data[is.na(lon) == FALSE & is.na(lat) == FALSE]
+
+store.points <- SpatialPointsDataFrame(coords=map.data[,list(lon, lat)], 
+                                       data=map.data,
+                                       proj4string = CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"))
+
+store.points <- spTransform(store.points, CRS(as.character(crs(raster.stack))))
+
+system.time(value <- extract(raster.stack, store.points, df=TRUE))
+
+names(value) <- gsub("PRISM_(.*)_stable_4kmD1_(.*)_bil", "\\1\\2", names(value))
+
+output <- cbind(map.data, value)
+output <- melt(output, id.vars=c("latlon_group", "lon", "lat", "ID"))
+output$which <- substring(output$variable,1,4)
+output$date <- substring(output$variable,5,12)
+output <- as.data.frame(cbind(output$latlon_group, output$lon, output$lat, output$date, output$which, output$value))
+names(output) <- c("latlon_group","lon","lat","date","which","degrees")
+
+write.csv(output, file="./misc/apep_pump_coord_daily_temperatures.csv")
+rm(list = ls())
 
 
 ############################################################################
