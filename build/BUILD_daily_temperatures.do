@@ -19,82 +19,80 @@ global dirpath_code "S:/Louis/backup/AgEE/AgEE_code/build"
 
 *******************************************************************************
 *******************************************************************************
-START HERE
+
 ** 2. Construct daily panel for SP coordinates
-if 1==1{
+if 1==0{
 
 ** Import results from GIS script
-insheet using "$dirpath_data/misc/pge_prem_coord_polygon_wdist.txt", double delim("%") clear
-drop prem_lat prem_lon longitude latitude bad_geocode_flag
+insheet using "$dirpath_data/misc/pge_prem_coord_daily_temperatures.csv", double comma clear
+drop v1 lon lat
+duplicates drop // tons of dups and I don't know why!
 
-** Clean GIS variables
-tostring sp_uuid pull, replace
+** Destring temperature
+destring degrees, replace force
+
+**Reformat date
+gen temp = date(substr(string(date,"%12.0g"),1,4) + "/" + ///
+	substr(string(date,"%12.0g"),5,2) + "/" + ///
+	substr(string(date,"%12.0g"),7,2),"YMD")
+format %td temp
+assert temp!=.
+drop date
+rename temp date
+
+** Confirm uniqueness before reshape
+unique sp_uuid date which
+assert r(unique)==r(N)
+*duplicates t sp_uuid date which, gen(dup)
+*tab dup
+*br if dup>0
+
+** Reshape
+reshape wide degrees, i(sp_uuid date) j(which) string
+
+** Clean SP variable
+tostring sp_uuid, replace
 replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
 replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
 replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
 replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
 replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
 assert length(sp_uuid)==10 & real(sp_uuid)!=.
-unique sp_uuid pull
+unique sp_uuid date
 assert r(unique)==r(N)
 
-foreach v of varlist wdist wdist_id wdist_area_km2 {
-	replace `v' = "" if `v'=="NA"
-}
-destring wdist_id wdist_area_km2, replace
+** Label
+la var sp_uuid "Unique service point identifier"	
+la var date "Date"	
+rename degreestmax degreesC_max 
+rename degreestmin degreesC_min 
+la var degreesC_max "Daily max temperature (C) at premise"
+la var degreesC_min "Daily min temperature (C) at premise"
 
-foreach v of varlist nearestwdist_id nearestwdist_area_km2 nearestwdist_dist_km {
-	replace `v' = . if nearestwdist==""
-}
-
-	// Convert from km to miles
-replace nearestwdist_dist_km = nearestwdist_dist_km*0.621371
-rename nearestwdist_dist_km nearestwdist_miles
-replace wdist_area_km2 = wdist_area_km2*0.386102
-rename wdist_area_km2 wdist_area_sqmi
-replace nearestwdist_area_km2 = nearestwdist_area_km2*0.386102
-rename nearestwdist_area_km2 nearestwdist_area_sqmi
-sum nearestwdist_miles, detail // p90 = 2.13 miles, not bad
-local p90 = r(p90)
-
-	// Assign nearest water districts within 2.13 miles
-assert inlist(in_wdist,0,1)
-assert nearestwdist_miles!=. if in_wdist==0
-assert nearestwdist_miles==. if in_wdist==1
-rename in_wdist wdist_dist_miles
-replace wdist_dist_miles = 1 - wdist_dist_miles
-replace wdist_dist_miles = nearestwdist_miles if nearestwdist_miles!=.	
-sum wdist_dist_miles, det
-replace wdist = nearestwdist if nearestwdist!="" & wdist_dist_miles<=`p90'
-replace wdist_id = nearestwdist_id if nearestwdist_id!=. & wdist_dist_miles<=`p90'
-replace wdist_area_sqmi = nearestwdist_area_sqmi if nearestwdist_area_sqmi!=. & wdist_dist_miles<=`p90'
-
-	// Drop nearest water district variables
-drop nearestwdist*	
-
-	// Label
-la var wdist "Water district (assigned by GIS)"	
-la var wdist_dist_miles "Distance to water district (cut off at 2.13 miles)"	
-la var wdist_id "Water district ID (from shapefile)"
-la var wdist_area_sqmi "GIS-derived area of water district (sq miles)"
-	
-	// Save
-tempfile gis_out
-save `gis_out'
-
-** Merge results into merge back into main dataset
-use "$dirpath_data/pge_cleaned/sp_premise_gis.dta", clear
-merge 1:1 sp_uuid pull using `gis_out'	
-assert _merge!=2 // confirm everything merges in
-assert _merge==1 if prem_lat==. | prem_lon==. // confirm nothing merges if it has missing lat/lon
-assert (prem_lat==. | prem_lon==.) if _merge==1	// confirm that all non-merges have missing lat/lon
-drop _merge
-
-** Confirm uniqueness and save
-unique sp_uuid pull
-assert r(unique)==r(N)
+** Sort and save
+sort sp_uuid date
+order sp_uuid date
 compress
-save "$dirpath_data/pge_cleaned/sp_premise_gis.dta", replace	
+save "$dirpath_data/prism/sp_temperature_daily.dta", replace	
+
+** Collapse to monthly
+gen degreesC_mean = (degreesC_max + degreesC_min) / 2
+gen modate = ym(year(date),month(date))
+format %tm modate
+collapse (mean) degreesC_*, by(sp_uuid modate) fast
+
+** Label
+la var sp_uuid "Unique service point identifier"	
+la var modate "Year-Month"	
+la var degreesC_max "Avg daily max temperature (C) at premise"
+la var degreesC_min "Avg daily min temperature (C) at premise"
+la var degreesC_mean "Avg daily 'mean' temperature (C) at premise"
+
+** Sort and save
+sort sp_uuid modate
+order sp_uuid modate
+compress
+save "$dirpath_data/prism/sp_temperature_monthly.dta", replace	
 
 }
 
@@ -105,70 +103,70 @@ save "$dirpath_data/pge_cleaned/sp_premise_gis.dta", replace
 if 1==1{
 
 ** Import results from GIS script
-insheet using "$dirpath_data/misc/apep_pump_coord_polygon_wdist.txt", double delim("%") clear
-drop pump_lat pump_lon longitude latitude
+insheet using "$dirpath_data/misc/apep_pump_coord_daily_temperatures.csv", double comma clear
+drop v1 lon lat
+duplicates drop // tons of dups and I don't know why!
 
-** Clean GIS variables
+** Destring temperature
+destring degrees, replace force
+
+**Reformat date
+gen temp = date(substr(string(date,"%12.0g"),1,4) + "/" + ///
+	substr(string(date,"%12.0g"),5,2) + "/" + ///
+	substr(string(date,"%12.0g"),7,2),"YMD")
+format %td temp
+assert temp!=.
+drop date
+rename temp date
+
+** Confirm uniqueness before reshape
+unique latlon_group date which
+assert r(unique)==r(N)
+*duplicates t latlon_group date which, gen(dup)
+*tab dup
+*br if dup>0
+
+** Reshape
+reshape wide degrees, i(latlon_group date) j(which) string
+
+** Clean ID variable
 destring latlon_group, replace
 assert latlon_group!=.
-unique latlon_group
+unique latlon_group date
 assert r(unique)==r(N)
 
-foreach v of varlist wdist wdist_id wdist_area_km2 {
-	replace `v' = "" if `v'=="NA"
-}
-destring wdist_id wdist_area_km2, replace
+** Label
+la var latlon_group "APEP pump location identifier"	
+la var date "Date"	
+rename degreestmax degreesC_max 
+rename degreestmin degreesC_min 
+la var degreesC_max "Daily max temperature (C) at pump"
+la var degreesC_min "Daily min temperature (C) at pump"
 
-foreach v of varlist nearestwdist_id nearestwdist_area_km2 nearestwdist_dist_km {
-	replace `v' = . if nearestwdist==""
-}
-
-	// Convert from km to miles
-replace nearestwdist_dist_km = nearestwdist_dist_km*0.621371
-rename nearestwdist_dist_km nearestwdist_miles
-replace wdist_area_km2 = wdist_area_km2*0.386102
-rename wdist_area_km2 wdist_area_sqmi
-replace nearestwdist_area_km2 = nearestwdist_area_km2*0.386102
-rename nearestwdist_area_km2 nearestwdist_area_sqmi
-sum nearestwdist_miles, detail // p90 = 2.05 miles, not bad
-local p90 = r(p90)
-
-	// Assign nearest water districts within 2.05 miles
-assert inlist(in_wdist,0,1)
-assert nearestwdist_miles!=. if in_wdist==0
-assert nearestwdist_miles==. if in_wdist==1
-rename in_wdist wdist_dist_miles
-replace wdist_dist_miles = 1 - wdist_dist_miles
-replace wdist_dist_miles = nearestwdist_miles if nearestwdist_miles!=.	
-sum wdist_dist_miles, det
-replace wdist = nearestwdist if nearestwdist!="" & wdist_dist_miles<=`p90'
-replace wdist_id = nearestwdist_id if nearestwdist_id!=. & wdist_dist_miles<=`p90'
-replace wdist_area_sqmi = nearestwdist_area_sqmi if nearestwdist_area_sqmi!=. & wdist_dist_miles<=`p90'
-
-	// Drop nearest water district variables
-drop nearestwdist*	
-	
-	// Label
-la var wdist "Water district (assigned by GIS)"	
-la var wdist_dist_miles "Distance to water district (cut off at 2.13 miles)"	
-la var wdist_id "Water district ID (from shapefile)"
-la var wdist_area_sqmi "GIS-derived area of water district (sq miles)"
-	
-	// Save
-tempfile gis_out
-save `gis_out'
-
-** Merge results into merge back into main dataset
-use "$dirpath_data/pge_cleaned/apep_pump_gis.dta", clear
-merge m:1 latlon_group using `gis_out'	
-assert _merge==3 // confirm everything merges
-drop _merge
-
-** Confirm uniqueness and save
-unique apeptestid crop test_date_stata
-assert r(unique)==r(N)
+** Sort and save
+sort latlon_group date
+order latlon_group date
 compress
-save "$dirpath_data/pge_cleaned/apep_pump_gis.dta", replace	
+save "$dirpath_data/prism/apep_temperature_daily.dta", replace	
+
+** Collapse to monthly
+gen degreesC_mean = (degreesC_max + degreesC_min) / 2
+gen modate = ym(year(date),month(date))
+format %tm modate
+collapse (mean) degreesC_*, by(latlon_group modate) fast
+
+** Label
+la var latlon_group "APEP pump location identifier"	
+la var modate "Year-Month"	
+la var degreesC_max "Avg daily max temperature (C) at pump"
+la var degreesC_min "Avg daily min temperature (C) at pump"
+la var degreesC_mean "Avg daily 'mean' temperature (C) at pump"
+
+** Sort and save
+sort latlon_group modate
+order latlon_group modate
+compress
+save "$dirpath_data/prism/apep_temperature_monthly.dta", replace	
 
 }
 
