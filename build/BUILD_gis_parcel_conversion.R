@@ -39,11 +39,13 @@ county_count <-
 # function for reading in shapefiles and saving to the parallel folder
 read_parcel <- function(path){
 	county_name <- basename(dirname(path))
+  if(county_name == "San Bernadino") county_name = "San Bernardino"
 	out_name <- paste0(str_replace_all(county_name, " ", "_"), ".RDS")
 	outpath <- file.path(raw_spatial, "Parcels_R", county_name,  out_name)
 	output <- 
 	  st_read(path, stringsAsFactors = FALSE) %>%
-	  st_transform(main_crs)
+	  st_transform(main_crs) %>%
+    st_zm()
 	saveRDS(output, file = outpath)
 }
 
@@ -81,7 +83,7 @@ colusa_res <-
 
 colusa <- 
   bind_rows(colusa_ind, colusa_res) %>%
-  st_sf() %>%
+  st_sf(crs = st_crs(colusa_res)) %>%
   st_transform(main_crs)
 
 saveRDS(colusa, file = file.path(raw_spatial, "Parcels_R", "Colusa", "Colusa.RDS"))
@@ -138,6 +140,7 @@ plumas <-
   map(function(x) st_read(x, stringsAsFactors = FALSE) %>% 
   		  			mutate(year = str_extract(basename(x), "[0-9]+"))) %>%
   rbindlist(use.names = TRUE, fill = TRUE) %>%
+  st_sf() %>%
   st_transform(main_crs)
 saveRDS(plumas, file = file.path(raw_spatial, "Parcels_R", "Plumas", "Plumas.RDS"))
 
@@ -168,7 +171,7 @@ saveRDS(yolo_tax_parcels, file = file.path(raw_spatial, "Parcels_R", "Yolo", "yo
 # ===========================================================================
 # Los Angeles
 los_angeles <- 
-  file.path(raw_spatial, "Parcels/Los Angeles/Parcels_CA_2014.gdb") %>%
+  file.path(raw_spatial, "Parcels/Los Angeles/Parcels_2014.gdb") %>%
   st_read(stringsAsFactors = FALSE) %>%
   st_transform(main_crs)
 saveRDS(los_angeles, file = file.path(raw_spatial, "Parcels_R/Los Angeles/Los_Angeles.RDS"))

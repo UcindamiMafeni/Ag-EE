@@ -21,6 +21,18 @@ main_crs <- 4326
 m2_to_acre <- 0.000247105
 memory.limit(13000000000000)
 
+#=======================================================================
+# report a pasted version of unique values in a list
+#========================================================================
+upaste <- function(l) {
+  if(length(unique(l)) == 1) {
+    return(l[1])
+  }
+  else {
+    return(paste(l, collapse = "; "))
+  }
+}
+
 # ===========================================================================
 # Clean and combine parcel data 
 # ===========================================================================
@@ -33,29 +45,56 @@ memory.limit(13000000000000)
 # function for standardizing parcel data to same variable names 
   # also want to check validitiy
 standardize_parcels <- function(df, countyname){
+	# want to melt down parcels with the same APN Numbers 
+	# create a MinAcre and MaxAcres variable as checks for whether polygons
+	# that are super different still get melted down 
 	df <-
 	  df %>%
-	  select(APN = matches(regex("^apn", ignore_case = T))) %>%
+	  select(APN = matches(regex("^apn", ignore_case = T)))  %>%
+	  st_zm() %>%
+	  mutate(APN = str_replace_all(APN, "-", "")) %>%
 	  st_make_valid() %>%
 	  mutate(Acres = as.numeric(st_area(.)) * m2_to_acre) %>%
 	  group_by(APN) %>%
 	  summarise(MinAcres = min(Acres), 
-	  			MaxAcres = max(Acres)) %>%
+	  			MaxAcres = max(Acres), 
+	   			N_Dissolve = n()) %>%
 	  cbind(st_coordinates(st_centroid(.)), .) %>%
 	  rename(Longitude = X, 
 	  		 Latitude = Y) %>%
 	  mutate(County = countyname, 
 	  		 ParcelAcres = as.numeric(st_area(.)) * m2_to_acre,
-	  		 ParcelID = paste(County, round(Longitude, digits = 3), round(Latitude, digits = 3), sep = "-")) %>%
+	  		 ParcelID = paste(County, 
+	  		 				  round(Longitude, digits = 3), 
+	  		 				  round(Latitude, digits = 3)))
+
+	# want to find polygons that are essentially the same -
+	  # round to third decimal in longitude/latitude and 
+	  # if centroids are same, then melt down into one polygon
+	df <- 
+	  df %>%
 	  group_by(ParcelID) %>%
-	  arrange(ParcelID, ParcelAcres) %>%
-	  mutate(ParcelID = paste(ParcelID, row_number(), sep = "-")) %>%
-	  ungroup
+	  summarise(County = unique(County), 
+	  			MinAcres = min(MinAcres), 
+	  			MaxAcres = max(MaxAcres), 
+	  			N_Dissolved = sum(N_Dissolve), 
+	  			APN = upaste(APN)) %>%
+	  mutate(ParcelAcres = as.numeric(st_area(.)) * m2_to_acre)
 }
 
 # write a function that checks if the county is available in both sets of data
  # and if available in both, then summarise() and save in cleaned_data
 combine_parcels <- function(countyname){
+	print(countyname)
+
+	apn_names <- 
+	  "^apn|parc_py_id|^ain$|^prop_id$|AsmtNum|^asmt$|blk_lot$" %>%
+	  regex(ignore_case = T)
+
+	not_apn <-
+	  "apn_chr|apn_flag|apnnodash|apnpath|apn10|apn_suffix|^apn2$" %>%
+	  regex(ignore_case = T) 
+
 	# check if county is available in the big 2014 dataset
 	all_counties14 <- 
 	  list.files(file.path(raw_spatial, "Parcels_R/2014"), pattern = "*.RDS") %>%
@@ -70,7 +109,9 @@ combine_parcels <- function(countyname){
 	if(countyname %in% all_counties14 & countyname %in% all_counties){
 		county <- 
 		  readRDS(file.path(raw_spatial, "Parcels_R", countyname, county_path)) %>%
-		  select(APN = matches(regex("^apn|parc_py_id", ignore_case = T))) 
+		  select(-matches(not_apn)) %>%
+		  select(APN = matches(apn_names), 
+		  		 geometry = matches(regex("^geometry$|^shape$", ignore_case = T))) 
 
 		county14 <- 
 		  readRDS(file.path(raw_spatial, "Parcels_R/2014", county_path)) %>%
@@ -85,29 +126,30 @@ combine_parcels <- function(countyname){
 		  readRDS(file.path(raw_spatial, "Parcels_R/2014", county_path)) %>%
 		  select(APN = matches(regex("^apn", ignore_case = T)), geometry = SHAPE) %>%
 		  standardize_parcels(., countyname)
-	}
-	else{
+	} else{
 		county_all <- 
 		  readRDS(file.path(raw_spatial, "Parcels_R", countyname, county_path)) %>%
+		  select(-matches(not_apn)) %>%
 		  select(APN = matches(regex("^apn", ignore_case = T))) %>%
-		  standardize_parcels(., countyname)
+		  standardize_parcels(., countyname) %>%
+		  st_transform(4326)
 	}
 
 	check <- 
 	  county_all %>%
 	  group_by(ParcelID) %>%
 	  filter(n() > 1)
-	if(nrow(check) > 1){
+
+	if(nrow(check) > 1 & ncol(check) > 2){
 		stop("Parcel ID is not unique")
 	}
 
 	saveRDS(county_all, file = file.path(build_spatial, "Parcels", county_path))
-	print(countyname)
 }
 
 to_ignore <- 
-  c("2014", "Alameda", "Contra Costa", "Santa Clara", "San Diego", "Merced", 
-  	"Orange", "Kern", "Nevada")
+  c("2014", "parcels14", "Alameda", "Contra Costa", "Santa Clara", "San Diego", "Merced", 
+  	"Orange", "Kern", "Nevada", "Los Angeles", "Riverside", "Stanislaus", "Yolo", "Plumas")
 all_counties <- 
 	  list.files(file.path(raw_spatial, "Parcels_R/2014"), pattern = "*.RDS") %>%
 	  str_replace_all(., "_", " ") %>%
@@ -116,7 +158,6 @@ all_counties <-
 
 all_counties[-which(all_counties %in% to_ignore )] %>%
   walk(combine_parcels)
-
 
 # ===========================================================================
 # Read in and convert CLU data to R files
