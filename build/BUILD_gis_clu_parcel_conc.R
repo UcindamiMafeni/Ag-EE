@@ -13,11 +13,8 @@ if(Sys.getenv("USERNAME") == "Yixin Sun"){
 	root_gh <- "C:/Users/Yixin Sun/Documents/Github/Ag-EE"
 	root_db <- "C:/Users/Yixin Sun/Documents/Dropbox/Energy Water Project"
 }
-raw_spatial <- file.path(root_db, "Data/Spatial Data")
-build_spatial <- file.path(root_db, "Data/cleaned_spatial")
 
-main_crs <- 4326
-m2_to_acre <- 0.000247105
+source(file.path(root_gh, "build/constants.R"))
 
 num_workers <- 4
 
@@ -37,58 +34,42 @@ clu_parcel_int <- function(countyname){
     select(ParcelID, CLU_ID, IntAcres, IntPerc) %>%
     mutate(County = countyname) %>%
     st_set_geometry(NULL)
+
+  saveRDS(clu_parcel, file.path(build_spatial, "cross/clu_parcel", input_path))
   toc()
+
+  return(clu_parcel)
 }
-
-
-# Del Norte
-# Siskiyou
-# Modoc
-# Humboldt
-# Shasta
-# Lassen
-
-# CORRECT THE SAN BERNADINO COUNTY PARCEL
-
 
 # ==========================================================================
 # FILTER OUT FRESNO FOR RIGHT NOW
 # ==========================================================================
 plan(multiprocess(workers = eval(num_workers)))
+to_ignore <-
+  c("Fresno", "San Bernardino", "San Bernadino", 
+    "Alpine", "Amador", "Butte", "Calaveras", "Colusa", "Del Norte",
+    "El Dorado", "Glenn", "Humboldt", "Imperial", "Inyo", "Kings", 
+    "Lake", "Lassen", "Madera", "Marin", "Mariposa", "Mendocino",
+    "Modoc", "Mono", "Monterey", "Napa", "Placer", "Sacramento", "San Benito")
 
-check <- 
+parcel_counties <- 
   list.files(file.path(build_spatial, "Parcels")) %>%
   str_replace_all(".RDS", "") %>%
-  str_replace_all("_", " ") %>%
-  as.list() %>%
+  str_replace_all("_", " ") 
+parcel_counties <-
+  parcel_counties[-which(parcel_counties %in% to_ignore)] #%>%
+  #as.list() 
+
+clu_counties <-
+  list.files(file.path(build_spatial, "CLU")) %>%
+  str_replace_all(".RDS", "") %>%
+  str_replace_all("_", " ") 
+
+conc_counties <- intersect(parcel_counties, clu_counties)
+
+clu_parcel_conc <- 
+  conc_counties %>%
+  #map_df(clu_parcel_int)
   future_map_dfr(clu_parcel_int)
 
-
-del_norte_raw <- readRDS(file.path(raw_spatial, "Parcels_R/Del Norte/Del_Norte.RDS"))
-del_norte14_raw <- readRDS(file.path(raw_spatial, "Parcels_R/2014/Del_Norte.RDS"))
-
-# bind together the two datasets and melt down geometries with the same APN number
-del_norte <-
-  select(del_norte_raw, APN) %>%
-  rbind(select(del_norte14_raw, APN, geometry = SHAPE)) %>%
-  standardize_parcels(., "Del Norte")
-
-del_norte_clu <- standardize_clu("Del Norte")
-
-clu_parcel <-
-  st_intersection(del_norte, clu15) %>%
-  mutate(int_acres = as.numeric(st_area(.)) * m2_to_acre, 
-  		 int_perc = int_acres / pmin(CLUAcres, ParcelAcres)) %>%
-  filter(int_perc > .05)
-
-# TO DO 
-  # Write a function that checks if the county is available in both sets of data
-  	# if available in both, then summarise() and save in cleaned_data
-  	# otherwise just save the one in cleaned_data after applying the standardize parcels function
-  # figure out if CLU codes correspond to County codes in any way
-  	# check using mapview - if it's not clear just ask fiona/louis
-
-# ============================================================================
-# Scratch space
-# ============================================================================
-
+saveRDS(clu_parcel_conc, file.path(build_spatial, "cross/clu_parcel_conc.RDS"))

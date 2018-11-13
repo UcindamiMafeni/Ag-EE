@@ -1,7 +1,7 @@
-
 # Created by Yixin Sun in October 2018
 # Goal is to convert current nonstandardized shapefiles to folders that are 
 # easily looped over (refer to issue 19)
+# Think about using data.tables for dissolving polygons that have the same APN
 
 library(sf)
 library(dplyr)
@@ -15,10 +15,7 @@ if(Sys.getenv("USERNAME") == "Yixin Sun"){
 	root_db <- "C:/Users/Yixin Sun/Documents/Dropbox/Energy Water Project"
 }
 
-raw_spatial <- file.path(root_db, "Data/Spatial Data")
-build_spatial <- file.path(root_db, "Data/cleaned_spatial")
-main_crs <- 4326
-m2_to_acre <- 0.000247105
+source(file.path(root_gh, "build/constants.R"))
 memory.limit(13000000000000)
 
 #=======================================================================

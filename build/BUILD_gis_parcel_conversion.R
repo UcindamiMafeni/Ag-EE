@@ -16,10 +16,7 @@ if(Sys.getenv("USERNAME") == "Yixin Sun"){
 	root_db <- "C:/Users/Yixin Sun/Documents/Dropbox/Energy Water Project"
 }
 
-raw_spatial <- file.path(root_db, "Data/Spatial Data")
-build_spatial <- file.path(root_db, "Data/cleaned_spatial")
-main_crs <- 4326
-m2_to_acre <- 0.000247105
+source(file.path(root_gh, "build/constants.R"))
 memory.limit(13000000000000)
 
 # ===========================================================================
@@ -40,8 +37,10 @@ county_count <-
 read_parcel <- function(path){
 	county_name <- basename(dirname(path))
   if(county_name == "San Bernadino") county_name = "San Bernardino"
+
 	out_name <- paste0(str_replace_all(county_name, " ", "_"), ".RDS")
 	outpath <- file.path(raw_spatial, "Parcels_R", county_name,  out_name)
+
 	output <- 
 	  st_read(path, stringsAsFactors = FALSE) %>%
 	  st_transform(main_crs) %>%
@@ -51,7 +50,8 @@ read_parcel <- function(path){
 
 read_mult <- function(path){
 	county_name <- basename(dirname(path))
-	outpath <- file.path(raw_spatial, "Parcels_R", county_name,  paste0(str_replace(basename(path), ".shp", ""), ".RDS"))
+	outpath <- file.path(raw_spatial, "Parcels_R", county_name,  
+                       paste0(str_replace(basename(path), ".shp", ""), ".RDS"))
 	output <- 
 	  st_read(path, stringsAsFactors = FALSE) %>%
 	  st_transform(main_crs)
@@ -73,7 +73,8 @@ county_count %>%
 # ===========================================================================
 # Colusa 
 colusa_ind <-
-  st_read(file.path(raw_spatial, "Parcels/Colusa/Commercial_and_Industrial_Parcels.shp"), stringsAsFactors = FALSE) %>%
+  file.path(raw_spatial, "Parcels/Colusa/Commercial_and_Industrial_Parcels.shp") %>%
+  st_read(stringsAsFactors = FALSE) %>%
   mutate(ParcelType = "Commercial and Industrial")
 
 colusa_res <- 
@@ -91,7 +92,8 @@ saveRDS(colusa, file = file.path(raw_spatial, "Parcels_R", "Colusa", "Colusa.RDS
 # ----------------------------------------
 # Kern - read in all years of parcel data and save as one file
 kern_parcels <-
-  list.files(file.path(raw_spatial, "Parcels/Kern"), pattern = "kern(.+).shp$", full.names = TRUE) %>%
+  file.path(raw_spatial, "Parcels/Kern") %>%
+  list.files(pattern = "kern(.+).shp$", full.names = TRUE) %>%
   map(~ st_read(., stringsAsFactors = F)) %>%
   rbindlist(., use.names = TRUE, fill = TRUE) %>%
   st_sf() %>%
@@ -176,19 +178,6 @@ los_angeles <-
   st_transform(main_crs)
 saveRDS(los_angeles, file = file.path(raw_spatial, "Parcels_R/Los Angeles/Los_Angeles.RDS"))
 
-
-# 2014 Parcels - just read in merged file that houses shapes from every county
-# file is huge - save as fst and use random access to read in only necessary rows
-#parcels14 <- 
-#  file.path(raw_spatial, "Parcels/2014/Parcels_CA_2014.gdb") %>%
-#  st_read(layer = "CA_Merged", stringsAsFactors = FALSE) %>%
-#  st_transform(main_crs) %>%
-#  st_zm()
-#setDT(parcels14)
-#parcels14[, geometry := as.character(Shape)]
-#parcels14[, -Shape]
-#write.fst(parcels14, file.path(raw_spatial, "Parcels_R/2014/parcels14.fst")) # revisit using fst when it can store lists in a dataframe
-#saveRDS(parcels14, file = file.path(raw_spatial, "Parcels_R/2014/parcels14.RDS"))
 
 # store each county from the Parcels .gdb separately
 read14 <- function(layer){
