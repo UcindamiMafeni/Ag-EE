@@ -46,11 +46,7 @@ clu_parcel_int <- function(countyname){
 # ==========================================================================
 plan(multiprocess(workers = eval(num_workers)))
 to_ignore <-
-  c("Fresno", "San Bernardino", "San Bernadino", 
-    "Alpine", "Amador", "Butte", "Calaveras", "Colusa", "Del Norte",
-    "El Dorado", "Glenn", "Humboldt", "Imperial", "Inyo", "Kings", 
-    "Lake", "Lassen", "Madera", "Marin", "Mariposa", "Mendocino",
-    "Modoc", "Mono", "Monterey", "Napa", "Placer", "Sacramento", "San Benito")
+  c("Fresno", "San Bernardino", "San Bernadino")
 
 parcel_counties <- 
   list.files(file.path(build_spatial, "Parcels")) %>%
