@@ -9,13 +9,19 @@ library(purrr)
 library(tictoc)
 library(sf)
 
-if(Sys.getenv("USERNAME") == "Yixin Sun"){
-	root_gh <- "C:/Users/Yixin Sun/Documents/Github/Ag-EE"
-	root_db <- "C:/Users/Yixin Sun/Documents/Dropbox/Energy Water Project"
-}
-source(file.path(root_gh, "build/constants.R"))
+#if(Sys.getenv("USERNAME") == "Yixin Sun"){
+#	root_gh <- "C:/Users/Yixin Sun/Documents/Github/Ag-EE"
+#	root_db <- "C:/Users/Yixin Sun/Documents/Dropbox/Energy Water Project"
+#}
+#source(file.path(root_gh, "build/constants.R"))
 
-P <- 4
+raw_spatial <- file.path(root_db, "Data/Spatial Data")
+build_spatial <- file.path(root_db, "Data/cleaned_spatial")
+
+main_crs <- 4326
+m2_to_acre <- 0.000247105
+
+P <- 14
 G <- 10
 
 main_proj <- "+proj=longlat +datum=WGS84 +no_defs"
@@ -32,6 +38,7 @@ st_extract <- function(shape_group, cdl1){
 
     shape <- as(shape, "Spatial")
     temp <- raster(shape)
+
     tryCatch({
       raster_temp <- crop(cdl1, extent(temp))
       count_cdl <- as.data.frame(table(extract(raster_temp, shape)))}, 
@@ -52,25 +59,34 @@ st_extract <- function(shape_group, cdl1){
           function(x, y) single_extract(x, y)) 
 }
 
+# function for parallelizing the st_extract function on clu polygons
 furrr_extract <- function(ras, year, shp, P, G){
   shp <- split(shp, sample(rep(1:(P * G), nrow(clu) / (P * G))))
   future_map_dfr(shp, function(x) st_extract(x, ras), .progress = TRUE) %>%
-    mutate(Year = !! year)
+    mutate(Year = !! year) %>% 
+    rename(Value = Var1) %>%
+    mutate(Value = as.numeric(Value))
 }
 
 # ===========================================================================
-# read in rasters and clu polygons and extract
+# read in dictionary for raster values
+# ===========================================================================
+cdl_dict <- 
+  file.path(raw_spatial, "Cropland Data Layer/cdl_dict.txt") %>%
+  read_delim(delim = ",") %>%
+  dplyr::select(Value = VALUE, LandType = CLASS_NAME) %>%
+  mutate(LandType = ifelse(LandType == " ", NA, LandType))
+
+# ===========================================================================
+# read in rasters and clu polygons 
 # ===========================================================================
 plan(multisession, .init = P)
-
-tic()
 clu <- 
   file.path(build_spatial, "CLU") %>%
   list.files(full.names = TRUE) %>%
   map_dfr(readRDS) %>%
   st_sf(crs = main_crs) %>%
-  sample_n(500)
-toc()
+  sample_n(50)
 
 cdl <-
   2007:2017 %>%
@@ -78,19 +94,19 @@ cdl <-
   file.path(raw_spatial, "CropLand Data Layer", ., paste0(., ".tif")) %>%
   map(raster)
 
+# ===========================================================================
+# extract cdl rasters using clu polygons
+# ===========================================================================
 # we want to look over all the years of the CDL data, but also want to 
   # split up the clu data for parallelization
-tic()
+tic("CDL CLU Extract")
 clu_cdl <- 
   map2_df(cdl, 2007:2017, furrr_extract, clu, P, G) %>%
   group_by(CLU_ID) %>% 
   mutate(Total = sum(Freq), 
-         Frac = Freq / Total)  
+         Frac = Freq / Total) %>%
+  left_join(cdl_dict)
 toc()
 
-# 13 minutes for 100 polygons
-# 27 minutes for 500 polygons
+saveRDS(clu_cdl, file = file.path(build_spatial, "clu_cdl.RDS"))
 
-# figure out dictionary for this raster
-
-Imperial--114.584-32.732
