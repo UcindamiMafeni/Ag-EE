@@ -937,7 +937,7 @@ save "$dirpath_data/merged/data.dta", replace
 *******************************************************************************
 *******************************************************************************
 
-** 3. Compare SP vs APEP coordinates, and groundwater levels
+** 3. Compare SP vs APEP coordinates, and groundwater levels, and figure out missing drawdown
 {
 
 ** Start with SP-APEP merge
@@ -957,7 +957,12 @@ merge 1:1 apeptestid customertype farmtyp waterenduse test_date_stata using ///
 merge m:1 apeptestid crop using "$dirpath_data/pge_cleaned/apep_pump_gis.dta", keep(1 3) nogen ///
 	keepusing(pumplatnew pumplongnew latlon_group bad_geocode_flag wdist_id county_fips basin_id basin_sub_id)
 
-	
+** Create numeric groups	
+egen temp_basin_id_group = group(basin_id)
+egen temp_basin_sub_id_group = group(basin_sub_id)
+egen temp_basin_idSP_group = group(basin_idSP)
+egen temp_basin_sub_idSP_group = group(basin_sub_idSP)
+
 ** Calculate distance between the 2 competing geocodes
 geodist prem_lat prem_long pumplatnew pumplongnew, miles gen(sp_miles_from_pump)
 assert sp_miles_from_pump==. if missing_geocode_flagSP==1
@@ -1052,22 +1057,7 @@ foreach v of varlist gw_rast_depth_???_?b {
 foreach v of varlist gw_???_bsn_mean? {
 	qui correlate swl `v' // much weaker using basin avgs, so hooray for rasters???
 	di "`v'  " round(r(rho),0.001)
-}
-
-** Correlations with pumped water level (APEP lat/lons)
-foreach v of varlist gw_rast_depth_???_?s {
-	qui correlate pwl `v' // weak correlations w/ rasters, qtr > mth, 1 > 2 > 3 
-	di "`v'  " round(r(rho),0.001)
-}
-foreach v of varlist gw_rast_depth_???_?b {
-	qui correlate pwl `v' // same
-	di "`v'  " round(r(rho),0.001)
-}
-foreach v of varlist gw_???_bsn_mean? {
-	qui correlate pwl `v' // much weaker using basin avgs, so hooray for rasters???
-	di "`v'  " round(r(rho),0.001)
-}
-	
+}	
 	
 ** Correlations with standing water level (SP lat/lons)
 foreach v of varlist gw_rast_depth_???_?sSP {
@@ -1083,20 +1073,6 @@ foreach v of varlist gw_???_bsn_mean?SP {
 	di "`v'  " round(r(rho),0.001)
 }
 
-** Correlations with pumped water level (SP lat/lons)
-foreach v of varlist gw_rast_depth_???_?sSP {
-	qui correlate pwl `v' // same pattern, but better than APEP coordinates!
-	di "`v'  " round(r(rho),0.001)
-}
-foreach v of varlist gw_rast_depth_???_?bSP {
-	qui correlate pwl `v' // same pattern, but better than APEP coordinates!
-	di "`v'  " round(r(rho),0.001)
-}
-foreach v of varlist gw_???_bsn_mean?SP {
-	qui correlate pwl `v' // much weaker using basin avgs, still better than APEP coordinates, so hooray???
-	di "`v'  " round(r(rho),0.001)
-}
-	
 	
 ***	
 ** Correlations, good lat/lons 
@@ -1325,32 +1301,86 @@ foreach v of varlist gw_rast_depth_???_?sSP {
 	di "`v'  " r(N) "  " round(r(rho),0.001) 
 }
 
+** Correlations with standing water level (APEP lat/lons; releasing closeness criterion)
+foreach v of varlist gw_rast_depth_???_?s {
+	local vd = substr(subinstr("`v'","_depth_","_dist_",1),1,18)
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<1 & `vd'<1
+	di "`v'  " r(N) "  " round(r(rho),0.001) 
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<5 & `vd'<1
+	di "`v'  " r(N) "  " round(r(rho),0.001) 
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<10 & `vd'<1
+	di "`v'  " r(N) "  " round(r(rho),0.001) 
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<20 & `vd'<1
+	di "`v'  " r(N) "  " round(r(rho),0.001) 
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<50 & `vd'<1
+	di "`v'  " r(N) "  " round(r(rho),0.001) // drops off, but still pretty good, corr > 0.7 for monthly
+}
 
-** Compare SWL vs PWL, since SWL is not always populated!
-gen swl_pwl_diff = pwl - swl
-gen swl_pwl_ratio = pwl/swl
+** Correlations with standing water level (SP lat/lons; releasing closeness criterion)
+foreach v of varlist gw_rast_depth_???_?sSP {
+	local vd = substr(subinstr("`v'","_depth_","_dist_",1),1,18) + "SP"
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<1 & `vd'<1
+	di "`v'  " r(N) "  " round(r(rho),0.001) 
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<5 & `vd'<1
+	di "`v'  " r(N) "  " round(r(rho),0.001) 
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<10 & `vd'<1
+	di "`v'  " r(N) "  " round(r(rho),0.001) 
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<20 & `vd'<1
+	di "`v'  " r(N) "  " round(r(rho),0.001) 
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<50 & `vd'<1
+	di "`v'  " r(N) "  " round(r(rho),0.001) // hardly drops off at all!!
+}
 
-hist swl_pwl_diff
-sum swl_pwl_diff, detail
-hist swl_pwl_diff if inrange(swl_pwl_diff,r(p1),r(p99))
 
-hist swl_pwl_ratio
-sum swl_pwl_ratio, detail
-hist swl_pwl_ratio if inrange(swl_pwl_ratio,r(p1),r(p99))
+** Correlations with standing water level (SP lat/lons; releasing closeness criterion)
+foreach v of varlist gw_rast_depth_???_?sSP {
+	local vd = substr(subinstr("`v'","_depth_","_dist_",1),1,18) + "SP"
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<1 & `vd'<10
+	di "`v'  " r(N) "  " round(r(rho),0.001) 
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<5 & `vd'<10
+	di "`v'  " r(N) "  " round(r(rho),0.001) 
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<10 & `vd'<10
+	di "`v'  " r(N) "  " round(r(rho),0.001) 
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<20 & `vd'<10
+	di "`v'  " r(N) "  " round(r(rho),0.001) 
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<50 & `vd'<10
+	di "`v'  " r(N) "  " round(r(rho),0.001) // hardly drops off at all!!
+}
 
-egen temp_sd_diff = sd(swl_pwl_diff), by(latlon_group)
-egen temp_sd_ratio = sd(swl_pwl_ratio), by(latlon_group)
-sum temp_sd_diff, detail // oof
-sum temp_sd_ratio, detail // Not Great, Bob
-
-egen temp_sd_diff_sp = sd(swl_pwl_diff), by(latlon_group sp_uuid)
-egen temp_sd_ratio_sp = sd(swl_pwl_ratio), by(latlon_group sp_uuid)
-egen temp_cnt_diff_sp = count(swl_pwl_diff), by(latlon_group sp_uuid)
-egen temp_cnt_ratio_sp = count(swl_pwl_ratio), by(latlon_group sp_uuid)
-sum temp_sd_diff_sp, detail
-sum temp_sd_diff_sp if temp_cnt_diff_sp==2, detail // this is encouraging
-	// divide by 1.4 to get diff b/tw drawdown at same pump, at different points in time
-sum temp_sd_diff_sp if temp_cnt_diff_sp>2, detail // this is encouraging
+** Correlations with standing water level (SP lat/lons; releasing closeness criterion)
+foreach v of varlist gw_rast_depth_???_?sSP {
+	local vd = substr(subinstr("`v'","_depth_","_dist_",1),1,18) + "SP"
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<1 & `vd'<20
+	di "`v'  " r(N) "  " round(r(rho),0.001) 
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<5 & `vd'<20
+	di "`v'  " r(N) "  " round(r(rho),0.001) 
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<10 & `vd'<20
+	di "`v'  " r(N) "  " round(r(rho),0.001) 
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<20 & `vd'<20
+	di "`v'  " r(N) "  " round(r(rho),0.001) 
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<50 & `vd'<20
+	di "`v'  " r(N) "  " round(r(rho),0.001) // actually gets better...
+}
 
 	
 ** Compare SWL vs rasterized GW depth
@@ -1370,8 +1400,54 @@ foreach v of varlist gw_rast_depth_???_?sSP {
 	sum diff_`v' if  bad_geocode_flag==0 & customertype=="Individ Farms" ///
 		& waterenduse=="agriculture" & sp_miles_from_pump<5 & `vd'<3, detail
 }
-hist diff_gw_rast_depth_qtr_1sSP
 
+hist diff_gw_rast_depth_qtr_1sSP // at least it's centered on zero!
+hist diff_gw_rast_depth_qtr_1sSP if gw_rast_dist_qtr_1SP<5 
+hist diff_gw_rast_depth_qtr_1sSP if gw_rast_dist_qtr_1SP<5 & inrange(diff_gw_rast_depth_qtr_1sSP,-100,100)
+hist diff_gw_rast_depth_qtr_1sSP if gw_rast_dist_qtr_1SP<3 
+hist diff_gw_rast_depth_qtr_1sSP if gw_rast_dist_qtr_1SP<3 & inrange(diff_gw_rast_depth_qtr_1sSP,-100,100)
+hist diff_gw_rast_depth_qtr_1sSP if gw_rast_dist_qtr_1SP<1 
+hist diff_gw_rast_depth_qtr_1sSP if gw_rast_dist_qtr_1SP<1 & inrange(diff_gw_rast_depth_qtr_1sSP,-100,100)
+
+hist diff_gw_rast_depth_mth_1sSP // at least it's centered on zero!
+hist diff_gw_rast_depth_mth_1sSP if gw_rast_dist_mth_1SP<5
+hist diff_gw_rast_depth_mth_1sSP if gw_rast_dist_mth_1SP<5 & inrange(diff_gw_rast_depth_mth_1sSP,-100,100)
+hist diff_gw_rast_depth_mth_1sSP if gw_rast_dist_mth_1SP<3
+hist diff_gw_rast_depth_mth_1sSP if gw_rast_dist_mth_1SP<3 & inrange(diff_gw_rast_depth_mth_1sSP,-100,100)
+hist diff_gw_rast_depth_mth_1sSP if gw_rast_dist_mth_1SP<1
+hist diff_gw_rast_depth_mth_1sSP if gw_rast_dist_mth_1SP<1 & inrange(diff_gw_rast_depth_mth_1sSP,-100,100)
+hist diff_gw_rast_depth_mth_1sSP if gw_rast_dist_mth_1SP<1 & sp_miles_from_pump<20 & inrange(diff_gw_rast_depth_mth_1sSP,-100,100)
+hist diff_gw_rast_depth_mth_1sSP if gw_rast_dist_mth_1SP<1 & sp_miles_from_pump<10 & inrange(diff_gw_rast_depth_mth_1sSP,-100,100)
+hist diff_gw_rast_depth_mth_1sSP if gw_rast_dist_mth_1SP<1 & sp_miles_from_pump<5 & inrange(diff_gw_rast_depth_mth_1sSP,-100,100)
+hist diff_gw_rast_depth_mth_1sSP if gw_rast_dist_mth_1SP<1 & sp_miles_from_pump<3 & inrange(diff_gw_rast_depth_mth_1sSP,-100,100)
+hist diff_gw_rast_depth_mth_1sSP if gw_rast_dist_mth_1SP<1 & sp_miles_from_pump<1 & inrange(diff_gw_rast_depth_mth_1sSP,-100,100)
+
+twoway (scatter swl gw_rast_depth_mth_1sSP ///
+	if gw_rast_dist_mth_1SP<1 & sp_miles_from_pump<1 & inrange(diff_gw_rast_depth_mth_1sSP,-100,100)) ///
+	(function y=x, range (0 500))
+twoway (scatter swl gw_rast_depth_mth_2sSP ///
+	if gw_rast_dist_mth_2SP<1 & sp_miles_from_pump<1 & inrange(diff_gw_rast_depth_mth_2sSP,-100,100)) ///
+	(function y=x, range (0 500))
+twoway (scatter swl gw_rast_depth_qtr_1sSP ///
+	if gw_rast_dist_qtr_1SP<1 & sp_miles_from_pump<1 & inrange(diff_gw_rast_depth_qtr_1sSP,-100,100)) ///
+	(function y=x, range (0 500))
+twoway (scatter swl gw_rast_depth_qtr_2sSP ///
+	if gw_rast_dist_qtr_2SP<1 & sp_miles_from_pump<1 & inrange(diff_gw_rast_depth_qtr_2sSP,-100,100)) ///
+	(function y=x, range (0 500))
+
+** Some regressions to turn correlations into predictions
+gen test_year = year(test_date_stata)
+reghdfe swl gw_rast_depth_mth_2sSP ///
+	if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+	& waterenduse=="agriculture" & sp_miles_from_pump<50 & gw_rast_dist_mth_1SP<5, ///
+	absorb(temp_basin_id_group#test_year)
+	// Not a super convincing case for overturning the simple default: swl_hat = raster value!
+
+
+***** 
+**	Estimating drawdown where missing
+*****	
+	
 count 
 count if swl==.
 count if swl==. & rwl==.
@@ -1402,58 +1478,54 @@ unique sp_uuid
 local uniq = r(unique)
 unique sp_uuid if temp_swl_missing_min==1
 di r(unique)/`uniq'
-	
-/*	
-NEXT STEP: EVALUATE HOW SPATIALLY CORRELATED DRAWDOWN IS!
-
-TWO THINGS NEED ESTIMATING:
-
-(1) DRAWDOWN AT THE TIME OF THE TEST, FOR THE 18-21% OF PUMP TESTS WHERE WE NEVER OBSERVE SWL!
-
-	IF THERE'S A REASONABLE DEGREE OF SPATIAL AUTOCORRELATION IN DRAWDOWN 
-	(I.E. DRAWDOWN SIMILAR AT NEARBY WELLS)
-	THEN WE SHOULD POPULATE MISSING DRAWDOWNS BY FITTING A MODEL TO
-
-	-- CONTEMPORANEOUS WATER LEVELS FROM RASTERS
-	-- CONTEMPORANEOUS DRAWDOWN OF NEARBY (NEAREST?) WELLS
-	-- DRAWDOWN FROM NEARBY WELLS AT OTHER POINTS IN TIME
 
 
-(2) CHANGES TO DRAWDOWN OVER TIME!
 
-	THE SIMPLEST WAY TO GO IS TO ASSUME CONSTANT DRAWDOWN
-	
-	MORE SOPHISTICATED APPROACHES:
-	-- INTERPOLATE BETWEEN DRAWDOWN AT DIFFERENT POINTS IN TIME AT THE SAME WELL
-	-- USE CROSS-SECTIONAL CORRELATIONS TO ESTIMATE WELL-SPECIFIC TIME SERIES CHANGES
+** ESTIMATING DRAWDOWN using PHYSICS
+br swl pwl rwl drwdwn flag_bad_drwdwn temp_swl_missing if rwl!=swl 
+gen ln_drwdwn = ln(1+drwdwn)
+gen ln_flow_gpm = ln(1+flow_gpm)
+gen rwl_2 = rwl^2
+gen rwl_3 = rwl^3
+gen rwl_4 = rwl^4
+reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_id_group)
+reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_id_group#test_year)
+reghdfe ln_drwdwn c.ln_flow_gpm#i.temp_basin_id_group if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_id_group#test_year)
+reghdfe ln_drwdwn c.ln_flow_gpm##c.rwl if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_id_group#test_year)
+reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_id_group#test_year##c.rwl)
+reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_idSP_group#test_year##c.rwl)
+reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_sub_idSP_group#test_year##c.rwl)	
+reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_sub_idSP_group#c.rwl)	
+reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_id_group#c.rwl)	
+reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_sub_id_group#c.rwl wdist_id#c.rwl)	
 
-	
-WE COULD MACHINE-LEARN BOTH (1) AND (2).
-
-FOR (2), WE HAVE ~250 PUMPS WHERE WE OBSERVE DRAWDOWN AT DIFFERENT POINTS IN TIME...
-*/
-
-lassoregress swl_pwl_diff mtreff meterkh pump_diameter pf pwl ///
-	dchpres_psi dchlvl_ft gaugecor_ft gaugeheight_ft otherlosses_ft totlift ///
-	flow_gpm kw_input hp mtrload ope water_hp crosssection flow_veloc_fts totlift_gap
-
-foreach v1 of varlist mtreff meterkh pump_diameter pf pwl ///
-	dchpres_psi dchlvl_ft gaugecor_ft gaugeheight_ft otherlosses_ft totlift ///
-	flow_gpm kw_input hp mtrload ope water_hp crosssection flow_veloc_fts totlift_gap {
-	
-	foreach v2 of varlist mtreff meterkh pump_diameter pf pwl ///
-		dchpres_psi dchlvl_ft gaugecor_ft gaugeheight_ft otherlosses_ft totlift ///
-		flow_gpm kw_input hp mtrload ope water_hp crosssection flow_veloc_fts totlift_gap {
-
-		gen I_`v1'_`v2' = `v1'*`v2'
-	}
-}
-	
-lassoregress swl_pwl_diff mtreff meterkh pump_diameter pf pwl ///
-	dchpres_psi dchlvl_ft gaugecor_ft gaugeheight_ft otherlosses_ft totlift ///
-	flow_gpm kw_input hp mtrload ope water_hp crosssection flow_veloc_fts totlift_gap I_*
+reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_id_group)	
+reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_id_group#c.rwl)	
+reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_id_group#c.(rwl rwl_2))	
+reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_id_group#c.(rwl rwl_2 rwl_3))	
+reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_id_group#c.(rwl rwl_2 rwl_3 rwl_4))
+	// The simplest model works! basin FEs and basin-specific slopes! Amazing!! Great, Bob!!!
 
 }
+
+/* 
+
+Takeaway 1: Lots of discrepancies between SP vs. APEP coordinates. Median distance apart is 8.4 miles.
+            Half of SPs are in different water district than matched APEP coordinates.
+			
+Takeaway 2: SP premise lat/lons	out-perform APEP pump lat/lons in comparing SWL with groundwater rasters!
+            This is very surprising, but the correlations are speaking loud and clear.
+			
+Takeaway 3: SWL is highly correlated with rasterize groundwater levels, when DWR measurements are close to
+            SP lat/lons (rho>0.9). Monthly>quarterly when measurements are close, quarterly>monthly otherwise.
+
+Takeaway 4: Despite many attempts to dig for a convincing complicating wrinkle that woudl help translate 
+            rasterized groundwater depths into predicted SWL, I see no reason not use the simple prediction 
+            function: swl_hat = gw_rast_depth_mth_1SP (or qtr)
+			
+Takeaway 5: For estimating drawdown, physics wins again! The simplest theoretically informed regression has
+            R^2 = 0.90! Use this to linearly predict missing drawdown, and to help interpolate drawdown between
+			pump tests.
 
 *******************************************************************************
 *******************************************************************************
