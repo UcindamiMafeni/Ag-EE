@@ -642,6 +642,13 @@ replace crop = "" if crop=="4"
 replace crop = "almonds" if inlist(crop,"alm","alma")
 la var crop "Crop type"
 
+replace mtrmake = "" if inlist(mtrmake,"no name plate","other","none","na")
+replace mtrmake = upper(trim(itrim(mtrmake)))
+la var mtrmake "Motor make (as reported, pretty clean)"
+
+replace mtrsn = "" if regexm(mtrsn,"[0-9]")==0
+la var mtrsn "Motor serial number (as reported, missings standardized to missing)"
+
 la var waterenduse "Water end use"
 rename watrsrc watersource
 la var watersource "Water source"
