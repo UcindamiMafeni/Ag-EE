@@ -642,6 +642,17 @@ replace crop = "" if crop=="4"
 replace crop = "almonds" if inlist(crop,"alm","alma")
 la var crop "Crop type"
 
+replace farmtype = "other" if farmtype=="dother"
+replace farmtype = "other" if farmtype=="oher"
+replace farmtype = "other" if farmtype=="oother"
+replace farmtype = "other" if farmtype=="oter"
+replace farmtype = "other" if farmtype=="oth"
+replace farmtype = "other" if farmtype=="othero"
+replace farmtype = "other" if farmtype=="otherq"
+replace farmtype = "other" if farmtype=="othr"
+replace farmtype = "other" if farmtype=="othre"
+la var farmtype "Type of farm"
+
 replace pumpmke = "" if inlist(pumpmke,"NA","NONE","No Name Plate","Other")
 replace pumpmke = upper(trim(itrim(pumpmke)))
 la var pumpmke "Pump make (as reported, missings standardized to missing)"
@@ -657,7 +668,6 @@ la var waterenduse "Water end use"
 rename watrsrc watersource
 la var watersource "Water source"
 la var apeptestid "Unique APEP test identifier (not quite unique by observation)"
-la var farmtype "Type of farm"
 la var economicanalysis "Use this run for economic anlaysis?"
 la var pumptyp "Pump type"
 rename pumptyp pumptype
