@@ -28,7 +28,7 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 	}
 	
 	// Loop through sample restrictions
-	foreach ifs in 7 10 11 12 15 16 {
+	foreach ifs in 7 10 11 {
 	
 		if `ifs'==1 {
 			local if_sample = ""
@@ -86,7 +86,7 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 		}
 		
 		// Loop over different combinations of fixed effects and interactions thereof
-		foreach fe in 22 23 24 25 26 27 {
+		foreach fe in 2 11 13 19 {
 		
 			if `fe'==1 {
 				local FEs = "sp_group modate"
@@ -171,7 +171,7 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 			}
 
 			// Loop over alternative RHS specifications, including IVs
-			foreach rhs in 1 8 11 {
+			foreach rhs in 15 16 17 {
 			
 				if `rhs'==1 {
 					local RHS = "log_p_mean"
@@ -214,6 +214,15 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 				}
 				if `rhs'==14 {
 					local RHS = "log_p_mean ctrl_fxn_logs"
+				}
+				if `rhs'==15 {
+					local RHS = "log_p_mean degreesC_* "
+				}
+				if `rhs'==16 {
+					local RHS = "(log_p_mean = log_mean_p_kwh_ag_default log_min_p_kwh_ag_default log_max_p_kwh_ag_default) degreesC_* "
+				}
+				if `rhs'==17 {
+					local RHS = "(log_p_mean = log_p_m*_lag12 log_p_m*_lag6) degreesC_* "
 				}
 
 				// Skip combinations of IV and switchers/rate FE interactions
