@@ -3,7 +3,7 @@ version 13
 set more off
 
 *****************************************************
-**** Script to craete analysis datasets for camp ****
+**** Script to create analysis datasets for camp ****
 *****************************************************
 
 global dirpath "S:/Matt/ag_pump"
