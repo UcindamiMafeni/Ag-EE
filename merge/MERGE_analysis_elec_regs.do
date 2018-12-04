@@ -2,9 +2,9 @@ clear all
 version 13
 set more off
 
-*****************************************************
-**** Script to create analysis datasets for camp ****
-*****************************************************
+***********************************************************************************
+**** Script to create analysis datasets monthly/hourly electricity regressions ****
+***********************************************************************************
 
 global dirpath "S:/Matt/ag_pump"
 global dirpath_data "$dirpath/data"
