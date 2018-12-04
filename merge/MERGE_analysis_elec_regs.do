@@ -758,7 +758,11 @@ foreach v of varlist TEMP_* {
 	rename `v' `v2'
 }
 	
-	
+** Merge in monthly average temperature at SP level
+cap drop degreesC_*
+merge 1:1 sp_uuid modate using "$dirpath_data/prism/sp_temperature_monthly.dta", ///
+	nogen keep(1 3)
+
 ** Save
 order sp_uuid modate
 sort sp_uuid modate
