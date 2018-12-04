@@ -106,6 +106,9 @@ do "$dirpath_code/merge/MERGE_analysis_elec_regs.do"
 *** 6: MERGE CUSTOMER DETAILS & APEP DATASETS TO CONSTRUCT MASTER XSECTION(S) FOR EVENTUAL PANEL(S)
 do "$dirpath_code/merge/MERGE_customer_apep_units.do"
 
+*** 7: CONSTRUCT PANEL OF KWH/AF CONVERSION RATES
+do "$dirpath_code/merge/MERGE_panel_kwhaf.do"
+
 
 
 
