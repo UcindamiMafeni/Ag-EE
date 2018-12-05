@@ -1430,12 +1430,16 @@ correlate kwhaf KWHAF_rast_DRWDWN_qtr_1sSP if modate==test_modate
 
 	
 ** Prepare to collapse by keeping only relevant variables
-keep sp_uuid customertype farmtype waterenduse apeptestid test_date_stata apeptestid_uniq ///
-	date_proj_finish apep_proj_count watersource drvtype pumptype flow_gpm kwhaf ///
-	latlon_group test_modate sp_pump_id sp_pump_id3 case apep_post test_modate_before ///
+gen tdh_adder = dchlvl_ft + gaugecor_ft + gaugeheight_ft + otherlosses_ft + totlift_gap
+rename gw_*_DRWDWNhat_* DD_*_DRWDWNhat_*
+keep sp_uuid customertype farmtype waterenduse apeptestid test_date_stata ///
+	apeptestid_uniq date_proj_finish apep_proj_count watersource drvtype pumptype ///
+	kwhaf flow_gpm tdh_adder ope af24hrs drwdwn DD_* KWHAF_* latlon_group ///
+	test_modate sp_pump_id sp_pump_id3 case apep_post test_modate_before ///
 	test_modate_after modate interp_wgt months_until_test months_since_test ///
 	post_apep_proj_finish extrap_post_to_pre extrap_pre_to_post qtr ///
-	gw_rast_dist_mth_1SP gw_rast_dist_mth_2SP gw_rast_dist_mth_3SP  ///
+	gw_????_depth_???_* ///
+	gw_rast_dist_mth_1SP gw_rast_dist_mth_2SP gw_rast_dist_mth_3SP ///
 	gw_mth_bsn_cnt1SP gw_mth_bsn_cnt2SP gw_mth_bsn_cnt3SP ///
 	gw_rast_dist_qtr_1SP gw_rast_dist_qtr_2SP gw_rast_dist_qtr_3SP ///
 	gw_qtr_bsn_cnt1SP gw_qtr_bsn_cnt2SP gw_qtr_bsn_cnt3SP ///
@@ -1443,14 +1447,14 @@ keep sp_uuid customertype farmtype waterenduse apeptestid test_date_stata apepte
 	gw_mth_bsn_cnt1 gw_mth_bsn_cnt2 gw_mth_bsn_cnt3 ///
 	gw_rast_dist_qtr_1 gw_rast_dist_qtr_2 gw_rast_dist_qtr_3 ///
 	gw_qtr_bsn_cnt1 gw_qtr_bsn_cnt2 gw_qtr_bsn_cnt3 ///
-	drwdwn_predict_step drwdwn_predict_step_desc flag_bad_drwdwn KWHAF_*	
+	drwdwn_predict_step drwdwn_predict_step_desc flag_bad_drwdwn 	
 
 
 ** Collapse to SP-pump-month level (unweighted averages)
 	// For the few cases where we have parallel time series within a(n observable) pump
 
 	// Unweighted means of numeric variables
-foreach v of varlist flow_gpm kwhaf KWHAF_* {
+foreach v of varlist drwdwn tdh_adder ope af24hrs flow_gpm kwhaf gw_????_depth_???_* DD_* KWHAF_* {
 	egen double temp1 = mean(`v') if `v'!=., by(sp_uuid sp_pump_id modate test_modate)
 	egen double temp2 = mean(temp1), by(sp_uuid sp_pump_id modate test_modate)
 	replace `v' = temp2 if temp2!=.
@@ -1548,15 +1552,14 @@ drop customertype waterenduse farmtype
 
 	// Drop if weight = 0, as these observations will contribute nothing
 drop if interp_wgt==0	
-drop flow_gpm // not using this variable after all
 
 	// Weight-average numeric variables
-foreach v of varlist kwhaf KWHAF_* {
-	assert `v'!=.
-	egen double temp = sum(interp_wgt * `v'), by(sp_uuid modate)
-	assert temp!=.
-	replace `v' = temp
-	drop temp
+foreach v of varlist drwdwn tdh_adder ope af24hrs flow_gpm kwhaf gw_????_depth_???_* DD_* KWHAF_* {
+	egen double temp_denom = sum(interp_wgt) if `v'!=., by(sp_uuid modate)
+	egen double temp1 = sum(interp_wgt * `v' / temp_denom) if `v'!=., by(sp_uuid modate)
+	egen double temp2 = mean(temp1), by(sp_uuid modate)
+	replace `v' = temp2
+	drop temp*
 }
 
 	// Take minimum of distances to nearest groundwater measurement
@@ -1735,12 +1738,48 @@ la var kwhaf_mean_ddhat_qtr_2SP "Predicted KWH/AF (SP latlon, qtrly means, predi
 la var kwhaf_mean_ddhat_qtr_3SP "Predicted KWH/AF (SP latlon, qtrly means, predicted drawdown, obs non-ques gw)"
 
 
+rename drwdwn drwdwn_apep
+la var drwdwn_apep "Drawdown measured by APEP test(s); estimated where missing; often interpolated"
+rename DD_rast_ddhat_* ddhat_rast_*
+rename DD_mean_ddhat_* ddhat_mean_*
+
+la var ddhat_rast_mth_1 "Predicted drawdown (ft; pump latlon, mthly rasters, all gw)"
+la var ddhat_rast_mth_2 "Predicted drawdown (ft; pump latlon, mthly rasters, non-ques gw)"
+la var ddhat_rast_mth_3 "Predicted drawdown (ft; pump latlon, mthly rasters, obs non-ques gw)"
+la var ddhat_rast_qtr_1 "Predicted drawdown (ft; pump latlon, qtrly rasters, all gw)"
+la var ddhat_rast_qtr_2 "Predicted drawdown (ft; pump latlon, qtrly rasters, non-ques gw)"
+la var ddhat_rast_qtr_3 "Predicted drawdown (ft; pump latlon, qtrly rasters, obs non-ques gw)"
+
+la var ddhat_mean_mth_1 "Predicted drawdown (ft; pump latlon, mthly means, all gw)"
+la var ddhat_mean_mth_2 "Predicted drawdown (ft; pump latlon, mthly means, non-ques gw)"
+la var ddhat_mean_mth_3 "Predicted drawdown (ft; pump latlon, mthly means, obs non-ques gw)"
+la var ddhat_mean_qtr_1 "Predicted drawdown (ft; pump latlon, qtrly means, all gw)"
+la var ddhat_mean_qtr_2 "Predicted drawdown (ft; pump latlon, qtrly means, non-ques gw)"
+la var ddhat_mean_qtr_3 "Predicted drawdown (ft; pump latlon, qtrly means, obs non-ques gw)"
+
+la var ddhat_rast_mth_1SP "Predicted drawdown (ft; SP latlon, mthly rasters, all gw)"
+la var ddhat_rast_mth_2SP "Predicted drawdown (ft; SP latlon, mthly rasters, non-ques gw)"
+la var ddhat_rast_mth_3SP "Predicted drawdown (ft; SP latlon, mthly rasters, obs non-ques gw)"
+la var ddhat_rast_qtr_1SP "Predicted drawdown (ft; SP latlon, qtrly rasters, all gw)"
+la var ddhat_rast_qtr_2SP "Predicted drawdown (ft; SP latlon, qtrly rasters, non-ques gw)"
+la var ddhat_rast_qtr_3SP "Predicted drawdown (ft; SP latlon, qtrly rasters, obs non-ques gw)"
+
+la var ddhat_mean_mth_1SP "Predicted drawdown (ft; SP latlon, mthly means, all gw)"
+la var ddhat_mean_mth_2SP "Predicted drawdown (ft; SP latlon, mthly means, non-ques gw)"
+la var ddhat_mean_mth_3SP "Predicted drawdown (ft; SP latlon, mthly means, obs non-ques gw)"
+la var ddhat_mean_qtr_1SP "Predicted drawdown (ft; SP latlon, qtrly means, all gw)"
+la var ddhat_mean_qtr_2SP "Predicted drawdown (ft; SP latlon, qtrly means, non-ques gw)"
+la var ddhat_mean_qtr_3SP "Predicted drawdown (ft; SP latlon, qtrly means, obs non-ques gw)"
+
+la var tdh_adder "To get TDH; dchlvl_ft+gaugecor_ft+gaugeheight_ft+otherlosses_ft+totlift_gap" 
+
+
 ** Sort, order and save
 sort sp_uuid modate
 order sp_uuid modate months_until_test months_since_test months_to_nearest_test nearest_test_modate ///
 	test_modate_* apep_proj_count date_proj_finish post_apep_proj_finish extrap_* apep_interp_case ///
 	apeptestid* latlon_group flag_bad_drwdwn drwdwn* flag_weird_pump flag_weird_cust ///
-	kwhaf_apep_measured kwhaf*
+	kwhaf_apep_measured kwhaf* dd* gw_*_depth_* gw_* 
 unique sp_uuid modate
 assert r(unique)==r(N)	
 compress
