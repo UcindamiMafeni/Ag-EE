@@ -19,7 +19,7 @@ global dirpath_data "$dirpath/data"
 *******************************************************************************
 
 ** 1. Monthified billing data with prices, at SA and SP levels
-if 1==0{
+if 1==1{
 
 ** Start with cleaned customer + monthified billing data (all three data pulls)
 foreach tag in 20180719 20180322 20180827 {
@@ -163,10 +163,10 @@ foreach v of varlist dr_program pou_name rt_sched_cd {
 }
 
 	// Take weight-averages of mean price variables
-foreach v of varlist  mean_p_kwh mean_p_kw_max mean_p_kw_peak mean_p_kw_partpeak {
-	egen double temp_num1 = sum(`v'*mnth_bill_kwh) if `v'!=. & mnth_bill_kwh!=., by(sp_uuid modate)
+foreach v of varlist  mean_p_kwh  {
+	egen double temp_num1 = sum(`v'*mnth_bill_kwh) if `v'!=. & mnth_bill_kwh!=. & mnth_bill_kwh>=0, by(sp_uuid modate)
 	egen double temp_num2 = mean(temp_num1), by(sp_uuid modate)
-	egen double temp_denom1 = sum(mnth_bill_kwh) if `v'!=. & mnth_bill_kwh!=., by(sp_uuid modate)
+	egen double temp_denom1 = sum(mnth_bill_kwh) if `v'!=. & mnth_bill_kwh!=. & & mnth_bill_kwh>=0, by(sp_uuid modate)
 	egen double temp_denom2 = mean(temp_denom1), by(sp_uuid modate)
 	replace `v' = temp_num2/temp_denom2 if temp_denom2!=0 & temp_denom2!=.
 	egen temp = mean(`v'), by(sp_uuid modate)
