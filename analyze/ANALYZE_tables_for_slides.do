@@ -6,8 +6,13 @@ set more off
 ** Script to make tables for slides  **
 ***************************************
 
-global dirpath "S:/Matt/ag_pump"
-global dirpath_data "$dirpath/data"
+*global dirpath "S:/Matt/ag_pump"
+*global dirpath_data "$dirpath/data"
+*global dirpath_output "$dirpath/output"
+
+global dirpath "/Users/louispreonas/Dropbox/Documents/Research/Energy Water Project"
+global dirpath_data "$dirpath"
+global dirpath_output "$dirpath/slides/tables"
 
 ************************************************
 ************************************************
@@ -49,7 +54,7 @@ unique sp_uuid if inlist(rt_sched_cd,"AG-RA","AG-RB","AG-RD","AG-RE","AG-VA","AG
 local E2 = string(100*r(unique)/`denom2',"%9.1f")
 
 	// Build table
-file open textab using "$dirpath/output/table_slides_summary_stats.tex", write text replace
+file open textab using "$dirpath_output/table_slides_summary_stats.tex", write text replace
 
 file write textab "\begin{table}\centering" _n
 file write textab "\caption{\normalsize Summary Statistics: Electricity Data}" _n
@@ -221,7 +226,7 @@ foreach rate in 1 2 6 {
 
 
 	// Build table
-file open textab using "$dirpath/output/table_rates_example.tex", write text replace
+file open textab using "$dirpath_output/table_rates_example.tex", write text replace
 
 file write textab "\begin{table}\centering" _n
 file write textab "\small" _n
@@ -294,7 +299,7 @@ keep if inlist(fes,"sp_group#month modate", ///
 					"sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate")
 
 sort fes sample
-keep if sample == "if sp_same_rate_dumbsmart==1"
+keep if sample != "if sp_same_rate_dumbsmart==1"
 assert _N==4		
 
 gen col = .			
@@ -313,13 +318,13 @@ forvalues c = 1/4 {
 		local stars_`c' = "$^{***}$"
 	}
 	else if `pval_`c''<0.05 {
-		local stars_`c' = "$^{**}~$"
+		local stars_`c' = "$^{**}$"
 	}
 	else if `pval_`c''<0.1 {
-		local stars_`c' = "$^{*}~~$"
+		local stars_`c' = "$^{*}$"
 	}
 	else {
-		local stars_`c' = "~~~"
+		local stars_`c' = ""
 	}
 	local n_sp_`c' = string(n_SPs[`c'],"%9.0fc")
 	local n_obs_`c' = string(n_obs[`c'],"%9.0fc")
@@ -327,7 +332,7 @@ forvalues c = 1/4 {
 
 
 	// Build table
-file open textab using "$dirpath/output/table_regs_monthly_stayers.tex", write text replace
+file open textab using "$dirpath_output/table_regs_monthly_stayers.tex", write text replace
 
 file write textab "\begin{table}\centering" _n
 file write textab "\caption{\normalsize Monthly data --- \`\`{\bf Stayers}''}" _n
@@ -338,7 +343,7 @@ file write textab "\hline" _n
 file write textab "\\ " _n
 file write textab "\vspace{-7mm}" _n
 file write textab "\\" _n
-file write textab "& (1) & (2) & (3) & (4)  \\" _n
+file write textab "& ~~~~(1)~~~~ & ~~~~(2)~~~~ & ~~~~(3)~~~~ & ~~~~(4)~~~~  \\" _n
 file write textab "[.1em]" _n
 file write textab "\cline{2-5}" _n
 file write textab "\\" _n
@@ -393,7 +398,7 @@ keep if inlist(fes,"sp_group#month modate", ///
 					"sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate")
 
 sort fes rhs sample
-keep if sample == "if sp_same_rate_dumbsmart==0 & sp_same_rate_in_cat==1"
+keep if sample != "if sp_same_rate_dumbsmart==0 & sp_same_rate_in_cat==1"
 keep if inlist(rhs,"log_p_mean","(log_p_mean = log_p_m*_lag12 log_p_m*_lag6)")
 assert _N==8		
 
@@ -417,13 +422,13 @@ forvalues c = 1/8 {
 		local stars_`c' = "$^{***}$"
 	}
 	else if `pval_`c''<0.05 {
-		local stars_`c' = "$^{**}~$"
+		local stars_`c' = "$^{**}$"
 	}
 	else if `pval_`c''<0.1 {
-		local stars_`c' = "$^{*}~~$"
+		local stars_`c' = "$^{*}$"
 	}
 	else {
-		local stars_`c' = "~~~"
+		local stars_`c' = ""
 	}
 	local n_sp_`c' = string(n_SPs[`c'],"%9.0fc")
 	local n_obs_`c' = string(n_obs[`c'],"%9.0fc")
@@ -432,7 +437,7 @@ forvalues c = 1/8 {
 
 
 	// Build table
-file open textab using "$dirpath/output/table_regs_monthly_forced_switchers.tex", write text replace
+file open textab using "$dirpath_output/table_regs_monthly_forced_switchers.tex", write text replace
 
 file write textab "\begin{table}\centering" _n
 file write textab "\caption{\normalsize Monthly data --- \`\`{\bf Forced Switchers}''}" _n
@@ -443,7 +448,7 @@ file write textab "\hline" _n
 file write textab "\\ " _n
 file write textab "\vspace{-7mm}" _n
 file write textab "\\" _n
-file write textab "& (1) & (2) & (3) & (4)  \\" _n
+file write textab "& ~~~~(1)~~~~ & ~~~~(2)~~~~ & ~~~~(3)~~~~ & ~~~~(4)~~~~  \\" _n
 file write textab "[.1em]" _n
 file write textab "\cline{2-5}" _n
 file write textab "\\" _n
@@ -503,7 +508,7 @@ keep if inlist(fes,"sp_group#month modate", ///
 					"sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate")
 
 sort fes rhs sample
-keep if sample == "if sp_same_rate_in_cat==0"
+keep if sample != "if sp_same_rate_in_cat==0"
 keep if inlist(rhs,"log_p_mean","(log_p_mean = log_mean_p_kwh_ag_default log_min_p_kwh_ag_default log_max_p_kwh_ag_default)")
 assert _N==8		
 
@@ -527,13 +532,13 @@ forvalues c = 1/8 {
 		local stars_`c' = "$^{***}$"
 	}
 	else if `pval_`c''<0.05 {
-		local stars_`c' = "$^{**}~$"
+		local stars_`c' = "$^{**}$"
 	}
 	else if `pval_`c''<0.1 {
-		local stars_`c' = "$^{*}~~$"
+		local stars_`c' = "$^{*}$"
 	}
 	else {
-		local stars_`c' = "~~~"
+		local stars_`c' = ""
 	}
 	local n_sp_`c' = string(n_SPs[`c'],"%9.0fc")
 	local n_obs_`c' = string(n_obs[`c'],"%9.0fc")
@@ -542,7 +547,7 @@ forvalues c = 1/8 {
 
 
 	// Build table
-file open textab using "$dirpath/output/table_regs_monthly_choosers.tex", write text replace
+file open textab using "$dirpath_output/table_regs_monthly_choosers.tex", write text replace
 
 file write textab "\begin{table}\centering" _n
 file write textab "\caption{\normalsize Monthly data --- \`\`{\bf Choosers}''}" _n
@@ -553,7 +558,7 @@ file write textab "\hline" _n
 file write textab "\\ " _n
 file write textab "\vspace{-7mm}" _n
 file write textab "\\" _n
-file write textab "& (1) & (2) & (3) & (4)  \\" _n
+file write textab "& ~~~~(1)~~~~ & ~~~~(2)~~~~ & ~~~~(3)~~~~ & ~~~~(4)~~~~  \\" _n
 file write textab "[.1em]" _n
 file write textab "\cline{2-5}" _n
 file write textab "\\" _n
@@ -606,18 +611,18 @@ keep if rhs=="log_p"
 keep if regexm(sample,"sp_same_rate_dumbsmart==1")
 keep if inlist(fes,"sp_group#month#hour modate", ///
 					"sp_group#month#hour basin_group#year modate", ///
-					"sp_group#month#hour##c.gw_qtr_bsn_mean2 basin_group#year modate", ///
-					"sp_group#month#hour##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate")
+					"sp_group#month#hour sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year modate", ///
+					"sp_group#month#hour sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate")
 
 sort fes sample
-keep if sample == "if sp_same_rate_dumbsmart==1"
+keep if sample != "if sp_same_rate_dumbsmart==1"
 assert _N==4		
 
 gen col = .			
 replace col = 1 if fes=="sp_group#month#hour modate"
 replace col = 2 if fes=="sp_group#month#hour basin_group#year modate"
-replace col = 3 if fes=="sp_group#month#hour##c.gw_qtr_bsn_mean2 basin_group#year modate"
-replace col = 4 if fes=="sp_group#month#hour##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate"
+replace col = 3 if fes=="sp_group#month#hour sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year modate"
+replace col = 4 if fes=="sp_group#month#hour sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate"
 assert col!=.
 sort col
 
@@ -629,13 +634,13 @@ forvalues c = 1/4 {
 		local stars_`c' = "$^{***}$"
 	}
 	else if `pval_`c''<0.05 {
-		local stars_`c' = "$^{**}~$"
+		local stars_`c' = "$^{**}$"
 	}
 	else if `pval_`c''<0.1 {
-		local stars_`c' = "$^{*}~~$"
+		local stars_`c' = "$^{*}$"
 	}
 	else {
-		local stars_`c' = "~~~"
+		local stars_`c' = ""
 	}
 	local n_sp_`c' = string(n_SPs[`c'],"%9.0fc")
 	local n_obs_`c' = string(n_obs[`c']/1e6,"%9.0f")
@@ -643,7 +648,7 @@ forvalues c = 1/4 {
 
 
 	// Build table
-file open textab using "$dirpath/output/table_regs_hourly_stayers.tex", write text replace
+file open textab using "$dirpath_output/table_regs_hourly_stayers.tex", write text replace
 
 file write textab "\begin{table}\centering" _n
 file write textab "\caption{\normalsize Hourly data --- \`\`{\bf Stayers}''}" _n
@@ -654,7 +659,7 @@ file write textab "\hline" _n
 file write textab "\\ " _n
 file write textab "\vspace{-7mm}" _n
 file write textab "\\" _n
-file write textab "& (1) & (2) & (3) & (4)  \\" _n
+file write textab "& ~~~~(1)~~~~ & ~~~~(2)~~~~ & ~~~~(3)~~~~ & ~~~~(4)~~~~  \\" _n
 file write textab "[.1em]" _n
 file write textab "\cline{2-5}" _n
 file write textab "\\" _n
@@ -703,22 +708,22 @@ drop if regexm(rhs,"init")
 keep if regexm(sample,"sp_same_rate_dumbsmart==0 & sp_same_rate_in_cat==1")
 keep if inlist(fes,"sp_group#month#hour modate", ///
 					"sp_group#month#hour basin_group#year modate", ///
-					"sp_group#month#hour##c.gw_qtr_bsn_mean2 basin_group#year modate", ///
-					"sp_group#month#hour##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate")
+					"sp_group#month#hour sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year modate", ///
+					"sp_group#month#hour sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate")
 
 sort fes rhs sample
-keep if sample == "if sp_same_rate_dumbsmart==0 & sp_same_rate_in_cat==1"
+keep if sample != "if sp_same_rate_dumbsmart==0 & sp_same_rate_in_cat==1"
 assert _N==8		
 
 gen col = .			
 replace col = 1 if fes=="sp_group#month#hour modate" & rhs=="log_p"
 replace col = 2 if fes=="sp_group#month#hour basin_group#year modate" & rhs=="log_p"
-replace col = 3 if fes=="sp_group#month#hour##c.gw_qtr_bsn_mean2 basin_group#year modate" & rhs=="log_p"
-replace col = 4 if fes=="sp_group#month#hour##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate" & rhs=="log_p"
+replace col = 3 if fes=="sp_group#month#hour sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year modate" & rhs=="log_p"
+replace col = 4 if fes=="sp_group#month#hour sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate" & rhs=="log_p"
 replace col = 5 if fes=="sp_group#month#hour modate" & rhs!="log_p"
 replace col = 6 if fes=="sp_group#month#hour basin_group#year modate" & rhs!="log_p"
-replace col = 7 if fes=="sp_group#month#hour##c.gw_qtr_bsn_mean2 basin_group#year modate" & rhs!="log_p"
-replace col = 8 if fes=="sp_group#month#hour##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate" & rhs!="log_p"
+replace col = 7 if fes=="sp_group#month#hour sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year modate" & rhs!="log_p"
+replace col = 8 if fes=="sp_group#month#hour sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate" & rhs!="log_p"
 assert col!=.
 sort col
 
@@ -730,13 +735,13 @@ forvalues c = 1/8 {
 		local stars_`c' = "$^{***}$"
 	}
 	else if `pval_`c''<0.05 {
-		local stars_`c' = "$^{**}~$"
+		local stars_`c' = "$^{**}$"
 	}
 	else if `pval_`c''<0.1 {
-		local stars_`c' = "$^{*}~~$"
+		local stars_`c' = "$^{*}$"
 	}
 	else {
-		local stars_`c' = "~~~"
+		local stars_`c' = ""
 	}
 	local n_sp_`c' = string(n_SPs[`c'],"%9.0fc")
 	local n_obs_`c' = string(n_obs[`c']/1e6,"%9.0f")
@@ -745,7 +750,7 @@ forvalues c = 1/8 {
 
 
 	// Build table
-file open textab using "$dirpath/output/table_regs_hourly_forced_switchers.tex", write text replace
+file open textab using "$dirpath_output/table_regs_hourly_forced_switchers.tex", write text replace
 
 file write textab "\begin{table}\centering" _n
 file write textab "\caption{\normalsize Hourly data --- \`\`{\bf Forced Switchers}''}" _n
@@ -756,7 +761,7 @@ file write textab "\hline" _n
 file write textab "\\ " _n
 file write textab "\vspace{-7mm}" _n
 file write textab "\\" _n
-file write textab "& (1) & (2) & (3) & (4)  \\" _n
+file write textab "& ~~~~(1)~~~~ & ~~~~(2)~~~~ & ~~~~(3)~~~~ & ~~~~(4)~~~~  \\" _n
 file write textab "[.1em]" _n
 file write textab "\cline{2-5}" _n
 file write textab "\\" _n
@@ -809,23 +814,23 @@ keep if rhs=="log_p" | regexm(rhs," = ")
 keep if regexm(sample,"sp_same_rate_in_cat==0")
 keep if inlist(fes,"sp_group#month#hour modate", ///
 					"sp_group#month#hour basin_group#year modate", ///
-					"sp_group#month#hour##c.gw_qtr_bsn_mean2 basin_group#year modate", ///
-					"sp_group#month#hour##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate")
+					"sp_group#month#hour sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year modate", ///
+					"sp_group#month#hour sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate")
 
 sort fes rhs sample
-keep if sample == "if sp_same_rate_in_cat==0"
+keep if sample != "if sp_same_rate_in_cat==0"
 
 assert _N==8		
 
 gen col = .			
 replace col = 1 if fes=="sp_group#month#hour modate" & rhs=="log_p"
 replace col = 2 if fes=="sp_group#month#hour basin_group#year modate" & rhs=="log_p"
-replace col = 3 if fes=="sp_group#month#hour##c.gw_qtr_bsn_mean2 basin_group#year modate" & rhs=="log_p"
-replace col = 4 if fes=="sp_group#month#hour##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate" & rhs=="log_p"
+replace col = 3 if fes=="sp_group#month#hour sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year modate" & rhs=="log_p"
+replace col = 4 if fes=="sp_group#month#hour sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate" & rhs=="log_p"
 replace col = 5 if fes=="sp_group#month#hour modate" & rhs!="log_p"
 replace col = 6 if fes=="sp_group#month#hour basin_group#year modate" & rhs!="log_p"
-replace col = 7 if fes=="sp_group#month#hour##c.gw_qtr_bsn_mean2 basin_group#year modate" & rhs!="log_p"
-replace col = 8 if fes=="sp_group#month#hour##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate" & rhs!="log_p"
+replace col = 7 if fes=="sp_group#month#hour sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year modate" & rhs!="log_p"
+replace col = 8 if fes=="sp_group#month#hour sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate" & rhs!="log_p"
 assert col!=.
 sort col
 
@@ -837,13 +842,13 @@ forvalues c = 1/8 {
 		local stars_`c' = "$^{***}$"
 	}
 	else if `pval_`c''<0.05 {
-		local stars_`c' = "$^{**}~$"
+		local stars_`c' = "$^{**}$"
 	}
 	else if `pval_`c''<0.1 {
-		local stars_`c' = "$^{*}~~$"
+		local stars_`c' = "$^{*}$"
 	}
 	else {
-		local stars_`c' = "~~~"
+		local stars_`c' = ""
 	}
 	local n_sp_`c' = string(n_SPs[`c'],"%9.0fc")
 	local n_obs_`c' = string(n_obs[`c']/1e6,"%9.0f")
@@ -852,7 +857,7 @@ forvalues c = 1/8 {
 
 
 	// Build table
-file open textab using "$dirpath/output/table_regs_hourly_choosers.tex", write text replace
+file open textab using "$dirpath_output/table_regs_hourly_choosers.tex", write text replace
 
 file write textab "\begin{table}\centering" _n
 file write textab "\caption{\normalsize Hourly data --- \`\`{\bf Choosers}''}" _n
@@ -863,7 +868,7 @@ file write textab "\hline" _n
 file write textab "\\ " _n
 file write textab "\vspace{-7mm}" _n
 file write textab "\\" _n
-file write textab "& (1) & (2) & (3) & (4)  \\" _n
+file write textab "& ~~~~(1)~~~~ & ~~~~(2)~~~~ & ~~~~(3)~~~~ & ~~~~(4)~~~~  \\" _n
 file write textab "[.1em]" _n
 file write textab "\cline{2-5}" _n
 file write textab "\\" _n
