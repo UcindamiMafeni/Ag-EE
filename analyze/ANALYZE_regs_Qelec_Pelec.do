@@ -28,7 +28,7 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 	}
 	
 	// Loop through sample restrictions
-	foreach ifs in 7 10 11 {
+	foreach ifs in 7 10 11 12 15 16 {
 	
 		if `ifs'==1 {
 			local if_sample = ""
@@ -86,7 +86,7 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 		}
 		
 		// Loop over different combinations of fixed effects and interactions thereof
-		foreach fe in 2 11 13 19 {
+		foreach fe in 2 11 13 19 /*22 23 24 25*/ {
 		
 			if `fe'==1 {
 				local FEs = "sp_group modate"
@@ -171,7 +171,7 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 			}
 
 			// Loop over alternative RHS specifications, including IVs
-			foreach rhs in 15 16 17 {
+			foreach rhs in 1 8 11 /*15 16 17*/ {
 			
 				if `rhs'==1 {
 					local RHS = "log_p_mean"
@@ -242,11 +242,13 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 				
 				// Skip regressions that are already stored in output file
 				preserve
-				use "$dirpath_data/results/regs_Qelec_Pelec.dta", clear
-				count if panel=="monthly" & pull=="`pull'" & sample=="`if_sample'" & fes=="`FEs'" & rhs=="`RHS'"
-				if r(N)==1 {
-					local skip = "skip"
-				}
+				cap {
+					use "$dirpath_data/results/regs_Qelec_Pelec.dta", clear
+					count if panel=="monthly" & pull=="`pull'" & sample=="`if_sample'" & fes=="`FEs'" & rhs=="`RHS'"
+					if r(N)==1 {
+						local skip = "skip"
+					}
+				}	
 				restore
 				
 				// Flag IV specificaitons, which require different syntax
