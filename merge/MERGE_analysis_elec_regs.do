@@ -19,7 +19,7 @@ global dirpath_data "$dirpath/data"
 *******************************************************************************
 
 ** 1. Monthified billing data with prices, at SA and SP levels
-if 1==1{
+if 1==0{
 
 ** Start with cleaned customer + monthified billing data (all three data pulls)
 foreach tag in 20180719 20180322 20180827 {
@@ -166,7 +166,7 @@ foreach v of varlist dr_program pou_name rt_sched_cd {
 foreach v of varlist  mean_p_kwh mean_p_kw_max mean_p_kw_peak mean_p_kw_partpeak {
 	egen double temp_num1 = sum(`v'*mnth_bill_kwh) if `v'!=. & mnth_bill_kwh!=. & mnth_bill_kwh>=0, by(sp_uuid modate)
 	egen double temp_num2 = mean(temp_num1), by(sp_uuid modate)
-	egen double temp_denom1 = sum(mnth_bill_kwh) if `v'!=. & mnth_bill_kwh!=. & & mnth_bill_kwh>=0, by(sp_uuid modate)
+	egen double temp_denom1 = sum(mnth_bill_kwh) if `v'!=. & mnth_bill_kwh!=. & mnth_bill_kwh>=0, by(sp_uuid modate)
 	egen double temp_denom2 = mean(temp_denom1), by(sp_uuid modate)
 	replace `v' = temp_num2/temp_denom2 if temp_denom2!=0 & temp_denom2!=.
 	egen temp = mean(`v'), by(sp_uuid modate)
@@ -585,7 +585,7 @@ save "$dirpath_data/merged/sp_rate_switchers.dta", replace
 *******************************************************************************
 
 ** 6. Transform Q and P, and merge GIS vars in to collapsed SP-month panel
-if 1==0{
+if 1==1{
 
 ** Load monthly dataset
 use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
@@ -777,7 +777,7 @@ save "$dirpath_data/merged/sp_month_elec_panel.dta", replace
 *******************************************************************************
 
 ** 7. Merge GIS vars, SP vars, gw depth, and switchers in to collapsed SP-hour panels
-if 1==1{
+if 1==0{
 
 foreach tag in "20180719" "20180322" "20180827" {
 	
