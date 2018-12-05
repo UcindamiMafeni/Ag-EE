@@ -42,7 +42,7 @@ keep if _merge==3
 drop _merge pull temp*	
 
 ** Drop components of KWHAF that aren't necessary for regressions
-drop drwdwn tdh_adder ope af24hrs flow_gpm DD_* 
+drop drwdwn_apep tdh_adder ope af24hrs flow_gpm ddhat_* 
 
 ** Calcualte water quantities: AF_water = kwh_elec / kwh/AF
 foreach v of varlist kwhaf* {
@@ -73,15 +73,33 @@ foreach v of varlist kwhaf* {
 	la var `v2' "`v2lab'"
 }
 
+** Log-transform water price composite variables
+foreach v of varlist mean_p_af_* {
+	gen ln_`v' = ln(`v') // i actually want the zeros to become missings
+	local vlab: variable label `v'
+	la var ln_`v' "Log `vlab'"
+}
+
+** Log-transform kwhaf variables
+foreach v of varlist kwhaf* {
+	gen ln_`v' = ln(`v') // i actually want the zeros to become missings
+	local vlab: variable label `v'
+	la var ln_`v' "Log `vlab'"
+}
+
 ** Flag extreme values prices (driven by crazy pump tests)
 hist mean_p_kwh if mean_p_kwh>0
 hist mean_p_af_rast_dd_qtr_1SP if mean_p_af_rast_dd_qtr_1SP<100
 hist mean_p_af_rast_ddhat_qtr_1SP if mean_p_af_rast_ddhat_qtr_1SP<100
-
-** Log-transform water price composite variables
-
-** Log-transform kwhaf variables
-
+hist kwhaf_apep_measured if nearest_test_modate==modate
+sum kwhaf_apep_measured if nearest_test_modate==modate, detail
+hist kwhaf_apep_measured if nearest_test_modate==modate & kwhaf_apep_measured<1500 
+	// 1500 is above the 99% pctile and seems like a good cutoff in the distribution of kwhaf
+unique sp_uuid 
+local uniq = r(unique)
+unique sp_uuid if kwhaf_apep_measured!=. & kwhaf_apep_measured>=1500
+di r(unique)/`uniq' // only 0.6% of SPs
+hist mean_p_kwh if mean_p_kwh>0 & kwhaf_apep_measured<1500 
 
 
 }
