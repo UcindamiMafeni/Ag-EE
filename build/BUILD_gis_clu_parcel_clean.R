@@ -190,3 +190,10 @@ read_clu <- function(path){
 
 list.dirs(file.path(raw_spatial, "CLU"), full.names = TRUE, recursive = FALSE) %>%
   walk(read_clu)
+
+clu <- 
+  file.path(build_spatial, "CLU") %>%
+  list.files(full.names = TRUE) %>%
+  map_dfr(readRDS) %>%
+  st_sf(crs = main_crs)
+st_write(clu, file.path(build_spatial, "CLU/clu_poly"), driver = "ESRI Shapefile")
