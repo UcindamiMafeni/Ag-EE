@@ -109,6 +109,8 @@ do "$dirpath_code/merge/MERGE_customer_apep_units.do"
 *** 7: CONSTRUCT PANEL OF KWH/AF CONVERSION RATES
 do "$dirpath_code/merge/MERGE_panel_kwhaf.do"
 
+*** 8. CONSTRUCT PANEL DATASETS FOR WATER REGRESSIONS
+do "$dirpath_code/merge/MERGE_analysis_water_regs.do"
 
 
 
