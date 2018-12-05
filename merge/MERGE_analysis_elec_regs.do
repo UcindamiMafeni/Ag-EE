@@ -163,7 +163,7 @@ foreach v of varlist dr_program pou_name rt_sched_cd {
 }
 
 	// Take weight-averages of mean price variables
-foreach v of varlist  mean_p_kwh  {
+foreach v of varlist  mean_p_kwh mean_p_kw_max mean_p_kw_peak mean_p_kw_partpeak {
 	egen double temp_num1 = sum(`v'*mnth_bill_kwh) if `v'!=. & mnth_bill_kwh!=. & mnth_bill_kwh>=0, by(sp_uuid modate)
 	egen double temp_num2 = mean(temp_num1), by(sp_uuid modate)
 	egen double temp_denom1 = sum(mnth_bill_kwh) if `v'!=. & mnth_bill_kwh!=. & & mnth_bill_kwh>=0, by(sp_uuid modate)
