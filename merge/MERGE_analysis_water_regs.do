@@ -88,9 +88,10 @@ foreach v of varlist kwhaf* {
 }
 
 ** Flag extreme values prices (driven by crazy pump tests)
-hist mean_p_kwh if mean_p_kwh>0
-hist mean_p_af_rast_dd_qtr_1SP if mean_p_af_rast_dd_qtr_1SP<100
-hist mean_p_af_rast_ddhat_qtr_1SP if mean_p_af_rast_ddhat_qtr_1SP<100
+hist mean_p_kwh 
+hist mean_p_af_rast_dd_qtr_1SP
+hist mean_p_af_rast_dd_qtr_1SP if mean_p_af_rast_dd_qtr_1SP<150
+hist mean_p_af_rast_ddhat_qtr_1SP if mean_p_af_rast_ddhat_qtr_1SP<150
 hist kwhaf_apep_measured if nearest_test_modate==modate
 sum kwhaf_apep_measured if nearest_test_modate==modate, detail
 hist kwhaf_apep_measured if nearest_test_modate==modate & kwhaf_apep_measured<1500 
@@ -99,9 +100,19 @@ unique sp_uuid
 local uniq = r(unique)
 unique sp_uuid if kwhaf_apep_measured!=. & kwhaf_apep_measured>=1500
 di r(unique)/`uniq' // only 0.6% of SPs
-hist mean_p_kwh if mean_p_kwh>0 & kwhaf_apep_measured<1500 
+sum mean_p_af_rast_dd_qtr_1SP if kwhaf_apep_measured<1500, detail
+sum mean_p_af_rast_dd_qtr_1SP if kwhaf_apep_measured>=1500, detail
+	// this doesn't fix the outlier issue, but it's probably not a huge deal?
+sum mean_p_af_rast_dd_qtr_1SP if kwhaf_apep_measured<1500 & flag_weird_pump==0 & flag_weird_cust==0, detail
+sum mean_p_af_rast_dd_qtr_1SP if kwhaf_apep_measured>=1500 | flag_weird_pump==1 | flag_weird_cust==1, detail
+hist ln_mean_p_af_rast_dd_qtr_1SP	
 
+** Sort, compress, and save
+sort sp_uuid modate
+compress
+save "$dirpath_data/merged/sp_month_water_panel.dta", replace
 
+	
 }
 
 *******************************************************************************
