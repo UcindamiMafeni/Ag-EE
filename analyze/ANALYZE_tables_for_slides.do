@@ -11,6 +11,7 @@ set more off
 *global dirpath_output "$dirpath/output"
 
 global dirpath "/Users/louispreonas/Dropbox/Documents/Research/Energy Water Project"
+global dirpath "E:/Dropbox/Documents/Research/Energy Water Project"
 global dirpath_data "$dirpath"
 global dirpath_output "$dirpath/slides/tables"
 
@@ -902,6 +903,153 @@ file write textab "\multicolumn{5}{l}{Standard errors two-way clustered by SP an
 file write textab "SP = service point.} \\" _n
 file write textab "\multicolumn{5}{l}{Dependent variable is \$\log(\text{kWh})\$, from hourly interval data. Instruments: } \\" _n
 file write textab "\multicolumn{5}{l}{prices of default rates. Significance: *** \$p < 0.01\$, ** \$p < 0.05\$, * \$p < 0.10\$.}" _n
+file write textab "\end{tabular}" _n
+file write textab "\end{table}" _n
+
+file close textab
+}
+
+************************************************
+************************************************
+
+** 9. Results: monthly, stayers
+{
+use "$dirpath_data/results/regs_Qwater_Pwater.dta" , clear
+
+keep if regexm(sample,"sp_same_rate_dumbsmart==1")
+keep if inlist(fes,"sp_group#month wdist_group#year modate")
+keep if assns=="rast_dd_mth_2SP"
+					
+sort fes sample rhs
+keep if sample != "if sp_same_rate_dumbsmart==1"
+assert _N==4		
+
+gen col = .			
+replace col = 1 if trim(rhs)=="ln_mean_p_af_X"
+replace col = 2 if trim(rhs)=="(ln_mean_p_af_X = kwhaf_apep_measured)"
+replace col = 3 if trim(rhs)=="log_p_mean ln_kwhaf_X"
+replace col = 4 if trim(rhs)=="(ln_kwhaf_X = kwhaf_apep_measured) log_p_mean"
+assert col!=.
+sort col
+
+forvalues c = 1/4 {
+	local beta_kwh_`c' = string(beta_log_p_kwh[`c'],"%9.2f")
+	local se_kwh_`c' = string(se_log_p_kwh[`c'],"%9.2f")
+	if "`se_kwh_`c''"!="." {
+		local se_kwh_`c' = "(`se_kwh_`c'')" 
+	}
+	else {
+		local beta_kwh_`c' = "" 
+		local se_kwh_`c' = "" 
+	}
+	local pval_kwh_`c' = 2*ttail(dof[`c'],abs(t_log_p_kwh[`c']))
+	if `pval_kwh_`c''<0.01 {
+		local stars_kwh_`c' = "$^{***}$"
+	}
+	else if `pval_kwh_`c''<0.05 {
+		local stars_kwh_`c' = "$^{**}$"
+	}
+	else if `pval_kwh_`c''<0.1 {
+		local stars_kwh_`c' = "$^{*}$"
+	}
+	else {
+		local stars_kwh_`c' = ""
+	}
+	
+	local beta_kwhaf_`c' = string(beta_log_kwhaf[`c'],"%9.2f")
+	local se_kwhaf_`c' = string(se_log_kwhaf[`c'],"%9.2f")
+	if "`se_kwhaf_`c''"!="" {
+		local se_kwhaf_`c' = "(`se_kwhaf_`c'')" 
+	}
+	else {
+		local beta_kwhaf_`c' = "" 
+		local se_kwhaf_`c' = "" 
+	}
+	local pval_kwhaf_`c' = 2*ttail(dof[`c'],abs(t_log_kwhaf[`c']))
+	if `pval_kwhaf_`c''<0.01 {
+		local stars_kwhaf_`c' = "$^{***}$"
+	}
+	else if `pval_kwhaf_`c''<0.05 {
+		local stars_kwhaf_`c' = "$^{**}$"
+	}
+	else if `pval_kwhaf_`c''<0.1 {
+		local stars_kwhaf_`c' = "$^{*}$"
+	}
+	else {
+		local stars_kwhaf_`c' = ""
+	}
+	
+	local beta_af_`c' = string(beta_log_p_af[`c'],"%9.2f")
+	local se_af_`c' = string(se_log_p_af[`c'],"%9.2f")
+	if "`se_af_`c''"!="" {
+		local se_af_`c' = "(`se_af_`c'')" 
+	}
+	else {
+		local beta_af_`c' = "" 
+		local se_af_`c' = "" 
+	}
+	local pval_af_`c' = 2*ttail(dof[`c'],abs(t_log_p_af[`c']))
+	if `pval_af_`c''<0.01 {
+		local stars_af_`c' = "$^{***}$"
+	}
+	else if `pval_af_`c''<0.05 {
+		local stars_af_`c' = "$^{**}$"
+	}
+	else if `pval_af_`c''<0.1 {
+		local stars_af_`c' = "$^{*}$"
+	}
+	else {
+		local stars_af_`c' = ""
+	}
+	
+	local n_sp_`c' = string(n_SPs[`c'],"%9.0fc")
+	local n_obs_`c' = string(n_obs[`c'],"%9.0fc")
+}
+
+
+	// Build table
+file open textab using "$dirpath_output/table_regs_monthly_stayers_water.tex", write text replace
+
+file write textab "\begin{table}\centering" _n
+file write textab "\caption{\normalsize Monthly data --- \`\`{\bf Stayers}''}" _n
+file write textab "\footnotesize" _n
+file write textab "\vspace{-2mm}" _n
+file write textab "\begin{tabular}{lccccccc}" _n
+file write textab "\hline" _n
+file write textab "\\ " _n
+file write textab "\vspace{-7mm}" _n
+file write textab "\\" _n
+file write textab "& ~~~~(1)~~~~ & ~~~~(2)~~~~ & ~~~~(3)~~~~ & ~~~~(4)~~~~  \\" _n
+file write textab "[.1em]" _n
+file write textab "\cline{2-5}" _n
+file write textab "\\" _n
+file write textab "\vspace{-7mm}" _n
+file write textab "\\" _n
+file write textab "\small \$\log(P_{\text{water}})\$ & $`beta_af_1'$`stars_af_1'  & $`beta_af_2'$`stars_af_2' & $`beta_af_3'$`stars_af_3' & $`beta_af_4'$`stars_af_4'\\" _n
+file write textab "& $`se_af_1'$ & $`se_af_2'$ & $`se_af_3'$ & $`se_af_4'$\\" _n
+file write textab "[1em]" _n
+file write textab "\small \$\log(P_{\text{elec}})\$ & $`beta_kwh_1'$`stars_kwh_1'  & $`beta_kwh_2'$`stars_kwh_2' & $`beta_kwh_3'$`stars_kwh_3' & $`beta_kwh_4'$`stars_kwh_4'\\" _n
+file write textab "& $`se_kwh_1'$ & $`se_kwh_2'$ & $`se_kwh_3'$ & $`se_kwh_4'$\\" _n
+file write textab "[1em]" _n
+file write textab "\small \$\log(kWh/AF)\$ & $`beta_kwhaf_1'$`stars_kwhaf_1'  & $`beta_kwhaf_2'$`stars_kwhaf_2' & $`beta_kwhaf_3'$`stars_kwhaf_3' & $`beta_kwhaf_4'$`stars_kwhaf_4'\\" _n
+file write textab "& $`se_kwhaf_1'$ & $`se_kwhaf_2'$ & $`se_kwhaf_3'$ & $`se_kwhaf_4'$\\" _n
+file write textab "[1em]" _n
+file write textab "SP \$\times\$ month FEs  & Yes & Yes   & Yes & Yes \\" _n
+file write textab "[.25em]" _n
+file write textab "Month-of-sample FEs  &  Yes & Yes  & Yes  & Yes\\" _n
+file write textab "[.25em]" _n
+file write textab "Water district \$\times\$ year FEs  & & & & Yes  \\" _n
+file write textab "[1em]" _n
+file write textab "Unique SPs & `n_sp_1' & `n_sp_2' & `n_sp_3' & `n_sp_4' \\" _n
+file write textab "[.15em]" _n
+file write textab "SP-month observations & `n_obs_1'& `n_obs_2'& `n_obs_3'& `n_obs_4' \\" _n
+file write textab "\hline" _n
+file write textab "\vspace{-2mm}" _n
+file write textab "\\" _n
+file write textab "\multicolumn{5}{l}{Standard errors two-way clustered by SP and month-of-sample." _n
+file write textab "SP = service point.} \\" _n
+file write textab "\multicolumn{5}{l}{Dependent variable is \$\log(\text{kWh})\$, from \`\`monthified'' billing data.} \\" _n
+file write textab "\multicolumn{5}{l}{Significance: *** \$p < 0.01\$, ** \$p < 0.05\$, * \$p < 0.10\$.}" _n
 file write textab "\end{tabular}" _n
 file write textab "\end{table}" _n
 
