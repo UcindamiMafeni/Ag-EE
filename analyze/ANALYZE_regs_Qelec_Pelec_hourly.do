@@ -17,13 +17,13 @@ global dirpath_data "$dirpath/data"
 { 
 
 // Outfile
-local outfile = "regs_Qelec_Pelec_hourly6"
+local outfile = "regs_Qelec_Pelec_hourly"
 
 // Loop over data pulls
 foreach pull in "20180719" /*"20180322" "20180827"*/ {
 
 	// Loop through sample restrictions
-	foreach ifs in 3 {
+	foreach ifs in 6 7 8 {
 	
 		if `ifs'==1 {
 			local if_sample = ""
@@ -57,7 +57,7 @@ foreach pull in "20180719" /*"20180322" "20180827"*/ {
 		}
 		
 		// Loop over different combinations of fixed effects and interactions thereof
-		foreach fe in 11 12 13 14 15 16 {
+		foreach fe in /*11 12 13 14 15 16*/ 17 {
 		
 			if `fe'==1 {
 				local FEs = "sp_group#month modate"
@@ -106,6 +106,9 @@ foreach pull in "20180719" /*"20180322" "20180827"*/ {
 			}
 			if `fe'==16 {
 				local FEs = "sp_group#month#hour sp_group##c.gw_qtr_bsn_mean2 sp_group#year modate"
+			}
+			if `fe'==17 {
+				local FEs = "sp_group#month#hour basin_group#year wdist_group#year modate"
 			}
 
 			// Loop over alternative RHS specifications, including IVs

@@ -20,7 +20,7 @@ global dirpath_data "$dirpath/data"
 use "$dirpath_data/merged/sp_month_water_panel.dta", clear
 
 // Loop through sample restrictions
-foreach ifs in 1 2 3 4 5 6 {
+foreach ifs in /*1 2 3*/ 4 5 6 {
 
 	if `ifs'==1 {
 		local if_sample = "if sp_same_rate_dumbsmart==1"
@@ -42,7 +42,7 @@ foreach ifs in 1 2 3 4 5 6 {
 	}
 	
 	// Loop over different combinations of fixed effects and interactions thereof
-	foreach fe in 1 2 3 4 5 6 {
+	foreach fe in 1 2 3 /*4 5 6*/ {
 	
 		if `fe'==1 {
 			local FEs = "sp_group#month modate"
@@ -163,7 +163,7 @@ foreach ifs in 1 2 3 4 5 6 {
 					& regexm("`RHS'","log_[*]_p_kwh_ag_default")==1 {
 					local skip = "skip"
 				}
-				if regexm("`if_sample'","if sp_same_rate_in_cat")==1 ///
+				if regexm("`if_sample'","sp_same_rate_in_cat")==1 ///
 					& "`RHS_model'"== "(ln_mean_p_af_X = kwhaf_apep_measured)" {
 					local skip = "skip"
 				}
@@ -171,8 +171,8 @@ foreach ifs in 1 2 3 4 5 6 {
 				// Skip regressions that are already stored in output file
 				preserve
 				cap {
+					count if panel=="monthly" & sample=="`if_sample'" & fes=="`FEs'" & rhs=="`RHS_model'" & assns=="`ASSNs'"
 					use "$dirpath_data/results/regs_Qwater_Pwater.dta", clear
-					count if panel=="monthly" & sample=="`if_sample'" & fes=="`FEs'" & rhs=="`RHS_model'" & depvar=="`depvar'" & assns=="`ASSNs'"
 					if r(N)==1 {
 						local skip = "skip"
 					}

@@ -86,7 +86,7 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 		}
 		
 		// Loop over different combinations of fixed effects and interactions thereof
-		foreach fe in 2 11 13 19 /*22 23 24 25*/ {
+		foreach fe in /*2 11 13 19*/ 28 /*29 22 23 24 25 */{
 		
 			if `fe'==1 {
 				local FEs = "sp_group modate"
@@ -168,6 +168,12 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 			}
 			if `fe'==27 {
 				local FEs = "sp_group#month sp_group#c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate sp_group#c.modate"
+			}
+			if `fe'==28 {
+				local FEs = "sp_group#month basin_group#year wdist_group#year modate"
+			}
+			if `fe'==29 {
+				local FEs = "sp_group#month basin_group#year wdist_group#year sp_group#c.modate"
 			}
 
 			// Loop over alternative RHS specifications, including IVs
