@@ -117,33 +117,36 @@ foreach ifs in 1 2 3 4 5 6 {
 			}			
 	
 			// Loop over alternative RHS specifications, including IVs
-			foreach rhs in 1 2 3 4 5 6 7 8 9 {
+			foreach rhs in 1 2 3 4 5 6 7 8 9 10 {
 
 				if `rhs'==1 {
 					local RHS_model = "ln_mean_p_af_X "
 				}
 				if `rhs'==2 {
-					local RHS_model = "(ln_mean_p_af_X = c.log_*_p_kwh_ag_default#c.kwhaf_apep_measured)"
+					local RHS_model = "(ln_mean_p_af_X = kwhaf_apep_measured)"
 				}
 				if `rhs'==3 {
-					local RHS_model = "(ln_mean_p_af_X = c.log_p_m*_lag*#c.kwhaf_apep_measured)"
+					local RHS_model = "(ln_mean_p_af_X = c.log_*_p_kwh_ag_default#c.kwhaf_apep_measured)"
 				}
 				if `rhs'==4 {
-					local RHS_model = "log_p_mean ln_kwhaf_X "
+					local RHS_model = "(ln_mean_p_af_X = c.log_p_m*_lag*#c.kwhaf_apep_measured)"
 				}
 				if `rhs'==5 {
-					local RHS_model = "(log_p_mean = log_*_p_kwh_ag_default) ln_kwhaf_X "
+					local RHS_model = "log_p_mean ln_kwhaf_X "
 				}
 				if `rhs'==6 {
-					local RHS_model = "(log_p_mean = log_p_m*_lag*) ln_kwhaf_X "
+					local RHS_model = "(log_p_mean = log_*_p_kwh_ag_default) ln_kwhaf_X "
 				}
 				if `rhs'==7 {
-					local RHS_model = "(ln_kwhaf_X = kwhaf_apep_measured) log_p_mean"
+					local RHS_model = "(log_p_mean = log_p_m*_lag*) ln_kwhaf_X "
 				}
 				if `rhs'==8 {
-					local RHS_model = "(log_p_mean ln_kwhaf_X = log_*_p_kwh_ag_default kwhaf_apep_measured) "
+					local RHS_model = "(ln_kwhaf_X = kwhaf_apep_measured) log_p_mean"
 				}
 				if `rhs'==9 {
+					local RHS_model = "(log_p_mean ln_kwhaf_X = log_*_p_kwh_ag_default kwhaf_apep_measured) "
+				}
+				if `rhs'==10 {
 					local RHS_model = "(log_p_mean ln_kwhaf_X = log_p_m*_lag* kwhaf_apep_measured) "
 				}
 				
@@ -153,18 +156,23 @@ foreach ifs in 1 2 3 4 5 6 {
 				// Only do the IV regs that matches the sample!
 				local skip = ""
 				if regexm("`if_sample'","if sp_same_rate_dumbsmart==0 & sp_same_rate_in_cat==1")==0 ///
-					& regexm("`RHS'","log_p_m*_lag*")==1 {
+					& regexm("`RHS'","log_p_m[*]_lag[*]")==1 {
 					local skip = "skip"
 				}
 				if regexm("`if_sample'","if sp_same_rate_in_cat==0")==0 ///
-					& regexm("`RHS'","log_*_p_kwh_ag_default")==1 {
+					& regexm("`RHS'","log_[*]_p_kwh_ag_default")==1 {
 					local skip = "skip"
 				}
+				if regexm("`if_sample'","if sp_same_rate_in_cat")==1 ///
+					& "`RHS_model'"== "(ln_mean_p_af_X = kwhaf_apep_measured)" {
+					local skip = "skip"
+				}
+	
 				// Skip regressions that are already stored in output file
 				preserve
 				cap {
 					use "$dirpath_data/results/regs_Qwater_Pwater.dta", clear
-					count if panel=="monthly" & sample=="`if_sample'" & fes=="`FEs'" & rhs=="`RHS'" & assns=="`ASSNs'"
+					count if panel=="monthly" & sample=="`if_sample'" & fes=="`FEs'" & rhs=="`RHS_model'" & depvar=="`depvar'" & assns=="`ASSNs'"
 					if r(N)==1 {
 						local skip = "skip"
 					}
