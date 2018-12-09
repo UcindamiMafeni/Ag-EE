@@ -709,6 +709,22 @@ la var log_p_mean_lag6 "Avg SP-specific marg elec price (log $/kWh), lagged 6 mo
 la var log_p_min_lag6 "Min SP-specific marg elec price (log $/kWh), lagged 6 months"
 la var log_p_max_lag6 "Max SP-specific marg elec price (log $/kWh), lagged 6 months"
 
+** Construct instruments of 6- and 12-month-lagged DEFAULT prices
+cap drop log_p_m*_deflag*
+tsset sp_group modate 
+gen log_p_mean_deflag12 = L12.log_mean_p_kwh_ag_default
+gen log_p_min_deflag12 = L12.log_min_p_kwh_ag_default
+gen log_p_max_deflag12 = L12.log_max_p_kwh_ag_default
+gen log_p_mean_deflag6 = L6.log_mean_p_kwh_ag_default
+gen log_p_min_deflag6 = L6.log_min_p_kwh_ag_default
+gen log_p_max_deflag6 = L6.log_max_p_kwh_ag_default
+la var log_p_mean_deflag12 "Avg SP-spec default marg elec price (log $/kWh), lagged 12 months"
+la var log_p_min_deflag12 "Min SP-spec default marg elec price (log $/kWh), lagged 12 months"
+la var log_p_max_deflag12 "Max SP-spec default marg elec price (log $/kWh), lagged 12 months"
+la var log_p_mean_deflag6 "Avg SP-spec default marg elec price (log $/kWh), lagged 6 months"
+la var log_p_min_deflag6 "Min SP-spec default marg elec price (log $/kWh), lagged 6 months"
+la var log_p_max_deflag6 "Max SP-spec default marg elec price (log $/kWh), lagged 6 months"
+
 ** Create instrument: initial price
 cap drop *_init
 egen temp_min_date = min(modate), by(sp_uuid)
