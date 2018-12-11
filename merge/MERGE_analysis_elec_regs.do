@@ -779,6 +779,25 @@ cap drop degreesC_*
 merge 1:1 sp_uuid modate using "$dirpath_data/prism/sp_temperature_monthly.dta", ///
 	nogen keep(1 3)
 
+** Define rate categories and large/small ag categories
+cap drop rt_category rt_large_ag
+gen rt_category = 0
+replace rt_category = 1 if rt_sched_cd=="AG-1A"
+replace rt_category = 2 if rt_sched_cd=="AG-1B"
+replace rt_category = 3 if rt_sched_cd=="AG-ICE"
+replace rt_category = 4 if inlist(rt_sched_cd,"AG-4A","AG-5A","AG-RA","AG-VA")
+replace rt_category = 4 if inlist(rt_sched_cd,"AG-4D","AG-5D","AG-RD","AG-VD")
+replace rt_category = 5 if inlist(rt_sched_cd,"AG-4B","AG-5B","AG-RB","AG-VB")
+replace rt_category = 5 if inlist(rt_sched_cd,"AG-4C","AG-5C")
+replace rt_category = 5 if inlist(rt_sched_cd,"AG-4E","AG-5E","AG-RE","AG-VE")
+replace rt_category = 5 if inlist(rt_sched_cd,"AG-4F","AG-5F")
+gen rt_large_ag = 0 if inlist(rt_category,1,4) // small ag rates
+replace rt_large_ag = 1 if inlist(rt_category,2,5) // large ag rates
+replace rt_large_ag = 2 if inlist(rt_category,3) // ICE
+assert rt_category!=. & rt_large_ag!=.
+la var rt_category "PGE ag rate category (1 of 5 w/in which choosing is possible)"
+la var rt_large_ag "PGE ag rate groups based on motor size/type (0=small, 1=large, 2=ICE)"
+	
 ** Save
 order sp_uuid modate
 sort sp_uuid modate
