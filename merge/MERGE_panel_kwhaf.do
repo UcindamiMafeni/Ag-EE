@@ -1774,6 +1774,31 @@ la var ddhat_mean_qtr_3SP "Predicted drawdown (ft; SP latlon, qtrly means, obs n
 la var tdh_adder "To get TDH; dchlvl_ft+gaugecor_ft+gaugeheight_ft+otherlosses_ft+totlift_gap" 
 
 
+** Construct version of total lift (a.k.a. total dynamic head, or TDH) for each depth and drawdown variable
+foreach v of varlist kwhaf_mean* kwhaf_rast* {
+
+	// Local for corresponding depth/SWL variable
+	local v_gw = subinstr(subinstr(subinstr("`v'","kwhaf_","gw_",1),"ddhat_","depth_",1),"dd_","depth_",1)
+
+	// Local for corresponding drawdown variable
+	if regexm("`v'","ddhat_"){
+		local v_dd = "ddhat_" + subinstr(subinstr("`v'","kwhaf_","",1),"ddhat_","",1)
+	}
+	else {
+		local v_dd = drwdwn_apep
+	}
+
+	// Sum to get tdh
+	local v_tdh = subinstr("`v'","kwhaf_","tdh_",1)
+	gen `v_tdh' = `v_gw' + `v_dd' + tdh_adder
+	
+	// Label
+	local v_lab: variable label `v'
+	local v_lab2 = subinstr("`v_lab'","KWH/AF","TDH ft",1)
+	la var `v_tdh' "`v_lab2'"
+}	
+
+
 ** Sort, order and save
 sort sp_uuid modate
 order sp_uuid modate months_until_test months_since_test months_to_nearest_test nearest_test_modate ///
