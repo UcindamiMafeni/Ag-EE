@@ -42,7 +42,7 @@ keep if _merge==3
 drop _merge pull temp*	
 
 ** Drop components of KWHAF that aren't necessary for regressions
-drop drwdwn_apep tdh_adder ope af24hrs flow_gpm ddhat_* 
+drop drwdwn_apep tdh_adder ope af24hrs flow_gpm ddhat_* tdh_*
 
 ** Calcualte water quantities: AF_water = kwh_elec / kwh/AF
 foreach v of varlist kwhaf* {
@@ -75,14 +75,21 @@ foreach v of varlist kwhaf* {
 
 ** Log-transform water price composite variables
 foreach v of varlist mean_p_af_* {
-	gen ln_`v' = ln(`v') // i actually want the zeros to become missings
+	gen ln_`v' = ln(`v') // I actually want the zeros to become missings
 	local vlab: variable label `v'
 	la var ln_`v' "Log `vlab'"
 }
 
 ** Log-transform kwhaf variables
 foreach v of varlist kwhaf* {
-	gen ln_`v' = ln(`v') // i actually want the zeros to become missings
+	gen ln_`v' = ln(`v') // I actually want the zeros to become missings
+	local vlab: variable label `v'
+	la var ln_`v' "Log `vlab'"
+}
+
+** Log-transform mean gw depth variables
+foreach v of varlist gw_mean_* {
+	gen ln_`v' = ln(`v') // I actually want the zeros to become missings
 	local vlab: variable label `v'
 	la var ln_`v' "Log `vlab'"
 }
