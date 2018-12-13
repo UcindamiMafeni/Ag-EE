@@ -28,7 +28,7 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 	}
 	
 	// Loop through sample restrictions
-	foreach ifs in 7 10 11 12 15 16 {
+	foreach ifs in 5 1 /*7 10 11 12 15 16*/ {
 	
 		if `ifs'==1 {
 			local if_sample = ""
@@ -86,7 +86,7 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 		}
 		
 		// Loop over different combinations of fixed effects and interactions thereof
-		foreach fe in /*2 11 13 19*/ 28 /*29 22 23 24 25 */{
+		foreach fe in 30 31 32 33 2 11 19 28 34 35 36 37 38 22 23 24 25 29 {
 		
 			if `fe'==1 {
 				local FEs = "sp_group modate"
@@ -175,9 +175,37 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 			if `fe'==29 {
 				local FEs = "sp_group#month basin_group#year wdist_group#year sp_group#c.modate"
 			}
+			if `fe'==30 {
+				local FEs = "sp_group#month sp_group#rt_large_ag modate"
+			}
+			if `fe'==31 {
+				local FEs = "sp_group#month sp_group#rt_large_ag basin_group#year modate"
+			}
+			if `fe'==32 {
+				local FEs = "sp_group#month sp_group#rt_large_ag basin_group#year wdist_group#year modate"
+			}
+			if `fe'==33 {
+				local FEs = "sp_group#month##c.gw_qtr_bsn_mean2 sp_group#rt_large_ag basin_group#year wdist_group#year modate"
+			}
+			if `fe'==34 {
+				local FEs = "sp_group#rt_large_ag sp_group#month modate sp_group#c.modate"
+			}
+			if `fe'==35 {
+				local FEs = "sp_group#rt_large_ag sp_group#month basin_group#year modate sp_group#c.modate"
+			}
+			if `fe'==36 {
+				local FEs = "sp_group#rt_large_ag sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year modate sp_group#c.modate"
+			}
+			if `fe'==37 {
+				local FEs = "sp_group#rt_large_ag sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate sp_group#c.modate"
+			}
+			if `fe'==38 {
+				local FEs = "sp_group#rt_large_ag sp_group#month basin_group#year wdist_group#year sp_group#c.modate"
+			}
+
 
 			// Loop over alternative RHS specifications, including IVs
-			foreach rhs in 1 8 11 /*15 16 17*/ {
+			foreach rhs in 1 7 8 18 /*15 16 17*/ {
 			
 				if `rhs'==1 {
 					local RHS = "log_p_mean"
@@ -229,6 +257,9 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 				}
 				if `rhs'==17 {
 					local RHS = "(log_p_mean = log_p_m*_lag12 log_p_m*_lag6) degreesC_* "
+				}
+				if `rhs'==18 {
+					local RHS = "(log_p_mean = log_p_m*_deflag*)"
 				}
 
 				// Skip combinations of IV and switchers/rate FE interactions
