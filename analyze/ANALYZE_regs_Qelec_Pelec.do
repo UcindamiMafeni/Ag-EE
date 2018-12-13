@@ -205,7 +205,7 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 
 
 			// Loop over alternative RHS specifications, including IVs
-			foreach rhs in 1 7 8 18 /*15 16 17*/ {
+			foreach rhs in 1 7 8 18 19 /*15 16 17*/ {
 			
 				if `rhs'==1 {
 					local RHS = "log_p_mean"
@@ -260,6 +260,9 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 				}
 				if `rhs'==18 {
 					local RHS = "(log_p_mean = log_p_m*_deflag*)"
+				}
+				if `rhs'==19 {
+					local RHS = "(log_p_mean = log_p_mean_deflag*)"
 				}
 
 				// Skip combinations of IV and switchers/rate FE interactions
