@@ -94,7 +94,7 @@ foreach v of varlist gw_mean_* {
 	la var ln_`v' "Log `vlab'"
 }
 
-** Flag extreme values prices (driven by crazy pump tests)
+** Deal with extreme values prices (driven by crazy pump tests)
 hist mean_p_kwh 
 hist mean_p_af_rast_dd_qtr_1SP
 hist mean_p_af_rast_dd_qtr_1SP if mean_p_af_rast_dd_qtr_1SP<150
@@ -114,8 +114,21 @@ sum mean_p_af_rast_dd_qtr_1SP if kwhaf_apep_measured<1500 & flag_weird_pump==0 &
 sum mean_p_af_rast_dd_qtr_1SP if kwhaf_apep_measured>=1500 | flag_weird_pump==1 | flag_weird_cust==1, detail
 hist ln_mean_p_af_rast_dd_qtr_1SP	
 
-** Sort, compress, and save
+** Construct cross-sectionally stable versions of measured kWh/AF, for instrumenting
+sum kwhaf_apep_measured, detail
+sum kwhaf_apep_measured if year==2008, detail
+egen temp1 = min(months_to_nearest_test), by(sp_uuid)
+egen temp2 = min(modate) if months_to_nearest_test==temp1, by(sp_uuid)
+egen temp3 = mean(kwhaf_apep_measured) if modate==temp2, by(sp_uuid)
+egen double kwhaf_apep_measured_init = mean(temp3), by(sp_uuid)
+assert kwhaf_apep_measured_init!=.
+la var kwhaf_apep_measured_init "KWH/AF as measued by initial APEP tests (constant within SP)"
+
+** Prep for lagging instruments
 sort sp_uuid modate
+tsset sp_group modate
+
+** Compress, and save
 compress
 save "$dirpath_data/merged/sp_month_water_panel.dta", replace
 
