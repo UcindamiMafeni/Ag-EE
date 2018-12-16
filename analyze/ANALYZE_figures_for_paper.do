@@ -28,12 +28,12 @@ keep if inrange(modate,`xmin',`xmax')
 twoway (tsline mean_p_kwh4A, color(eltblue) lwidth(medthick)) ///
 	(tsline mean_p_kwh4B, color(midblue) lwidth(medthick) lpattern(dash)) ///
 	(tsline mean_p_kwh5B, color(dknavy) lwidth(medthick) lpattern(shortdash)), ///
-	xscale(r(`xmin',`xmax')) xlab(`xmin'(36)`xlabmax', labsize(large)) ///
-	xtitle("Month", size(large)) ///
-	ylab(0(0.05)0.25,nogrid angle(0) labsize(large)) ytitle("Avg marginal price ($/kWh)", size(large)) ///
+	xscale(r(`xmin',`xmax')) xlab(`xmin'(36)`xlabmax', labsize(medlarge)) ///
+	xtitle(" ", size(medlarge)) ///
+	ylab(0(0.05)0.25,nogrid angle(0) labsize(medlarge)) ytitle("Avg marginal price ($/kWh)", size(medlarge)) ///
 	graphr(color(white) lc(white)) ///
 	/*title("Monthly Average Marginal Price", size(vlarge) color(black))*/ ///
-	legend(order(1 "AG-4A    " 2 "AG-4B    " 3 "AG-5B")  col(3) size(large))
+	legend(order(1 "AG-4A    " 2 "AG-4B    " 3 "AG-5B")  col(3) size(medlarge))
 graph export "$dirpath/output/marg_price_3rates.eps", replace
 
 
