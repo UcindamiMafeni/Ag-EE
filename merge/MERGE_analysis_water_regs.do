@@ -12,7 +12,7 @@ global dirpath_data "$dirpath/data"
 *******************************************************************************
 *******************************************************************************
 
-** 1. Merge together SP-month electric panel and kwhaf panel
+** 1. Merge together SP-month electricity panel and kwhaf panel
 if 1==1{
 
 ** Load monthly dataset for electricity regressions
@@ -138,4 +138,18 @@ save "$dirpath_data/merged/sp_month_water_panel.dta", replace
 *******************************************************************************
 *******************************************************************************
 
+** 2. Merge a few things back into electricity panel 
+{
+use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
+merge 1:1 sp_uuid modate using "$dirpath_data/merged/sp_month_water_panel.dta", ///
+	keepusing(flag_bad_drwdwn flag_weird_pump flag_weird_cust) keep(1 3) ///
+	gen(merge_sp_water_panel)
+la var merge_sp_water_panel "3 = merges into corresponding SP-month panel for water regressions"	
+compress
+save "$dirpath_data/merged/sp_month_elec_panel.dta", replace
+
+}
+
+*******************************************************************************
+*******************************************************************************
 
