@@ -20,7 +20,7 @@ global dirpath_data "$dirpath/data"
 use "$dirpath_data/merged/sp_month_water_panel.dta", clear
 
 // Loop through sample restrictions
-foreach ifs in 9 10 8 7 /*1 2 3 4 5 6*/ {
+foreach ifs in 11 9 10 8 7 /*1 2 3 4 5 6*/ {
 
 	if `ifs'==1 {
 		local if_sample = "if sp_same_rate_dumbsmart==1"
@@ -51,6 +51,9 @@ foreach ifs in 9 10 8 7 /*1 2 3 4 5 6*/ {
 	}
 	if `ifs'==10 {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & inlist(basin_group,68,121,122)"
+	}
+	if `ifs'==11 {
+		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & apep_proj_count==0"
 	}
 	
 	// Loop over different combinations of fixed effects and interactions thereof
@@ -148,7 +151,7 @@ foreach ifs in 9 10 8 7 /*1 2 3 4 5 6*/ {
 	
 			// Loop over kwhaf instruments
 			local KWHAF_stub = subinstr(subinstr(subinstr("`KWHAF'","ln_kwhaf_rast_","",1),"ddhat_","",1),"dd_","",1)
-			foreach kwhaf_iv in 1 2 3 4 5 6 {
+			foreach kwhaf_iv in 1 2 3 4 5 6 7 {
 			
 				if `kwhaf_iv'==1 {
 					local KWHAF_IV = "ln_gw_mean_depth_`KWHAF_stub'" 
@@ -167,6 +170,9 @@ foreach ifs in 9 10 8 7 /*1 2 3 4 5 6*/ {
 				}	
 				if `kwhaf_iv'==6 {
 					local KWHAF_IV = "cL.ln_gw_mean_depth_`KWHAF_stub'#c.kwhaf_apep_measured" 
+				}	
+				if `kwhaf_iv'==7 {
+					local KWHAF_IV = "L6.ln_gw_mean_depth_`KWHAF_stub' L12.ln_gw_mean_depth_`KWHAF_stub'" 
 				}	
 			
 				// Loop over alternative RHS specifications
@@ -192,10 +198,11 @@ foreach ifs in 9 10 8 7 /*1 2 3 4 5 6*/ {
 					}
 					
 					// Skip regressions that are already stored in output file
+					local skip = ""
 					preserve
 					cap {
-						count if sample=="`if_sample'" & fes=="`FEs'" & rhs=="`RHS'" & depvar=="ihs_kwh"
 						use "$dirpath_data/results/regs_Qwater_Pwater.dta", clear
+						noi noi count if sample=="`if_sample'" & fes=="`FEs'" & rhs=="`RHS'" & depvar=="ihs_kwh"
 						if r(N)==1 {
 							local skip = "skip"
 						}
