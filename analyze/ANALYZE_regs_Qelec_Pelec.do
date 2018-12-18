@@ -28,7 +28,7 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 	}
 	
 	// Loop through sample restrictions
-	foreach ifs in 5 1 /*7 10 11 12 15 16*/ {
+	foreach ifs in 19 5 1 /*7 10 11 12 15 16*/ {
 	
 		if `ifs'==1 {
 			local if_sample = ""
@@ -84,9 +84,12 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 		if `ifs'==18 {
 			local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & summer==0"
 		}
+		if `ifs'==19 {
+			local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0 & merge_sp_water_panel==3"
+		}
 		
 		// Loop over different combinations of fixed effects and interactions thereof
-		foreach fe in 30 31 32 33 2 11 19 28 34 35 36 37 38 22 23 24 25 29 {
+		foreach fe in 2 30 32 31 38 33 11 19 28 34 35 36 37 22 23 24 25 29 {
 		
 			if `fe'==1 {
 				local FEs = "sp_group modate"
@@ -200,12 +203,12 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 				local FEs = "sp_group#rt_large_ag sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate sp_group#c.modate"
 			}
 			if `fe'==38 {
-				local FEs = "sp_group#rt_large_ag sp_group#month basin_group#year wdist_group#year sp_group#c.modate"
+				local FEs = "sp_group#rt_large_ag sp_group#month basin_group#year wdist_group#year modate sp_group#c.modate"
 			}
 
 
 			// Loop over alternative RHS specifications, including IVs
-			foreach rhs in 1 7 8 18 19 /*15 16 17*/ {
+			foreach rhs in 1 7 19 /*8 18 */ /*15 16 17*/ {
 			
 				if `rhs'==1 {
 					local RHS = "log_p_mean"
