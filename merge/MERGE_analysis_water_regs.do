@@ -123,6 +123,7 @@ egen temp3 = mean(kwhaf_apep_measured) if modate==temp2, by(sp_uuid)
 egen double kwhaf_apep_measured_init = mean(temp3), by(sp_uuid)
 assert kwhaf_apep_measured_init!=.
 la var kwhaf_apep_measured_init "KWH/AF as measued by initial APEP tests (constant within SP)"
+drop temp*
 
 ** Prep for lagging instruments
 sort sp_uuid modate
