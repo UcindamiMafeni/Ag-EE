@@ -161,4 +161,4 @@ parcels <-
   list.files(full.names = TRUE, pattern = "*.RDS") %>%
   map_dfr(readRDS) %>%
   st_sf(crs = main_crs)
-saveRDS(parcels, file.path(build_spatial, "Parcels/parcels.Rda"))
+saveRDS(parcels, file.path(build_spatial, "Parcels/parcels.RDS"))

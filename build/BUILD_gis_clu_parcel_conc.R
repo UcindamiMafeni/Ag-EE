@@ -33,7 +33,10 @@ clu_parcel_int <- function(countyname){
            IntPerc = IntAcres / ParcelAcres) %>%
     select(ParcelID, CLU_ID, IntAcres, IntPerc) %>%
     mutate(County = countyname) %>%
-    st_set_geometry(NULL)
+    st_set_geometry(NULL) %>%
+    group_by(CLU_ID) %>%
+    mutate(Largest = IntAcres == max(IntAcres)) %>%
+    ungroup
 
   saveRDS(clu_parcel, file.path(build_spatial, "cross/clu_parcel", input_path))
   toc()
@@ -45,14 +48,11 @@ clu_parcel_int <- function(countyname){
 # FILTER OUT FRESNO FOR RIGHT NOW
 # ==========================================================================
 plan(multiprocess(workers = eval(num_workers)))
-to_ignore <-
-  c("Fresno")
 
 parcel_counties <- 
   list.files(file.path(build_spatial, "Parcels")) %>%
   str_replace_all(".RDS", "") %>%
   str_replace_all("_", " ") 
-#parcel_counties <- parcel_counties[-which(parcel_counties %in% to_ignore)] 
 
 clu_counties <-
   list.files(file.path(build_spatial, "CLU")) %>%

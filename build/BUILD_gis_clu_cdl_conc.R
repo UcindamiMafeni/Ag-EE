@@ -32,14 +32,14 @@ options(future.globals.maxSize = 3250585600)
 # ===========================================================================
 # create function for extracting classification values for each lease
 # ===========================================================================
-st_extract <- function(shape_group, cdl1){
+st_extract <- function(shape_group, raster_file){
   single_extract <- function(shape, clu_no){
-    shape <- st_sfc(shape, crs = projection(cdl1)) 
+    shape <- st_sfc(shape, crs = projection(raster_file)) 
     shape <- as(shape, "Spatial")
 
     count_cdl <-
       tryCatch({
-                raster_temp <- crop(cdl1, extent(raster(shape)))
+                raster_temp <- crop(raster_file, extent(raster(shape)))
                 as.data.frame(table(extract(raster_temp, shape)))},
         error = function(e) {return(count_cdl = tibble())} )
     
@@ -89,7 +89,7 @@ read_clu_cdl <- function(path){
     gather(Value, Count, c(-CLU_ID, -Year)) %>%
     filter(Count != 0) %>% 
     mutate(Value = as.numeric(str_replace(Value, "VALUE_", ""))) %>%
-    group_by(CLU_ID) %>%
+    group_by(CLU_ID, Year) %>%
     mutate(Total = sum(Count, na.rm = TRUE)) 
 }
 
@@ -151,7 +151,7 @@ plan(multisession, .init = P)
 clu_year <- split(clu_year, clu_year$Year)
 clu_cdl_overlap <- 
   pmap_df(list(cdl, 2007:2017, clu_year), furrr_extract, P, G) %>%
-  group_by(CLU_ID) %>% 
+  group_by(CLU_ID, Year) %>% 
   mutate(Total = sum(Freq), 
          Fraction = Freq / Total) %>%
   left_join(cdl_dict) %>%
@@ -180,5 +180,5 @@ clu_cdl %>%
   unlist %>%
   print
 
-saveRDS(clu_cdl, file = file.path(build_spatial, "clu_cdl.RDS"))
+saveRDS(clu_cdl, file = file.path(build_spatial, "cross/clu_cdl_conc.RDS"))
 
