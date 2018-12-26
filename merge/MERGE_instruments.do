@@ -775,7 +775,7 @@ save "$dirpath_data/merged/ag_default_prices_monthly.dta", replace
 *******************************************************************************
 *******************************************************************************
 
-** 6. Construct "control function" variable (hourly)
+** 6. Construct "control function" variables (hourly)
 if 1==1{
 
 ** Merge ag rates with E-1 and E-20 hourly rates
@@ -797,8 +797,8 @@ replace p_kwh = pdpcharge + pdpenergycredit if pdpcharge!=0 & inlist(hour,14,15,
 	year(date)<2013 & event_day_res==1 // 4-hour event windows 2013-2017, based on "residential" Event Days
 assert p_kwh!=.	
 
-** Construct control function variable
-gen ctrl_fxn = .
+** Construct control function variable in levels
+gen ctrl_fxn_levs = .
 levelsof rt_sched_cd, local(levs)
 foreach rt in `levs' {
 	qui reg p_kwh i.group##c.p_kwh_e20 i.group##c.p_kwh_e1_lo ///
@@ -808,17 +808,36 @@ foreach rt in `levs' {
 	qui predict temp if rt_sched_cd=="`rt'", residuals
 	qui sum temp
 	assert abs(r(mean))<1e-7
-	qui replace ctrl_fxn = temp if rt_sched_cd=="`rt'"
+	qui replace ctrl_fxn_levs = temp if rt_sched_cd=="`rt'"
+	drop temp
+}
+
+** Construct control function variable in logs
+gen ctrl_fxn_logs = .
+foreach v of varlist p_kwh p_kwh_e20 p_kwh_e1_?? {
+	gen ln_`v' = ln(`v')
+}
+levelsof rt_sched_cd, local(levs)
+foreach rt in `levs' {
+	qui reg ln_p_kwh i.group##c.ln_p_kwh_e20 i.group##c.ln_p_kwh_e1_lo ///
+		i.group##c.ln_p_kwh_e1_mi i.group##c.ln_p_kwh_e1_hi if rt_sched_cd=="`rt'"
+	local r2 = round(e(r2),0.001)
+	di "`rt'   `r2'" 
+	qui predict temp if rt_sched_cd=="`rt'", residuals
+	qui sum temp
+	assert abs(r(mean))<1e-7
+	qui replace ctrl_fxn_logs = temp if rt_sched_cd=="`rt'"
 	drop temp
 }
 
 ** Clean up, label and save residuals at hourly level
-keep rt_sched date hour group ctrl_fxn
+keep rt_sched date hour group ctrl_fxn*
 sort rt_sched group date hour
 unique rt_sched group date hour
 assert r(unique)==r(N)
 la var date "Date"
-la var ctrl_fxn "Residuals from hourly rate-specific time-series reg on E1/E20 prices"
+la var ctrl_fxn_levs "Residuals from hourly rate-specific time-series reg on E1/E20 prices (in levels)"
+la var ctrl_fxn_logs "Residuals from hourly rate-specific time-series reg on E1/E20 prices (in logs)"
 compress
 save "$dirpath_data/merged/ag_rates_ctrl_fxn_hourly.dta", replace
 }
@@ -826,7 +845,7 @@ save "$dirpath_data/merged/ag_rates_ctrl_fxn_hourly.dta", replace
 *******************************************************************************
 *******************************************************************************
 
-** 7. Construct "control function" variable (monthly)
+** 7. Construct "control function" variables (monthly)
 if 1==1{
 
 ** Collapse avg daily to avg monthly ag rates
@@ -849,8 +868,8 @@ merge m:1 modate using "$dirpath_data/merged/e20_prices_monthly.dta"
 assert _merge==3
 drop _merge
 
-** Construct control function variables
-gen ctrl_fxn_mean = .
+** Construct control function variable in levels
+gen ctrl_fxn_levs = .
 levelsof rt_sched_cd, local(levs)
 foreach rt in `levs' {
 	qui reg mean_p_kwh *e1* *e20* if rt_sched_cd=="`rt'"
@@ -859,17 +878,35 @@ foreach rt in `levs' {
 	qui predict temp if rt_sched_cd=="`rt'", residuals
 	qui sum temp
 	assert abs(r(mean))<1e-7
-	qui replace ctrl_fxn_mean = temp if rt_sched_cd=="`rt'"
+	qui replace ctrl_fxn_levs = temp if rt_sched_cd=="`rt'"
+	drop temp
+}
+
+** Construct control function variable in logs
+gen ctrl_fxn_logs = .
+foreach v of varlist mean_p_kwh *e1* *e20* {
+	gen ln_`v' = ln(`v')
+}
+levelsof rt_sched_cd, local(levs)
+foreach rt in `levs' {
+	qui reg ln_mean_p_kwh ln_*e1* ln_*e20* if rt_sched_cd=="`rt'"
+	local r2 = round(e(r2),0.001)
+	di "`rt'   `r2'" 
+	qui predict temp if rt_sched_cd=="`rt'", residuals
+	qui sum temp
+	assert abs(r(mean))<1e-7
+	qui replace ctrl_fxn_logs = temp if rt_sched_cd=="`rt'"
 	drop temp
 }
 
 ** Clean up, label and save residuals at hourly level
-keep rt_sched modate ctrl_fxn
+keep rt_sched modate ctrl_fxn*
 sort rt_sched modate
 unique rt_sched modate
 assert r(unique)==r(N)
 la var modate "Year-Month"
-la var ctrl_fxn "Residuals from monthly rate-specific time-series reg on E1/E20 prices"
+la var ctrl_fxn_levs "Residuals from monthly rate-specific time-series reg on E1/E20 prices (in levels)"
+la var ctrl_fxn_logs "Residuals from monthly rate-specific time-series reg on E1/E20 prices (in logs)"
 compress
 save "$dirpath_data/merged/ag_rates_ctrl_fxn_monthly.dta", replace
 
@@ -877,3 +914,40 @@ save "$dirpath_data/merged/ag_rates_ctrl_fxn_monthly.dta", replace
 
 *******************************************************************************
 *******************************************************************************
+
+** 8. Prepare monthly ag rates, to be merged in as initial-rate instrument
+if 1==1{
+
+** Start with ag rages by day
+use "$dirpath_data/merged/ag_rates_avg_by_day.dta", clear
+drop mean_p_kw_*
+
+** Collapse to the month level
+gen modate = ym(year(date), month(date))
+format %tm modate
+foreach v of varlist m*_p_kwh {
+	local fxn = subinstr(substr("`v'",1,4),"_","",1)
+	egen temp = `fxn'(`v'), by(rt_sched modate)
+	replace `v' = temp
+	local vlab1: variable label `v'
+	local vlab2 = subinstr("`vlab1'","daily","monthly",1)
+	la var `v' "`vlab2'"
+	drop temp
+}
+drop date
+duplicates drop
+unique rt_sched_cd modate
+assert r(unique)==r(N)
+
+	// Clean up and save
+la var modate "Year-Month"
+order rt_sched_cd modate *
+sort rt_sched_cd modate
+compress
+save "$dirpath_data/merged/ag_rates_avg_by_month.dta", replace
+
+}
+
+*******************************************************************************
+*******************************************************************************
+

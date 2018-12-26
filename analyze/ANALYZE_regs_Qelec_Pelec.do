@@ -17,7 +17,7 @@ global dirpath_data "$dirpath/data"
 { 
 
 // Loop over data pulls
-foreach pull in "20180719" "20180322" "20180827" "combined" {
+foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 
 	// Load monthly panel
 	use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
@@ -28,7 +28,7 @@ foreach pull in "20180719" "20180322" "20180827" "combined" {
 	}
 	
 	// Loop through sample restrictions
-	forvalues ifs = 1/6 {
+	foreach ifs in 19 5 1 /*7 10 11 12 15 16*/ {
 	
 		if `ifs'==1 {
 			local if_sample = ""
@@ -52,29 +52,44 @@ foreach pull in "20180719" "20180322" "20180827" "combined" {
 			local if_sample = "if sp_same_rate_dumbsmart==1"
 		}
 		if `ifs'==8 {
-			local if_sample = "if sp_same_in_cat==1"
+			local if_sample = "if sp_same_rate_in_cat==1"
 		}
 		if `ifs'==9 {
 			local if_sample = "if sp_same_rate_dumbsmart==0"
 		}
 		if `ifs'==10 {
-			local if_sample = "if sp_same_in_cat==0"
+			local if_sample = "if sp_same_rate_in_cat==0"
 		}
 		if `ifs'==11 {
-			local if_sample = "if sp_same_rate_dumbsmart==1 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
+			local if_sample = "if sp_same_rate_dumbsmart==0 & sp_same_rate_in_cat==1"
 		}
 		if `ifs'==12 {
-			local if_sample = "if sp_same_in_cat==1 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
+			local if_sample = "if sp_same_rate_dumbsmart==1 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
 		}
 		if `ifs'==13 {
-			local if_sample = "if sp_same_rate_dumbsmart==0 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
+			local if_sample = "if sp_same_rate_in_cat==1 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
 		}
 		if `ifs'==14 {
-			local if_sample = "if sp_same_in_cat==0 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
+			local if_sample = "if sp_same_rate_dumbsmart==0 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
+		}
+		if `ifs'==15 {
+			local if_sample = "if sp_same_rate_in_cat==0 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
+		}
+		if `ifs'==16 {
+			local if_sample = "if sp_same_rate_dumbsmart==0 & sp_same_rate_in_cat==1 & flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0"
+		}
+		if `ifs'==17 {
+			local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & summer==1"
+		}
+		if `ifs'==18 {
+			local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & summer==0"
+		}
+		if `ifs'==19 {
+			local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0 & merge_sp_water_panel==3"
 		}
 		
 		// Loop over different combinations of fixed effects and interactions thereof
-		forvalues fe = 1/16 {
+		foreach fe in 2 30 32 31 38 33 11 19 28 34 35 36 37 22 23 24 25 29 {
 		
 			if `fe'==1 {
 				local FEs = "sp_group modate"
@@ -124,9 +139,76 @@ foreach pull in "20180719" "20180322" "20180827" "combined" {
 			if `fe'==16 {
 				local FEs = "sp_group#month sp_group#year rt_group#modate"
 			}
+			if `fe'==17 {
+				local FEs = "sp_group#month#rt_group modate"
+			}
+			if `fe'==18 {
+				local FEs = "sp_group#month#rt_group sp_group#year modate"
+			}
+			if `fe'==19 {
+				local FEs = "sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate"
+			}
+			if `fe'==20 {
+				local FEs = "sp_group#month sp_group#c.gw_qtr_bsn_mean2 basin_group#year modate"
+			}
+			if `fe'==21 {
+				local FEs = "sp_group#month sp_group#c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate"
+			}
+			if `fe'==22 {
+				local FEs = "sp_group#month modate sp_group#c.modate"
+			}
+			if `fe'==23 {
+				local FEs = "sp_group#month basin_group#year modate sp_group#c.modate"
+			}
+			if `fe'==24 {
+				local FEs = "sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year modate sp_group#c.modate"
+			}
+			if `fe'==25 {
+				local FEs = "sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate sp_group#c.modate"
+			}
+			if `fe'==26 {
+				local FEs = "sp_group#month sp_group#c.gw_qtr_bsn_mean2 basin_group#year modate sp_group#c.modate"
+			}
+			if `fe'==27 {
+				local FEs = "sp_group#month sp_group#c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate sp_group#c.modate"
+			}
+			if `fe'==28 {
+				local FEs = "sp_group#month basin_group#year wdist_group#year modate"
+			}
+			if `fe'==29 {
+				local FEs = "sp_group#month basin_group#year wdist_group#year sp_group#c.modate"
+			}
+			if `fe'==30 {
+				local FEs = "sp_group#month sp_group#rt_large_ag modate"
+			}
+			if `fe'==31 {
+				local FEs = "sp_group#month sp_group#rt_large_ag basin_group#year modate"
+			}
+			if `fe'==32 {
+				local FEs = "sp_group#month sp_group#rt_large_ag basin_group#year wdist_group#year modate"
+			}
+			if `fe'==33 {
+				local FEs = "sp_group#month##c.gw_qtr_bsn_mean2 sp_group#rt_large_ag basin_group#year wdist_group#year modate"
+			}
+			if `fe'==34 {
+				local FEs = "sp_group#rt_large_ag sp_group#month modate sp_group#c.modate"
+			}
+			if `fe'==35 {
+				local FEs = "sp_group#rt_large_ag sp_group#month basin_group#year modate sp_group#c.modate"
+			}
+			if `fe'==36 {
+				local FEs = "sp_group#rt_large_ag sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year modate sp_group#c.modate"
+			}
+			if `fe'==37 {
+				local FEs = "sp_group#rt_large_ag sp_group#month##c.gw_qtr_bsn_mean2 basin_group#year wdist_group#year modate sp_group#c.modate"
+			}
+			if `fe'==38 {
+				local FEs = "sp_group#rt_large_ag sp_group#month basin_group#year wdist_group#year modate sp_group#c.modate"
+			}
+
 
 			// Loop over alternative RHS specifications, including IVs
-			foreach rhs in 1 2 3 4 7 8 {
+			foreach rhs in 1 7 19 /*8 18 */ /*15 16 17*/ {
 			
 				if `rhs'==1 {
 					local RHS = "log_p_mean"
@@ -152,15 +234,65 @@ foreach pull in "20180719" "20180322" "20180827" "combined" {
 				if `rhs'==8 {
 					local RHS = "(log_p_mean = log_mean_p_kwh_ag_default log_min_p_kwh_ag_default log_max_p_kwh_ag_default)"
 				}
+				if `rhs'==9 {
+					local RHS = "c.log_p_mean#i.sp_same_rate_dumbsmart"
+				}
+				if `rhs'==10 {
+					local RHS = "(log_p_mean = log_p_mean_lag12)"
+				}
+				if `rhs'==11 {
+					local RHS = "(log_p_mean = log_p_m*_lag12 log_p_m*_lag6)"
+				}
+				if `rhs'==12 {
+					local RHS = "(log_p_mean = log_mean_p_kwh_init)"
+				}
+				if `rhs'==13 {
+					local RHS = "(log_p_mean = log_m*_p_kwh_init)"
+				}
+				if `rhs'==14 {
+					local RHS = "log_p_mean ctrl_fxn_logs"
+				}
+				if `rhs'==15 {
+					local RHS = "log_p_mean degreesC_* "
+				}
+				if `rhs'==16 {
+					local RHS = "(log_p_mean = log_mean_p_kwh_ag_default log_min_p_kwh_ag_default log_max_p_kwh_ag_default) degreesC_* "
+				}
+				if `rhs'==17 {
+					local RHS = "(log_p_mean = log_p_m*_lag12 log_p_m*_lag6) degreesC_* "
+				}
+				if `rhs'==18 {
+					local RHS = "(log_p_mean = log_p_m*_deflag*)"
+				}
+				if `rhs'==19 {
+					local RHS = "(log_p_mean = log_p_mean_deflag*)"
+				}
 
 				// Skip combinations of IV and switchers/rate FE interactions
 				local skip = ""
-				if regexm("`if_sample'","sp_same")==1 & regexm("`RHS'"," = ") {
+				*if regexm("`if_sample'","sp_same")==1 & regexm("`RHS'"," = ") {
+				*	local skip = "skip"
+				*}
+				if regexm("`if_sample'","sp_same")==1 & regexm("`RHS'","sp_same") {
 					local skip = "skip"
 				}
-				if regexm("`FEs'","rt_group")==1 & regexm("`RHS'"," = ") {
+				if regexm("`if_sample'","summer")==1 & regexm("`RHS'","summer") {
 					local skip = "skip"
 				}
+				*if regexm("`FEs'","rt_group")==1 & regexm("`RHS'"," = ") {
+				*	local skip = "skip"
+				*}
+				
+				// Skip regressions that are already stored in output file
+				preserve
+				cap {
+					use "$dirpath_data/results/regs_Qelec_Pelec.dta", clear
+					count if panel=="monthly" & pull=="`pull'" & sample=="`if_sample'" & fes=="`FEs'" & rhs=="`RHS'"
+					if r(N)==1 {
+						local skip = "skip"
+					}
+				}	
+				restore
 				
 				// Flag IV specificaitons, which require different syntax
 				local iv = ""
@@ -183,7 +315,7 @@ foreach pull in "20180719" "20180322" "20180827" "combined" {
 					gen sample = "`if_sample'"
 					gen fes = "`FEs'"
 					gen rhs = "`RHS'"
-					if regexm("`RHS'","log_p_mean") & "`RHS'"!="c.log_p_mean#i.summer" {
+					if regexm("`RHS'","log_p_mean") & "`RHS'"!="c.log_p_mean#i.summer" & "`RHS'"!="c.log_p_mean#i.sp_same_rate_dumbsmart" {
 						gen beta_log_p_mean = _b[log_p_mean]
 						gen se_log_p_mean = _se[log_p_mean]
 						gen t_log_p_mean =  _b[log_p_mean]/_se[log_p_mean]
@@ -202,9 +334,17 @@ foreach pull in "20180719" "20180322" "20180827" "combined" {
 						gen beta_log_p_mean_summer = _b[1.summer#c.log_p_mean]
 						gen se_log_p_mean_summer = _se[1.summer#c.log_p_mean]
 						gen t_log_p_mean_summer =  _b[1.summer#c.log_p_mean]/_se[1.summer#c.log_p_mean]
-						gen beta_log_p_mean_wintr = _b[0.summer#c.log_p_mean]
+						gen beta_log_p_mean_winter = _b[0.summer#c.log_p_mean]
 						gen se_log_p_mean_winter = _se[0.summer#c.log_p_mean]
 						gen t_log_p_mean_winter =  _b[0.summer#c.log_p_mean]/_se[0.summer#c.log_p_mean]
+					}
+					if "`RHS'"=="c.log_p_mean#i.sp_same_rate_dumbsmart" {
+						gen beta_log_p_mean_stayer = _b[1.sp_same_rate_dumbsmart#c.log_p_mean]
+						gen se_log_p_mean_stayer = _se[1.sp_same_rate_dumbsmart#c.log_p_mean]
+						gen t_log_p_mean_stayer =  _b[1.sp_same_rate_dumbsmart#c.log_p_mean]/_se[1.sp_same_rate_dumbsmart#c.log_p_mean]
+						gen beta_log_p_mean_switcher = _b[0.sp_same_rate_dumbsmart#c.log_p_mean]
+						gen se_log_p_mean_switcher = _se[0.sp_same_rate_dumbsmart#c.log_p_mean]
+						gen t_log_p_mean_switcher =  _b[0.sp_same_rate_dumbsmart#c.log_p_mean]/_se[0.sp_same_rate_dumbsmart#c.log_p_mean]
 					}
 					gen n_obs = e(N)
 					gen n_SPs = e(N_clust1)

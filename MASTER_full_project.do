@@ -76,7 +76,11 @@ do "$dirpath_code/build/BUILD_assign_gis_polygons.do"
 	//                        and "BUILD_gis_counties.R"
 	//                        and "BUILD_gis_water_basins.R"
 
-*** 19: CLEAN CA DWR GROUNDWATER DATA
+*** 19: ASSIGN DAILY MIN/MAX TEMPERATURE TO EACH SP AND APEP PUMP
+do "$dirpath_code/build/BUILD_daily_temperatures.do"
+	// calls auxilary GIS scripts "BUILD_prism_daily_temperature.R" 
+
+*** 20: CLEAN CA DWR GROUNDWATER DATA
 do "$dirpath_code/build/BUILD_clean_cadwr_groundwater.do"
 	// calls auxilary GIS scripts "BUILD_gis_gw_depth_raster.R" 
 	//                        and "BUILD_gis_gw_depth_extract.R"
@@ -93,16 +97,20 @@ do "$dirpath_code/merge/MERGE_bills_noninterval_rates.do"
 *** 3: ASSIGN AVERAGE PRICES TO ALL (MONTHIFIED) BILLS (INTERNALLY CONSISTENT)
 do "$dirpath_code/merge/MERGE_bills_rate_nomerge.do"
 
-*** 4: MERGE CUSTOMER DETAILS & APEP DATASETS TO CONSTRUCT MASTER XSECTION(S) FOR EVENTUAL PANEL(S)
-do "$dirpath_code/merge/MERGE_customer_apep_units.do"
-
-*** 5. CONSTRUCT INSTRUMENTS FOR ELECTRICITY PRICE
+*** 4. CONSTRUCT INSTRUMENTS FOR ELECTRICITY PRICE
 do "$dirpath_code/merge/MERGE_instruments.do"
 
-*** 6. CONSTRUCT PANEL DATASETS FOR ELECTRICITY REGRESSIONS
+*** 5. CONSTRUCT PANEL DATASETS FOR ELECTRICITY REGRESSIONS
 do "$dirpath_code/merge/MERGE_analysis_elec_regs.do"
 
+*** 6: MERGE CUSTOMER DETAILS & APEP DATASETS TO CONSTRUCT MASTER XSECTION(S) FOR EVENTUAL PANEL(S)
+do "$dirpath_code/merge/MERGE_customer_apep_units.do"
 
+*** 7: CONSTRUCT PANEL OF KWH/AF CONVERSION RATES
+do "$dirpath_code/merge/MERGE_panel_kwhaf.do"
+
+*** 8. CONSTRUCT PANEL DATASETS FOR WATER REGRESSIONS
+do "$dirpath_code/merge/MERGE_analysis_water_regs.do"
 
 
 

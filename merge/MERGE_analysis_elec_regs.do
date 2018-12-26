@@ -2,9 +2,9 @@ clear all
 version 13
 set more off
 
-*****************************************************
-**** Script to craete analysis datasets for camp ****
-*****************************************************
+***********************************************************************************
+**** Script to create analysis datasets monthly/hourly electricity regressions ****
+***********************************************************************************
 
 global dirpath "S:/Matt/ag_pump"
 global dirpath_data "$dirpath/data"
@@ -164,9 +164,9 @@ foreach v of varlist dr_program pou_name rt_sched_cd {
 
 	// Take weight-averages of mean price variables
 foreach v of varlist  mean_p_kwh mean_p_kw_max mean_p_kw_peak mean_p_kw_partpeak {
-	egen double temp_num1 = sum(`v'*mnth_bill_kwh) if `v'!=. & mnth_bill_kwh!=., by(sp_uuid modate)
+	egen double temp_num1 = sum(`v'*mnth_bill_kwh) if `v'!=. & mnth_bill_kwh!=. & mnth_bill_kwh>=0, by(sp_uuid modate)
 	egen double temp_num2 = mean(temp_num1), by(sp_uuid modate)
-	egen double temp_denom1 = sum(mnth_bill_kwh) if `v'!=. & mnth_bill_kwh!=., by(sp_uuid modate)
+	egen double temp_denom1 = sum(mnth_bill_kwh) if `v'!=. & mnth_bill_kwh!=. & mnth_bill_kwh>=0, by(sp_uuid modate)
 	egen double temp_denom2 = mean(temp_denom1), by(sp_uuid modate)
 	replace `v' = temp_num2/temp_denom2 if temp_denom2!=0 & temp_denom2!=.
 	egen temp = mean(`v'), by(sp_uuid modate)
@@ -209,7 +209,7 @@ save "$dirpath_data/merged/sp_month_elec_panel.dta", replace
 *******************************************************************************
 *******************************************************************************	
 	
-** 2. Billing data without prices, at SP level
+** 2. Billing data without prices, at SA level
 if 1==0{
 
 ** Start with cleaned customer + monthified billing data (all three data pulls)
@@ -458,7 +458,6 @@ use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
 	// Note: I checked for cases of multiple rates within an SP-month, and they
 	// are EXCEEDINGLY rare. That means that identifying switchers at the SP 
 	// level will be virtually identical to identifying switchers at the SA levels
-keep if in_interval
 keep sp_uuid modate rt_sched_cd
 encode rt_sched_cd, gen(rt_group)
 
@@ -585,78 +584,7 @@ save "$dirpath_data/merged/sp_rate_switchers.dta", replace
 *******************************************************************************
 *******************************************************************************
 
-** 6. Merge GIS vars, SP vars, gw depth, and switchers in to collapsed SP-hour panels
-if 1==0{
-
-foreach tag in "20180719" "20180322" "20180827" {
-	
-	** Load collapsed hourly dataset
-	use "$dirpath_data/merged/sp_hourly_elec_panel_collapsed_`tag'.dta", clear
-	
-	** Merge in variables from PGE customer details
-	cap drop flag_nem
-	cap drop cz_group
-	cap drop rt_group
-	cap drop flag_geocode_badmiss
-	merge m:1 sp_uuid modate using "$dirpath_data/merged/sp_month_elec_panel.dta", ///
-		nogen keep(1 3) keepusing(flag_nem climate_zone_cd rt_sched_cd ///
-		bad_geocode_flag missing_geocode_flag)
-	encode rt_sched_cd, gen(rt_group)
-	la var rt_group "Ag tariff group (numeric)"
-	encode climate_zone_cd, gen(cz_group)
-	la var cz_group "Climate zone (numeric)"
-	gen flag_geocode_badmiss = bad_geocode_flag==1 | missing_geocode_flag==1
-	la var flag_geocode_badmiss "SP geocode either missing or not in California"
-	drop rt_sched_cd climate_zone_cd bad_geocode_flag missing_geocode_flag
-
-	** Merge in GIS variables
-	cap drop wdist_group
-	cap drop county_group
-	cap drop basin_group
-	merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/sp_premise_gis.dta", ///
-		nogen keep(1 3) keepusing(wdist_group county_fips basin_id)
-	encode county_fips, gen(county_group)
-	la var county_group "County FIPS (numeric)"
-	egen basin_group = group(basin_id)
-	la var basin_group "Groundwater basin (numeric)"
-	drop county_fips
-		
-	** Merge in switchers indicators
-	cap drop sp_same_rate_*
-	merge m:1 sp_uuid using "$dirpath_data/merged/sp_rate_switchers.dta", ///
-		nogen keep(1 3) keepusing(sp_same_rate_dumbsmart sp_same_rate_in_cat)
-		
-	** Merge in average groundwater depths (basin-by-quarter)
-	cap drop gw_qtr_bsn_*
-	gen quarter = .
-	replace quarter = 1 if inlist(month,1,2,3)
-	replace quarter = 2 if inlist(month,4,5,6)
-	replace quarter = 3 if inlist(month,7,8,9)
-	replace quarter = 4 if inlist(month,10,11,12)
-	merge m:1 basin_id year quarter using ///
-		"$dirpath_data/groundwater/avg_groundwater_depth_basin_quarter_full.dta", ///
-		nogen keep(1 3) keepusing(gw_qtr_bsn_mean1 gw_qtr_bsn_mean2)
-	drop quarter basin_id
-	
-	** Create numeric SP identifier
-	cap drop sp_group
-	egen sp_group = group(sp_uuid)
-	la var sp_group "SP identifier (not global; numeric)"
-
-	** Save
-	unique sp_uuid hour log_p modate year month	weekend p_kwh_e1_?? p_kwh_e20 p_kwh_ag_default
-	assert r(unique)==r(N)
-	compress
-	save "$dirpath_data/merged/sp_hourly_elec_panel_collapsed_`tag'.dta", replace
-		
-}
-
-}
-
-*******************************************************************************
-*******************************************************************************
-
-** 7. Transform Q and P, and merge GIS vars in to collapsed SP-month panel
+** 6. Transform Q and P, and merge GIS vars in to collapsed SP-month panel
 if 1==1{
 
 ** Load monthly dataset
@@ -695,7 +623,7 @@ cap drop *_p_kwh_e20
 merge m:1 modate using "$dirpath_data/merged/e20_prices_monthly.dta", nogen keep(1 3)
 	
 ** Merge in instrument: default ag rates
-cap drop rt_efault *_p_kwh_ag_default
+cap drop rt_default *_p_kwh_ag_default
 merge m:1 rt_sched_cd modate using "$dirpath_data/merged/ag_default_prices_monthly.dta", ///
 	nogen keep(1 3)
 
@@ -712,8 +640,8 @@ la var basin_group "Groundwater basin (numeric)"
 		
 ** Merge in switchers indicators
 cap drop sp_same_rate_*
-merge m:1 sp_uuid using "$dirpath_data/merged/sp_rate_switchers.dta", ///
-	nogen keep(1 3) keepusing(sp_same_rate_dumbsmart sp_same_rate_in_cat)
+merge m:1 sp_uuid using "$dirpath_data/merged/sp_rate_switchers.dta", nogen ///
+	keep(1 3) keepusing(sp_same_rate_always sp_same_rate_dumbsmart sp_same_rate_in_cat)
 		
 ** Merge in average groundwater depths (basin-by-quarter)
 cap drop gw_qtr_bsn_*
@@ -765,6 +693,111 @@ foreach v of varlist p_kwh_e1* *p_kwh_e20 *p_kwh_ag_default {
 	la var log_`v' "Log `lab'"
 }	
 
+** Construct instruments of 6- and 12-month-lagged prices
+cap drop log_p_m*_lag*
+tsset sp_group modate 
+gen log_p_mean_lag12 = L12.log_p_mean
+gen log_p_min_lag12 = L12.log_p_min
+gen log_p_max_lag12 = L12.log_p_max
+gen log_p_mean_lag6 = L6.log_p_mean
+gen log_p_min_lag6 = L6.log_p_min
+gen log_p_max_lag6 = L6.log_p_max
+la var log_p_mean_lag12 "Avg SP-specific marg elec price (log $/kWh), lagged 12 months"
+la var log_p_min_lag12 "Min SP-specific marg elec price (log $/kWh), lagged 12 months"
+la var log_p_max_lag12 "Max SP-specific marg elec price (log $/kWh), lagged 12 months"
+la var log_p_mean_lag6 "Avg SP-specific marg elec price (log $/kWh), lagged 6 months"
+la var log_p_min_lag6 "Min SP-specific marg elec price (log $/kWh), lagged 6 months"
+la var log_p_max_lag6 "Max SP-specific marg elec price (log $/kWh), lagged 6 months"
+
+** Construct instruments of 6- and 12-month-lagged DEFAULT prices
+cap drop log_p_m*_deflag*
+tsset sp_group modate 
+gen log_p_mean_deflag12 = L12.log_mean_p_kwh_ag_default
+gen log_p_min_deflag12 = L12.log_min_p_kwh_ag_default
+gen log_p_max_deflag12 = L12.log_max_p_kwh_ag_default
+gen log_p_mean_deflag6 = L6.log_mean_p_kwh_ag_default
+gen log_p_min_deflag6 = L6.log_min_p_kwh_ag_default
+gen log_p_max_deflag6 = L6.log_max_p_kwh_ag_default
+la var log_p_mean_deflag12 "Avg SP-spec default marg elec price (log $/kWh), lagged 12 months"
+la var log_p_min_deflag12 "Min SP-spec default marg elec price (log $/kWh), lagged 12 months"
+la var log_p_max_deflag12 "Max SP-spec default marg elec price (log $/kWh), lagged 12 months"
+la var log_p_mean_deflag6 "Avg SP-spec default marg elec price (log $/kWh), lagged 6 months"
+la var log_p_min_deflag6 "Min SP-spec default marg elec price (log $/kWh), lagged 6 months"
+la var log_p_max_deflag6 "Max SP-spec default marg elec price (log $/kWh), lagged 6 months"
+
+** Create instrument: initial price
+cap drop *_init
+egen temp_min_date = min(modate), by(sp_uuid)
+gen temp_first_rt1 = rt_sched_cd if modate==temp_min_date
+egen temp_first_rt2 = mode(temp_first_rt1), by(sp_uuid)
+foreach v of varlist rt_sched_cd mean_p_kwh min_p_kwh max_p_kwh {
+	rename `v' `v'_TEMP
+}
+rename temp_first_rt2 rt_sched_cd
+merge m:1 rt_sched_cd modate using "$dirpath_data/merged/ag_rates_avg_by_month.dta", ///
+	nogen keep(1 3)
+foreach v of varlist rt_sched_cd mean_p_kwh min_p_kwh max_p_kwh {
+	rename `v' `v'_init
+	local vlab1: variable label `v'_init
+	local vlab2 = subinstr("`vlab1'","rate","SP's initial rate",1)
+	la var `v'_init "`vlab2'"
+}
+foreach v of varlist *_p_kwh_init {
+	gen log_`v' = ln(`v')
+	local vlab: variable label `v'
+	la var log_`v' "Log `vlab'"
+}
+foreach v of varlist *_TEMP {
+	local v2 = subinstr("`v'","_TEMP","",1)
+	rename `v' `v2'
+}
+la var rt_sched_cd_init "Rate schedule for SP's initial month in dataset"
+drop temp*
+
+** Merge in residuals for control function (actual and initial rates)
+cap drop ctrl_fxn*
+merge m:1 rt_sched_cd modate using "$dirpath_data/merged/ag_rates_ctrl_fxn_monthly.dta", ///
+	nogen keep(1 3)
+foreach v of varlist rt_sched_cd ctrl_fxn* {
+	rename `v' TEMP_`v'
+}
+rename rt_sched_cd_init rt_sched_cd
+merge m:1 rt_sched_cd modate using "$dirpath_data/merged/ag_rates_ctrl_fxn_monthly.dta", ///
+	nogen keep(1 3)
+foreach v of varlist rt_sched_cd ctrl_fxn* {
+	rename `v' `v'_init
+	local vlab: variable label `v'_init
+	la var `v'_init "`vlab' (SP's initial rate)"
+}
+foreach v of varlist TEMP_* {
+	local v2 = subinstr("`v'","TEMP_","",1) 
+	rename `v' `v2'
+}
+	
+** Merge in monthly average temperature at SP level
+cap drop degreesC_*
+merge 1:1 sp_uuid modate using "$dirpath_data/prism/sp_temperature_monthly.dta", ///
+	nogen keep(1 3)
+
+** Define rate categories and large/small ag categories
+cap drop rt_category rt_large_ag
+gen rt_category = 0
+replace rt_category = 1 if rt_sched_cd=="AG-1A"
+replace rt_category = 2 if rt_sched_cd=="AG-1B"
+replace rt_category = 3 if rt_sched_cd=="AG-ICE"
+replace rt_category = 4 if inlist(rt_sched_cd,"AG-4A","AG-5A","AG-RA","AG-VA")
+replace rt_category = 4 if inlist(rt_sched_cd,"AG-4D","AG-5D","AG-RD","AG-VD")
+replace rt_category = 5 if inlist(rt_sched_cd,"AG-4B","AG-5B","AG-RB","AG-VB")
+replace rt_category = 5 if inlist(rt_sched_cd,"AG-4C","AG-5C")
+replace rt_category = 5 if inlist(rt_sched_cd,"AG-4E","AG-5E","AG-RE","AG-VE")
+replace rt_category = 5 if inlist(rt_sched_cd,"AG-4F","AG-5F")
+gen rt_large_ag = 0 if inlist(rt_category,1,4) // small ag rates
+replace rt_large_ag = 1 if inlist(rt_category,2,5) // large ag rates
+replace rt_large_ag = 2 if inlist(rt_category,3) // ICE
+assert rt_category!=. & rt_large_ag!=.
+la var rt_category "PGE ag rate category (1 of 5 w/in which choosing is possible)"
+la var rt_large_ag "PGE ag rate groups based on motor size/type (0=small, 1=large, 2=ICE)"
+	
 ** Save
 order sp_uuid modate
 sort sp_uuid modate
@@ -772,6 +805,134 @@ unique sp_uuid modate
 assert r(unique)==r(N)
 compress
 save "$dirpath_data/merged/sp_month_elec_panel.dta", replace
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 7. Merge GIS vars, SP vars, gw depth, and switchers in to collapsed SP-hour panels
+if 1==0{
+
+foreach tag in "20180719" "20180322" "20180827" {
+	
+	** Load collapsed hourly dataset
+	use "$dirpath_data/merged/sp_hourly_elec_panel_collapsed_`tag'.dta", clear
+	
+	** Merge in variables from PGE customer details
+	cap drop flag_nem
+	cap drop cz_group
+	cap drop rt_group
+	cap drop flag_geocode_badmiss
+	merge m:1 sp_uuid modate using "$dirpath_data/merged/sp_month_elec_panel.dta", ///
+		nogen keep(1 3) keepusing(flag_nem climate_zone_cd rt_sched_cd ///
+		bad_geocode_flag missing_geocode_flag)
+	encode rt_sched_cd, gen(rt_group)
+	la var rt_group "Ag tariff group (numeric)"
+	encode climate_zone_cd, gen(cz_group)
+	la var cz_group "Climate zone (numeric)"
+	gen flag_geocode_badmiss = bad_geocode_flag==1 | missing_geocode_flag==1
+	la var flag_geocode_badmiss "SP geocode either missing or not in California"
+	drop rt_sched_cd climate_zone_cd bad_geocode_flag missing_geocode_flag
+
+	** Merge in GIS variables
+	cap drop wdist_group
+	cap drop county_group
+	cap drop basin_group
+	merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/sp_premise_gis.dta", ///
+		nogen keep(1 3) keepusing(wdist_group county_fips basin_id)
+	encode county_fips, gen(county_group)
+	la var county_group "County FIPS (numeric)"
+	egen basin_group = group(basin_id)
+	la var basin_group "Groundwater basin (numeric)"
+	drop county_fips
+	
+	** Merge in switchers indicators
+	cap drop sp_same_rate_*
+	merge m:1 sp_uuid using "$dirpath_data/merged/sp_rate_switchers.dta", nogen ///
+		keep(1 3) keepusing(sp_same_rate_always sp_same_rate_dumbsmart sp_same_rate_in_cat)
+		
+	** Merge in average groundwater depths (basin-by-quarter)
+	cap drop gw_qtr_bsn_*
+	gen quarter = .
+	replace quarter = 1 if inlist(month,1,2,3)
+	replace quarter = 2 if inlist(month,4,5,6)
+	replace quarter = 3 if inlist(month,7,8,9)
+	replace quarter = 4 if inlist(month,10,11,12)
+	merge m:1 basin_id year quarter using ///
+		"$dirpath_data/groundwater/avg_groundwater_depth_basin_quarter_full.dta", ///
+		nogen keep(1 3) keepusing(gw_qtr_bsn_mean1 gw_qtr_bsn_mean2)
+	drop quarter basin_id
+	
+	** Create numeric SP identifier
+	cap drop sp_group
+	egen sp_group = group(sp_uuid)
+	la var sp_group "SP identifier (not global; numeric)"
+
+	** Log price instruments
+	cap drop log_p_kwh_e1_* log_p_kwh_e20 log_p_kwh_ag_default
+	foreach v of varlist p_kwh_e1_?? p_kwh_e20 p_kwh_ag_default {
+		gen log_`v' = ln(`v')
+		local vlab: variable label `v'
+		la var log_`v' "Log `vlab'"
+		drop `v'
+	}
+	
+	** Create summer dummy
+	cap drop summer
+	gen summer = inlist(month,5,6,7,8,9,10)
+	la var summer "Summer dummy"
+	
+	** Create lagged price instruments
+	cap drop log_p_lag*
+	preserve
+	keep sp_uuid hour weekend modate log_p fwt
+	egen double temp_denom = sum(fwt), by(sp_uuid hour weekend modate)
+	egen double mean_log_p = sum(log_p*fwt/temp_denom), by(sp_uuid hour weekend modate)
+	drop log_p fwt
+	duplicates drop
+	unique sp_uuid hour weekend modate
+	assert r(unique)==r(N)
+	egen temp_group = group(sp_uuid hour weekend), missing
+	tsset temp_group modate
+	gen log_p_lag12 = L12.mean_log_p
+	gen log_p_lag6 = L6.mean_log_p
+	la var log_p_lag12 "Avg SP-specific marg elec price (log $/kWh), lagged 12 months"
+	la var log_p_lag6 "Avg SP-specific marg elec price (log $/kWh), lagged 6 months"
+	drop temp* mean_log_p
+	tempfile lagged_p
+	save `lagged_p'
+	restore
+	merge m:1 sp_uuid hour weekend modate using `lagged_p', nogen keep(1 3)
+
+	** Merge in flag for interval disparities with billed kWh
+	cap drop flag_interval_disp20
+	merge m:1 sp_uuid modate using "$dirpath_data/merged/sp_month_elec_panel.dta", nogen keep(1 3) ///
+		keepusing(flag_interval_disp20)
+		
+	** Merge in average SA-wise correlation b/tw billing and interval kWh
+	cap drop interval_bill_corr
+	preserve
+	use sp_uuid interval_bill_corr using "$dirpath_data/merged/sp_month_elec_panel.dta", clear
+	duplicates drop
+	egen temp = mean(interval_bill_corr), by(sp_uuid)
+	replace interval_bill_corr = temp
+	drop temp
+	duplicates drop
+	unique sp_uuid
+	assert r(unique)==r(N)
+	tempfile bill_corr
+	save `bill_corr'
+	restore
+	merge m:1 sp_uuid using `bill_corr', nogen keep(1 3)
+		
+	** Save
+	unique sp_uuid hour log_p modate year month weekend log_p_kwh_e1_?? log_p_kwh_e20 log_p_kwh_ag_default
+	assert r(unique)==r(N)
+	compress
+	save "$dirpath_data/merged/sp_hourly_elec_panel_collapsed_`tag'.dta", replace
+		
+}
 
 }
 

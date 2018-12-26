@@ -1016,20 +1016,434 @@ restore
 *******************************************************************************
 *******************************************************************************
 
-** 6. Constrct panels of groundwater depth for SPs (monthly/quarterly)
+** 6. Construct panels of groundwater depth for SPs (monthly)
 if 1==1{
 
-PENDING
+** Read in output from GIS script to extract monthly depths from rasters
+insheet using "$dirpath_data/misc/prems_gw_depths_from_rasters.csv", double comma clear
+
+** Drop quarterly variables, and SP-specific variables
+drop *_????q? prem_lat prem_long bad_geocode_flag missing_geocode_flag x y
+
+** Destring numeric variables before reshaping, to reduce file size
+foreach v of varlist depth_??_* {
+	cap replace `v' = "" if `v'=="NA"
+	destring `v', replace
+}
+
+** Reshape long, to convert into SP-month panel
+reshape long depth_1s depth_1b depth_2s depth_2b depth_3s depth_3b ///
+	distkm_1 distkm_2 distkm_3, i(sp_uuid pull) j(MODATE) string
+
+** Reformat string variables
+tostring sp_uuid pull, replace
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+assert length(sp_uuid)==10 & real(sp_uuid)!=.
+gen modate = ym(real(substr(MODATE,2,4)),real(substr(MODATE,7,2)))
+format %tm modate
+assert string(modate,"%tm")==substr(MODATE,2,10)
+drop MODATE
+order sp_uuid pull modate
+unique sp_uuid pull modate
+assert r(unique)==r(N)
+sort sp_uuid modate pull
+
+** Make unique by SP-modate
+duplicates t sp_uuid modate, gen(dup)
+br if dup>0 // the vast majority have identical lat/lon across march/august pulls
+unique sp_uuid modate
+local uniq = r(unique)
+drop if dup==1 & sp_uuid==sp_uuid[_n-1] & modate==modate[_n-1] & pull=="20180827" & ///
+	pull[_n-1]=="20180322" & depth_1s==depth_1s[_n-1] & depth_1b==depth_1b[_n-1] & ///
+	depth_2s==depth_2s[_n-1] & depth_2b==depth_2b[_n-1] & depth_3s==depth_3s[_n-1] & ///
+	depth_3b==depth_3b[_n-1] & distkm_1==distkm_1[_n-1] & distkm_2==distkm_2[_n-1] & ///
+	distkm_3==distkm_3[_n-1]
+unique sp_uuid modate
+assert r(unique)==`uniq'
+duplicates t sp_uuid modate, gen(dup2)
+br if dup2>0
+unique sp_uuid if dup2>0 //23 SPs where lat/lon changes across march/august pulls
+egen temp_max = max(pull=="20180322"), by(sp_uuid modate)
+unique sp_uuid modate
+local uniq = r(unique)
+drop if temp_max==1 & pull!="20180322" // keep March pull coordinates, doesn't really matter b/c everything is very close
+unique sp_uuid modate
+assert r(unique)==`uniq'
+assert r(unique)==r(N)
+drop dup* temp*
+
+** Merge in basin identifiers
+merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/sp_premise_gis.dta", keepusing(basin_id)
+drop if _merge==2
+assert _merge==3
+drop _merge
+
+** Merge in number of groundwater measurements in each basin/month
+merge m:1 basin_id modate using "$dirpath_data/groundwater/avg_groundwater_depth_basin_month.dta", ///
+	keep(1 3) keepusing(gw_mth_bsn_mean1 gw_mth_bsn_mean2 gw_mth_bsn_mean3 ///
+	gw_mth_bsn_cnt1 gw_mth_bsn_cnt2 gw_mth_bsn_cnt3)
+foreach v of varlist gw_mth_bsn_cnt? {
+	replace `v' = 0 if _merge==1
+	assert `v'!=.
+}
+sum gw_mth_bsn_cnt?, detail
+	
+** Convert kilometers to miles
+foreach v of varlist distkm_? {
+	replace `v' = `v'*0.621371
+	local v2 = subinstr("`v'","km","_miles",1)
+	rename `v' `v2'
+}	
+	
+** Distance threshold from nearest raster point
+sum dist_miles_1 if gw_mth_bsn_cnt1>1, detail
+sum dist_miles_1 if gw_mth_bsn_cnt1>10, detail
+sum dist_miles_1 if gw_mth_bsn_cnt1>50, detail
+sum dist_miles_1 if gw_mth_bsn_cnt1>100, detail
+sum dist_miles_1 if gw_mth_bsn_cnt1>500, detail
+sum dist_miles_1 if gw_mth_bsn_cnt1==0, detail
+
+** Label
+la var sp_uuid "Service Point ID (anonymized, 10-digit)"
+la var pull "Which PGE data pull is this SP from?"
+la var modate "Year-Month"
+la var depth_1s "Extracted gw depth (all measurements, simple, feet)"
+la var depth_1b "Extracted gw depth (all measurements, bilinear, feet)"
+la var depth_2s "Extracted gw depth (non-ques measurements, simple, feet)"
+la var depth_2b "Extracted gw depth (non-ques measurements, bilinear, feet)"
+la var depth_3s "Extracted gw depth (obs non-ques measurements, simple, feet)"
+la var depth_3b "Extracted gw depth (obs non-ques measurements, bilinear, feet)"
+la var dist_miles_1 "Miles to nearest gw measurement in raster (all)"
+la var dist_miles_2 "Miles to nearest gw measurement in raster (non-ques)"
+la var dist_miles_3 "Miles to nearest gw measurement in raster (obs non-ques)"
+rename depth_?? gw_rast_depth_mth_??
+rename dist_miles_? gw_rast_dist_mth_?
+drop _merge
+
+** Save
+unique sp_uuid modate
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/groundwater/groundwater_depth_sp_month_rast.dta", replace
 
 }
 
 *******************************************************************************
 *******************************************************************************
 
-** 7. Constrct panels of groundwater depth for APEP pumps (monthly/quarterly)
+** 7. Construct panels of groundwater depth for SPs (quarterly)
 if 1==1{
 
-PENDING
+** Read in output from GIS script to extract quarterly depths from rasters
+insheet using "$dirpath_data/misc/prems_gw_depths_from_rasters.csv", double comma clear
+
+** Drop monthly variables, and SP-specific variables
+drop *_????m? *_????m?? prem_lat prem_long bad_geocode_flag missing_geocode_flag x y
+
+** Destring numeric variables before reshaping, to reduce file size
+foreach v of varlist depth_??_* {
+	cap replace `v' = "" if `v'=="NA"
+	destring `v', replace
+}
+
+** Reshape long, to convert into SP-quarter panel
+reshape long depth_1s depth_1b depth_2s depth_2b depth_3s depth_3b ///
+	distkm_1 distkm_2 distkm_3, i(sp_uuid pull) j(QTR) string
+
+** Reformat string variables
+tostring sp_uuid pull, replace
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+assert length(sp_uuid)==10 & real(sp_uuid)!=.
+gen qtr = yq(real(substr(QTR,2,4)),real(substr(QTR,7,2)))
+format %tq qtr
+assert string(qtr,"%tq")==substr(QTR,2,10)
+drop QTR
+order sp_uuid pull qtr
+unique sp_uuid pull qtr
+assert r(unique)==r(N)
+sort sp_uuid qtr pull
+
+** Make unique by SP-quarter
+duplicates t sp_uuid qtr, gen(dup)
+br if dup>0 // the vast majority have identical lat/lon across march/august pulls
+unique sp_uuid qtr
+local uniq = r(unique)
+drop if dup==1 & sp_uuid==sp_uuid[_n-1] & qtr==qtr[_n-1] & pull=="20180827" & ///
+	pull[_n-1]=="20180322" & depth_1s==depth_1s[_n-1] & depth_1b==depth_1b[_n-1] & ///
+	depth_2s==depth_2s[_n-1] & depth_2b==depth_2b[_n-1] & depth_3s==depth_3s[_n-1] & ///
+	depth_3b==depth_3b[_n-1] & distkm_1==distkm_1[_n-1] & distkm_2==distkm_2[_n-1] & ///
+	distkm_3==distkm_3[_n-1]
+unique sp_uuid qtr
+assert r(unique)==`uniq'
+duplicates t sp_uuid qtr, gen(dup2)
+br if dup2>0
+unique sp_uuid if dup2>0 //23 SPs where lat/lon changes across march/august pulls
+egen temp_max = max(pull=="20180322"), by(sp_uuid qtr)
+unique sp_uuid qtr
+local uniq = r(unique)
+drop if temp_max==1 & pull!="20180322" // keep March pull coordinates, doesn't really matter b/c everything is very close
+unique sp_uuid qtr
+assert r(unique)==`uniq'
+assert r(unique)==r(N)
+drop dup* temp*
+
+** Merge in basin identifiers
+merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/sp_premise_gis.dta", keepusing(basin_id)
+drop if _merge==2
+assert _merge==3
+drop _merge
+
+** Merge in number of groundwater measurements in each basin/quarter
+merge m:1 basin_id qtr using "$dirpath_data/groundwater/avg_groundwater_depth_basin_quarter.dta", ///
+	keep(1 3) keepusing(gw_qtr_bsn_mean1 gw_qtr_bsn_mean2 gw_qtr_bsn_mean3 ///
+	gw_qtr_bsn_cnt1 gw_qtr_bsn_cnt2 gw_qtr_bsn_cnt3)
+foreach v of varlist gw_qtr_bsn_cnt? {
+	replace `v' = 0 if _merge==1
+	assert `v'!=.
+}
+sum gw_qtr_bsn_cnt?, detail
+	
+** Convert kilometers to miles
+foreach v of varlist distkm_? {
+	replace `v' = `v'*0.621371
+	local v2 = subinstr("`v'","km","_miles",1)
+	rename `v' `v2'
+}	
+	
+** Distance threshold from nearest raster point
+sum dist_miles_1 if gw_qtr_bsn_cnt1>1, detail
+sum dist_miles_1 if gw_qtr_bsn_cnt1>10, detail
+sum dist_miles_1 if gw_qtr_bsn_cnt1>50, detail
+sum dist_miles_1 if gw_qtr_bsn_cnt1>100, detail
+sum dist_miles_1 if gw_qtr_bsn_cnt1>500, detail
+sum dist_miles_1 if gw_qtr_bsn_cnt1==0, detail
+
+** Label
+la var sp_uuid "Service Point ID (anonymized, 10-digit)"
+la var pull "Which PGE data pull is this SP from?"
+la var qtr "Year-Quarter"
+la var depth_1s "Extracted gw depth (all measurements, simple, feet)"
+la var depth_1b "Extracted gw depth (all measurements, bilinear, feet)"
+la var depth_2s "Extracted gw depth (non-ques measurements, simple, feet)"
+la var depth_2b "Extracted gw depth (non-ques measurements, bilinear, feet)"
+la var depth_3s "Extracted gw depth (obs non-ques measurements, simple, feet)"
+la var depth_3b "Extracted gw depth (obs non-ques measurements, bilinear, feet)"
+la var dist_miles_1 "Miles to nearest gw measurement in raster (all)"
+la var dist_miles_2 "Miles to nearest gw measurement in raster (non-ques)"
+la var dist_miles_3 "Miles to nearest gw measurement in raster (obs non-ques)"
+rename depth_?? gw_rast_depth_qtr_??
+rename dist_miles_? gw_rast_dist_qtr_?
+drop _merge
+
+** Save
+unique sp_uuid qtr
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/groundwater/groundwater_depth_sp_quarter_rast.dta", replace
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 8. Construct panels of groundwater depth for APEP pumps (monthly)
+if 1==1{
+
+** Read in output from GIS script to extract monthly depths from rasters
+insheet using "$dirpath_data/misc/pumps_gw_depths_from_rasters.csv", double comma clear
+
+** Drop quarterly variables, and APEP-specific variables
+drop *_????q? pump_lat pump_lon x y
+
+** Destring numeric variables before reshaping, to reduce file size
+foreach v of varlist depth_??_* {
+	cap replace `v' = "" if `v'=="NA"
+	destring `v', replace
+}
+
+** Reshape long, to convert into pump-month panel
+reshape long depth_1s depth_1b depth_2s depth_2b depth_3s depth_3b ///
+	distkm_1 distkm_2 distkm_3, i(latlon_group) j(MODATE) string
+
+** Reformat string variables
+destring latlon_group, replace
+assert latlon_group!=.
+unique latlon_group MODATE
+assert r(unique)==r(N)
+gen modate = ym(real(substr(MODATE,2,4)),real(substr(MODATE,7,2)))
+format %tm modate
+assert string(modate,"%tm")==substr(MODATE,2,10)
+drop MODATE
+order latlon_group modate
+unique latlon_group modate
+assert r(unique)==r(N)
+sort latlon_group modate
+
+** Merge in basin identifiers
+preserve
+use "$dirpath_data/pge_cleaned/apep_pump_gis.dta", clear
+keep latlon_group basin_id
+duplicates drop
+tempfile apep_basins
+save `apep_basins'
+restore
+merge m:1 latlon_group using `apep_basins', keepusing(basin_id)
+drop if _merge==2
+assert _merge==3
+drop _merge
+
+** Merge in number of groundwater measurements in each basin/month
+merge m:1 basin_id modate using "$dirpath_data/groundwater/avg_groundwater_depth_basin_month.dta", ///
+	keep(1 3) keepusing(gw_mth_bsn_mean1 gw_mth_bsn_mean2 gw_mth_bsn_mean3 ///
+	gw_mth_bsn_cnt1 gw_mth_bsn_cnt2 gw_mth_bsn_cnt3)
+foreach v of varlist gw_mth_bsn_cnt? {
+	replace `v' = 0 if _merge==1
+	assert `v'!=.
+}
+sum gw_mth_bsn_cnt?, detail
+	
+** Convert kilometers to miles
+foreach v of varlist distkm_? {
+	replace `v' = `v'*0.621371
+	local v2 = subinstr("`v'","km","_miles",1)
+	rename `v' `v2'
+}	
+	
+** Distance threshold from nearest raster point
+sum dist_miles_1 if gw_mth_bsn_cnt1>1, detail
+sum dist_miles_1 if gw_mth_bsn_cnt1>10, detail
+sum dist_miles_1 if gw_mth_bsn_cnt1>50, detail
+sum dist_miles_1 if gw_mth_bsn_cnt1>100, detail
+sum dist_miles_1 if gw_mth_bsn_cnt1>500, detail
+sum dist_miles_1 if gw_mth_bsn_cnt1==0, detail
+
+** Label
+la var latlon_group "APEP lat/lon identifier"
+la var modate "Year-Month"
+la var depth_1s "Extracted gw depth (all measurements, simple, feet)"
+la var depth_1b "Extracted gw depth (all measurements, bilinear, feet)"
+la var depth_2s "Extracted gw depth (non-ques measurements, simple, feet)"
+la var depth_2b "Extracted gw depth (non-ques measurements, bilinear, feet)"
+la var depth_3s "Extracted gw depth (obs non-ques measurements, simple, feet)"
+la var depth_3b "Extracted gw depth (obs non-ques measurements, bilinear, feet)"
+la var dist_miles_1 "Miles to nearest gw measurement in raster (all)"
+la var dist_miles_2 "Miles to nearest gw measurement in raster (non-ques)"
+la var dist_miles_3 "Miles to nearest gw measurement in raster (obs non-ques)"
+rename depth_?? gw_rast_depth_mth_??
+rename dist_miles_? gw_rast_dist_mth_?
+drop _merge
+
+** Save
+unique latlon_group modate
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/groundwater/groundwater_depth_apep_month_rast.dta", replace
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 9. Construct panels of groundwater depth for APEP pumps (quarterly)
+if 1==1{
+
+** Read in output from GIS script to extract quarterly depths from rasters
+insheet using "$dirpath_data/misc/pumps_gw_depths_from_rasters.csv", double comma clear
+
+** Drop monthly variables, and APEP-specific variables
+drop *_????m? *_????m?? pump_lat pump_lon x y
+
+** Destring numeric variables before reshaping, to reduce file size
+foreach v of varlist depth_??_* {
+	cap replace `v' = "" if `v'=="NA"
+	destring `v', replace
+}
+
+** Reshape long, to convert into pump-quarter panel
+reshape long depth_1s depth_1b depth_2s depth_2b depth_3s depth_3b ///
+	distkm_1 distkm_2 distkm_3, i(latlon_group) j(QTR) string
+
+** Reformat string variables
+destring latlon_group, replace
+assert latlon_group!=.
+unique latlon_group QTR
+assert r(unique)==r(N)
+gen qtr = yq(real(substr(QTR,2,4)),real(substr(QTR,7,2)))
+format %tq qtr
+assert string(qtr,"%tq")==substr(QTR,2,10)
+drop QTR
+order latlon_group qtr
+unique latlon_group qtr
+assert r(unique)==r(N)
+sort latlon_group qtr
+
+** Merge in basin identifiers
+preserve
+use "$dirpath_data/pge_cleaned/apep_pump_gis.dta", clear
+keep latlon_group basin_id
+duplicates drop
+tempfile apep_basins
+save `apep_basins'
+restore
+merge m:1 latlon_group using `apep_basins', keepusing(basin_id)
+drop if _merge==2
+assert _merge==3
+drop _merge
+
+** Merge in number of groundwater measurements in each basin/quarter
+merge m:1 basin_id qtr using "$dirpath_data/groundwater/avg_groundwater_depth_basin_quarter.dta", ///
+	keep(1 3) keepusing(gw_qtr_bsn_mean1 gw_qtr_bsn_mean2 gw_qtr_bsn_mean3 ///
+	gw_qtr_bsn_cnt1 gw_qtr_bsn_cnt2 gw_qtr_bsn_cnt3)
+foreach v of varlist gw_qtr_bsn_cnt? {
+	replace `v' = 0 if _merge==1
+	assert `v'!=.
+}
+sum gw_qtr_bsn_cnt?, detail
+	
+** Convert kilometers to miles
+foreach v of varlist distkm_? {
+	replace `v' = `v'*0.621371
+	local v2 = subinstr("`v'","km","_miles",1)
+	rename `v' `v2'
+}	
+	
+** Distance threshold from nearest raster point
+sum dist_miles_1 if gw_qtr_bsn_cnt1>1, detail
+sum dist_miles_1 if gw_qtr_bsn_cnt1>10, detail
+sum dist_miles_1 if gw_qtr_bsn_cnt1>50, detail
+sum dist_miles_1 if gw_qtr_bsn_cnt1>100, detail
+sum dist_miles_1 if gw_qtr_bsn_cnt1>500, detail
+sum dist_miles_1 if gw_qtr_bsn_cnt1==0, detail
+
+** Label
+la var latlon_group "APEP lat/lon identifier"
+la var qtr "Year-Quarter"
+la var depth_1s "Extracted gw depth (all measurements, simple, feet)"
+la var depth_1b "Extracted gw depth (all measurements, bilinear, feet)"
+la var depth_2s "Extracted gw depth (non-ques measurements, simple, feet)"
+la var depth_2b "Extracted gw depth (non-ques measurements, bilinear, feet)"
+la var depth_3s "Extracted gw depth (obs non-ques measurements, simple, feet)"
+la var depth_3b "Extracted gw depth (obs non-ques measurements, bilinear, feet)"
+la var dist_miles_1 "Miles to nearest gw measurement in raster (all)"
+la var dist_miles_2 "Miles to nearest gw measurement in raster (non-ques)"
+la var dist_miles_3 "Miles to nearest gw measurement in raster (obs non-ques)"
+rename depth_?? gw_rast_depth_qtr_??
+rename dist_miles_? gw_rast_dist_qtr_?
+drop _merge
+
+** Save
+unique latlon_group qtr
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/groundwater/groundwater_depth_apep_quarter_rast.dta", replace
 
 }
 
