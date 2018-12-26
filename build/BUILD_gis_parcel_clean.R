@@ -1,6 +1,5 @@
 # Created by Yixin Sun in October 2018
-# Goal is to convert current nonstandardized shapefiles to folders that are 
-# easily looped over (refer to issue 19)
+# Goal is to clean parcel R files and get rid of duplicate geometries
 # Think about using data.tables for dissolving polygons that have the same APN
 
 library(sf)
@@ -61,7 +60,7 @@ standardize_parcels <- function(df, countyname){
 	  		 Latitude = Y) %>%
 	  mutate(County = countyname, 
 	  		 ParcelAcres = as.numeric(st_area(.)) * m2_to_acre,
-	  		 ParcelID = paste(County, 
+	  		 ParcelID = paste(County, round(ParcelAcres, digits = 4),
 	  		 				  round(Longitude, digits = 3), 
 	  		 				  round(Latitude, digits = 3)))
 
@@ -107,8 +106,9 @@ combine_parcels <- function(countyname){
 		county <- 
 		  readRDS(file.path(raw_spatial, "Parcels_R", countyname, county_path)) %>%
 		  select(-matches(not_apn)) %>%
-		  select(APN = matches(apn_names), 
-		  		 geometry = matches(regex("^geometry$|^shape$", ignore_case = T))) 
+		  select(matches(apn_names), 
+		  		 geometry = matches(regex("^geometry$|^shape$", ignore_case = T))) %>%
+		  select(APN = 1) 
 
 		county14 <- 
 		  readRDS(file.path(raw_spatial, "Parcels_R/2014", county_path)) %>%
@@ -145,8 +145,8 @@ combine_parcels <- function(countyname){
 }
 
 to_ignore <- 
-  c("2014", "parcels14", "Alameda", "Contra Costa", "Santa Clara", "San Diego", "Merced", 
-  	"Orange", "Kern", "Nevada", "Los Angeles", "Riverside", "Stanislaus", "Yolo", "Plumas")
+  c("2014", "parcels14", "Santa Clara", "San Diego", "Merced", 
+  	"Orange", "Kern", "Nevada", "Los Angeles", "Riverside", "Yolo")
 all_counties <- 
 	  list.files(file.path(raw_spatial, "Parcels_R/2014"), pattern = "*.RDS") %>%
 	  str_replace_all(., "_", " ") %>%
@@ -156,44 +156,9 @@ all_counties <-
 all_counties[-which(all_counties %in% to_ignore )] %>%
   walk(combine_parcels)
 
-# ===========================================================================
-# Read in and convert CLU data to R files
-# ===========================================================================
-# pull in tigris shapefile to get dictionary of county fip #s and county names
-ca_fips <- 
-  counties(state = "ca", class = "sf") %>%
-  st_set_geometry(NULL) %>%
-  select(fips = COUNTYFP, County = NAME)
-
-read_clu <- function(path){
-	path <- str_replace(path, "\n", "")
-	fipno <- str_extract(basename(path), "[0-9]+")
-	countyname <- 
-	  ca_fips %>%
-	  filter(fips == fipno) %>%
-	  pull(County)
-	outpath <- paste0(str_replace_all(countyname, " ", "_"), ".RDS")
-
-	clu <- 
-	   path %>%
-	   st_read(stringsAsFactors = F) %>%
-	   st_transform(main_crs) %>%
-	   select(CLUAcres = CALCACRES) %>%
-	   cbind(st_coordinates(st_centroid(.)), .) %>%
-	   mutate(County = countyname, 
-	   		  CLU_ID = paste(County, round(X, digits = 3), round(Y, digits = 3), sep = "-")) %>%
-	   select(-X, -Y)
-
-	saveRDS(clu, file.path(build_spatial, "CLU", outpath))
-	print(countyname)
-}
-
-list.dirs(file.path(raw_spatial, "CLU"), full.names = TRUE, recursive = FALSE) %>%
-  walk(read_clu)
-
-clu <- 
-  file.path(build_spatial, "CLU") %>%
-  list.files(full.names = TRUE) %>%
+parcels <-
+  file.path(build_spatial, "Parcels") %>%
+  list.files(full.names = TRUE, pattern = "*.RDS") %>%
   map_dfr(readRDS) %>%
   st_sf(crs = main_crs)
-st_write(clu, file.path(build_spatial, "CLU/clu_poly"), driver = "ESRI Shapefile")
+saveRDS(parcels, file.path(build_spatial, "Parcels/parcels.Rda"))

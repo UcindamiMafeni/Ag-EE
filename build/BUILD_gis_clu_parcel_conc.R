@@ -46,15 +46,13 @@ clu_parcel_int <- function(countyname){
 # ==========================================================================
 plan(multiprocess(workers = eval(num_workers)))
 to_ignore <-
-  c("Fresno", "San Bernardino", "San Bernadino")
+  c("Fresno")
 
 parcel_counties <- 
   list.files(file.path(build_spatial, "Parcels")) %>%
   str_replace_all(".RDS", "") %>%
   str_replace_all("_", " ") 
-parcel_counties <-
-  parcel_counties[-which(parcel_counties %in% to_ignore)] #%>%
-  #as.list() 
+#parcel_counties <- parcel_counties[-which(parcel_counties %in% to_ignore)] 
 
 clu_counties <-
   list.files(file.path(build_spatial, "CLU")) %>%
@@ -65,7 +63,6 @@ conc_counties <- intersect(parcel_counties, clu_counties)
 
 clu_parcel_conc <- 
   conc_counties %>%
-  #map_df(clu_parcel_int)
-  future_map_dfr(clu_parcel_int)
+  future_map_dfr(clu_parcel_int, .progress = TRUE)
 
 saveRDS(clu_parcel_conc, file.path(build_spatial, "cross/clu_parcel_conc.RDS"))

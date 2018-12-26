@@ -1,5 +1,5 @@
 # Created by Yixin Sun in October 2018
-# Goal is to convert current nonstandardized shapefiles to folders that are 
+# Goal is to convert raw nonstandardized shapefiles to R files in folders that are 
 # easily looped over (refer to issue 19)
 
 library(sf)
