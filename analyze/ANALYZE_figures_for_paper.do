@@ -44,9 +44,16 @@ graph export "$dirpath/output/marg_price_3rates.eps", replace
 
 ** 2. Histogram of average annual bill ($)
 {
-use "$dirpath_data/merged/sa_bill_elec_panel.dta", clear
-keep if pull=="20180719"
-keep if regexm(rt_sched_cd,"AG")==1
+use "$dirpath_data/results/externality_calcs_june2016_rast_dd_mth_2SP.dta", clear
+keep if in_regs==1
+
+sum dW_20 if basin_group==122, detail
+gen dW_20_hist = max(dW_20, -10)
+hist dW_20_hist
+
+sum dW_20_upr if basin_group==122, detail
+gen dW_20_upr_hist = max(dW_20_upr,-10)
+hist dW_20_upr_hist if n_j_pos20>1000
 
 unique sa_uuid bill_start_dt
 assert r(unique)==r(N)
