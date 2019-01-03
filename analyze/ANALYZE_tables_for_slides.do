@@ -286,6 +286,242 @@ file close textab
 ************************************************
 ************************************************
 
+** 3. Results: electricity, monthly
+{
+use "$dirpath_data/results/regs_Qelec_Pelec.dta" , clear
+
+keep if pull=="20180719"
+keep if panel=="monthly"
+keep if sample=="if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0 & merge_sp_water_panel==3"
+keep if inlist(rhs,"log_p_mean","(log_p_mean = log_mean_p_kwh_ag_default)","(log_p_mean = log_p_mean_deflag*)")
+keep if inlist(fes,"sp_group#month modate", ///
+					"sp_group#month sp_group#rt_large_ag modate")
+drop if rhs=="log_p_mean" & fes!="sp_group#month modate"										
+drop if rhs=="(log_p_mean = log_p_mean_deflag*)" & fes!="sp_group#month sp_group#rt_large_ag modate"
+assert _N==4
+
+gen col = .			
+replace col = 1 if fes=="sp_group#month modate" & rhs=="log_p_mean"
+replace col = 2 if fes=="sp_group#month modate" & rhs=="(log_p_mean = log_mean_p_kwh_ag_default)"
+replace col = 3 if fes=="sp_group#month sp_group#rt_large_ag modate" & rhs=="(log_p_mean = log_mean_p_kwh_ag_default)"
+replace col = 4 if fes=="sp_group#month sp_group#rt_large_ag modate" & rhs!="(log_p_mean = log_mean_p_kwh_ag_default)"
+
+assert col!=.
+sort col
+order col
+
+forvalues c = 1/4 {
+	local beta_`c' = string(beta_log_p_mean[`c'],"%9.2f")
+	local se_`c' = string(se_log_p_mean[`c'],"%9.2f")
+	local pval_`c' = 2*ttail(dof[`c'],abs(t_log_p_mean[`c']))
+	if `pval_`c''<0.01 {
+		local stars_`c' = "$^{***}$"
+	}
+	else if `pval_`c''<0.05 {
+		local stars_`c' = "$^{**}$"
+	}
+	else if `pval_`c''<0.1 {
+		local stars_`c' = "$^{*}$"
+	}
+	else {
+		local stars_`c' = ""
+	}
+	local n_sp_`c' = string(n_SPs[`c'],"%9.0fc")
+	local n_obs_`c' = string(n_obs[`c']/1e6,"%9.2f") + "M"
+	local fstat_`c' = string(fstat_rk[`c'],"%9.0fc")
+	if "`fstat_`c''"=="." {
+		local fstat_`c' = ""
+	}
+}
+
+
+	// Build table
+file open textab using "$dirpath_output/table_regs_elec_main.tex", write text replace
+
+file write textab "\begin{table}\centering" _n
+file write textab "\caption{\normalsize Estimated Demand Elasticities -- Electricity}" _n
+file write textab "\footnotesize" _n
+file write textab "\vspace{-5mm}" _n
+file write textab "\begin{tabular}{lccccccc}" _n
+file write textab "\hline" _n
+file write textab "\\ " _n
+file write textab "\vspace{-7mm}" _n
+file write textab "\\" _n
+file write textab "& ~~~~~~(1)~~~~~~ & ~~~~~~(2)~~~~~~ & ~~~~~~(3)~~~~~~ & ~~~~~~(4)~~~~~~  \\" _n
+file write textab "[.1em]" _n
+file write textab "& OLS & IV & IV & IV \\" _n
+file write textab "[.1em]" _n
+file write textab "\cline{2-5}" _n
+file write textab "\\" _n
+file write textab "\vspace{-7mm}" _n
+file write textab "\\" _n
+file write textab "\small \$\log(P^{\text{elec}}_{it})\$ & $`beta_1'$`stars_1'  & $`beta_2'$`stars_2' & $`beta_3'$`stars_3' & $`beta_4'$`stars_4'\\" _n
+file write textab "& $(`se_1')$ & $(`se_2')$ & $(`se_3')$ & $(`se_4')$\\" _n
+*file write textab "[1em]" _n
+*file write textab "Instrument(s): \\" _n
+*file write textab "[0.1em] " _n
+*file write textab "~~ Default $\log\big(P^{\text{elec}}_{it}\big)$  & & Yes & Yes  & \\" _n
+*file write textab "[0.1em] " _n
+*file write textab "~~ Default $\log\big(P^{\text{elec}}_{it}\big)$, lagged  & & & & Yes \\" _n
+file write textab "[1.2em]" _n
+file write textab "SP \$\times\$ month FEs  & Yes & Yes  & Yes & Yes \\" _n
+file write textab "[.25em]" _n
+file write textab "Month-of-sample FEs  &  Yes & Yes  & Yes  & Yes\\" _n
+file write textab "[.25em]" _n
+file write textab "SP \$\times\$ 1[\$\ge\$ 35] FEs & &  & Yes & Yes \\" _n
+file write textab "[.25em]" _n
+file write textab "IV: 6- \& 12-month lags & &  &  & Yes \\" _n
+*file write textab "[.25em]" _n
+*file write textab "SP \$\times\$ month \$\times\$ groundwater depth &  & & Yes & Yes  \\" _n
+*file write textab "[.25em]" _n
+*file write textab "Water district \$\times\$ year FEs  & & & & Yes  \\" _n
+file write textab "[1.2em]" _n
+file write textab "Unique SPs & `n_sp_1' & `n_sp_2' & `n_sp_3' & `n_sp_4' \\" _n
+file write textab "[.15em]" _n
+file write textab "SP-month observations & `n_obs_1'& `n_obs_2'& `n_obs_3'& `n_obs_4' \\" _n
+file write textab "[0.15em] " _n
+file write textab "First stage \$F\$-statistic & `fstat_1' & `fstat_2' & `fstat_3' & `fstat_4' \\ " _n
+file write textab "\hline" _n
+file write textab "\vspace{-2mm}" _n
+file write textab "\\" _n
+file write textab "\multicolumn{5}{l}{Standard errors two-way clustered by SP and month-of-sample." _n
+file write textab "SP = service point.} \\" _n
+file write textab "\multicolumn{5}{l}{Dependent variable is \$\sinh^{-1}(Q^{\text{elec}}_{it})\$, from \`\`monthified'' billing data.} \\" _n
+file write textab "\multicolumn{5}{l}{IV: within-category default \$\log\big(P^{\text{elec}}_{it}\big)\$.} \\" _n
+file write textab "\multicolumn{5}{l}{Significance: *** \$p < 0.01\$, ** \$p < 0.05\$, * \$p < 0.10\$.}" _n
+file write textab "\end{tabular}" _n
+file write textab "\end{table}" _n
+
+file close textab
+}
+
+************************************************
+************************************************
+
+** 4. Results: groundwater, monthly, combined
+{
+use "$dirpath_data/results/regs_Qwater_Pwater_combined.dta" , clear
+
+keep if regexm(sample,"if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0")
+*keep if regexm(fes,"sp_group#rt_large_ag")
+keep if regexm(rhs,"_dd_mth_2SP") | regexm(rhs,"_dd_qtr_2SP")
+
+gen col = .			
+
+replace col = 1 if fes=="sp_group#month modate" ///
+	& rhs=="ln_mean_p_af_rast_dd_mth_2SP" ///
+	& sample=="if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0"
+	
+replace col = 2 if fes=="sp_group#month modate" ///
+	& rhs=="(ln_mean_p_af_rast_dd_mth_2SP = log_mean_p_kwh_ag_default)" ///
+	& sample=="if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0"
+
+replace col = 3 if fes=="sp_group#month sp_group#rt_large_ag modate" ///
+	& rhs=="(ln_mean_p_af_rast_dd_mth_2SP = log_mean_p_kwh_ag_default)" ///
+	& sample=="if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0"
+
+replace col = 4 if fes=="sp_group#month sp_group#rt_large_ag modate" ///
+	& rhs=="(ln_mean_p_af_rast_dd_mth_2SP = log_p_mean_deflag*)" ///
+	& sample=="if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0"
+
+	
+drop if col==.
+assert _N==4
+sort col
+order col
+
+forvalues c = 1/4 {
+	local beta_`c' = string(beta_log_p_af[`c'],"%9.2f")
+	local se_`c' = string(se_log_p_af[`c'],"%9.2f")
+	local pval_`c' = 2*ttail(dof[`c'],abs(t_log_p_af[`c']))
+	if `pval_`c''<0.01 {
+		local stars_`c' = "$^{***}$"
+	}
+	else if `pval_`c''<0.05 {
+		local stars_`c' = "$^{**}$"
+	}
+	else if `pval_`c''<0.1 {
+		local stars_`c' = "$^{*}$"
+	}
+	else {
+		local stars_`c' = ""
+	}
+	local n_sp_`c' = string(n_SPs[`c'],"%9.0fc")
+	local n_obs_`c' = string(n_obs[`c']/1e6,"%9.2f") + "M"
+	local fstat_`c' = string(fstat_rk[`c'],"%9.0fc")
+	if "`fstat_`c''"=="." {
+		local fstat_`c' = ""
+	}
+}
+
+
+	// Build table
+file open textab using "$dirpath_output/table_regs_water_main.tex", write text replace
+
+file write textab "\begin{table}\centering" _n
+file write textab "\caption{\normalsize Estimated Demand Elasticities -- Groundwater}" _n
+file write textab "\footnotesize" _n
+file write textab "\vspace{-5mm}" _n
+file write textab "\begin{tabular}{lccccccc}" _n
+file write textab "\hline" _n
+file write textab "\\ " _n
+file write textab "\vspace{-7mm}" _n
+file write textab "\\" _n
+file write textab "& ~~~~~~(1)~~~~~~ & ~~~~~~(2)~~~~~~ & ~~~~~~(3)~~~~~~ & ~~~~~~(4)~~~~~~  \\" _n
+file write textab "[.1em]" _n
+file write textab "& OLS & IV & IV & IV \\" _n
+file write textab "[.1em]" _n
+file write textab "\cline{2-5}" _n
+file write textab "\\" _n
+file write textab "\vspace{-7mm}" _n
+file write textab "\\" _n
+file write textab "\small \$\log(P^{\text{water}}_{it})\$ & $`beta_1'$`stars_1'  & $`beta_2'$`stars_2' & $`beta_3'$`stars_3' & $`beta_4'$`stars_4'\\" _n
+file write textab "& $(`se_1')$ & $(`se_2')$ & $(`se_3')$ & $(`se_4')$\\" _n
+*file write textab "[1em]" _n
+*file write textab "Instrument(s): \\" _n
+*file write textab "[0.1em] " _n
+*file write textab "~~ Default $\log\big(P^{\text{elec}}_{it}\big)$  & & Yes & Yes  & \\" _n
+*file write textab "[0.1em] " _n
+*file write textab "~~ Default $\log\big(P^{\text{elec}}_{it}\big)$, lagged  & & & & Yes \\" _n
+file write textab "[1.2em]" _n
+file write textab "SP \$\times\$ month FEs  & Yes & Yes  & Yes & Yes \\" _n
+file write textab "[.25em]" _n
+file write textab "Month-of-sample FEs  &  Yes & Yes  & Yes  & Yes\\" _n
+file write textab "[.25em]" _n
+file write textab "SP \$\times\$ 1[\$\ge\$ 35] FEs & &  & Yes & Yes \\" _n
+file write textab "[.25em]" _n
+file write textab "IV: 6- \& 12-month lags & &  &  & Yes \\" _n
+*file write textab "[.25em]" _n
+*file write textab "SP \$\times\$ month \$\times\$ groundwater depth &  & & Yes & Yes  \\" _n
+*file write textab "[.25em]" _n
+*file write textab "Water district \$\times\$ year FEs  & & & & Yes  \\" _n
+file write textab "[1.2em]" _n
+file write textab "Unique SPs & `n_sp_1' & `n_sp_2' & `n_sp_3' & `n_sp_4' \\" _n
+file write textab "[.15em]" _n
+file write textab "SP-month observations & `n_obs_1'& `n_obs_2'& `n_obs_3'& `n_obs_4' \\" _n
+file write textab "[0.15em] " _n
+file write textab "First stage \$F\$-statistic & `fstat_1' & `fstat_2' & `fstat_3' & `fstat_4' \\ " _n
+file write textab "\hline" _n
+file write textab "\vspace{-2mm}" _n
+file write textab "\\" _n
+file write textab "\multicolumn{5}{l}{Standard errors two-way clustered by SP and month-of-sample." _n
+file write textab "SP = service point.} \\" _n
+file write textab "\multicolumn{5}{l}{Dependent variable is \$\sinh^{-1}(Q^{\text{water}}_{it})\$, where " _n
+file write textab "\$Q^{\text{water}}_{it} = Q^{\text{elec}}_{it} \div \left(\frac{\text{kWh}}{\text{AF}}\right)_{it}\$. } \\" _n
+file write textab "\multicolumn{5}{l}{IV: within-category default \$\log\big(P^{\text{elec}}_{it}\big)\$.} \\" _n
+file write textab "\multicolumn{5}{l}{Significance: *** \$p < 0.01\$, ** \$p < 0.05\$, * \$p < 0.10\$.}" _n
+file write textab "\end{tabular}" _n
+file write textab "\end{table}" _n
+
+file close textab
+}
+
+************************************************
+************************************************
+
+
+TABLES BELOW HERE ARE OUT OF DATE
+
 ** 3. Results: monthly, stayers
 {
 use "$dirpath_data/results/regs_Qelec_Pelec.dta" , clear
