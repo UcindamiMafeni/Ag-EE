@@ -441,9 +441,9 @@ keep if inlist(rhs,"log_p_mean","(log_p_mean = log_mean_p_kwh_ag_default)","(log
 keep if inlist(fes,"sp_group#month modate", ///
 					"sp_group#month sp_group#rt_large_ag modate", ///
 					"sp_group#month sp_group#rt_large_ag basin_group#year wdist_group#year modate", ///
-					"sp_group#rt_large_ag sp_group#month basin_group#year wdist_group#year modate sp_group#c.modate")
+					"sp_group#rt_large_ag sp_group#month modate sp_group#c.modate")
 drop if rhs=="log_p_mean" & fes!="sp_group#month modate"										
-drop if rhs=="(log_p_mean = log_p_mean_deflag*)" & fes!="sp_group#month sp_group#rt_large_ag basin_group#year wdist_group#year modate"
+drop if rhs=="(log_p_mean = log_p_mean_deflag*)" & fes!="sp_group#month sp_group#rt_large_ag modate"
 assert _N==6
 
 gen col = .			
@@ -451,8 +451,8 @@ replace col = 1 if fes=="sp_group#month modate" & rhs=="log_p_mean"
 replace col = 2 if fes=="sp_group#month modate" & rhs=="(log_p_mean = log_mean_p_kwh_ag_default)"
 replace col = 3 if fes=="sp_group#month sp_group#rt_large_ag modate" & rhs=="(log_p_mean = log_mean_p_kwh_ag_default)"
 replace col = 4 if fes=="sp_group#month sp_group#rt_large_ag basin_group#year wdist_group#year modate" & rhs=="(log_p_mean = log_mean_p_kwh_ag_default)"
-replace col = 5 if fes=="sp_group#month sp_group#rt_large_ag basin_group#year wdist_group#year modate" & rhs!="(log_p_mean = log_mean_p_kwh_ag_default)"
-replace col = 6 if fes=="sp_group#rt_large_ag sp_group#month basin_group#year wdist_group#year modate sp_group#c.modate" & rhs=="(log_p_mean = log_mean_p_kwh_ag_default)"
+replace col = 5 if fes=="sp_group#month sp_group#rt_large_ag modate" & rhs!="(log_p_mean = log_mean_p_kwh_ag_default)"
+replace col = 6 if fes=="sp_group#rt_large_ag sp_group#month modate sp_group#c.modate" & rhs=="(log_p_mean = log_mean_p_kwh_ag_default)"
 
 assert col!=.
 sort col
@@ -522,9 +522,9 @@ file write textab "~~Month-of-sample  & Yes  & Yes  & Yes  & Yes  & Yes  & Yes  
 file write textab "[0.1em] " _n
 file write textab "~~Unit $\times$ physical capital & & & Yes & Yes & Yes & Yes  \\" _n
 file write textab "[0.1em] " _n
-file write textab "~~Water basin $\times$ year & & &  & Yes & Yes & Yes  \\" _n
+file write textab "~~Water basin $\times$ year & & &  & Yes & &  \\" _n
 file write textab "[0.1em] " _n
-file write textab "~~Water district $\times$ year & & &  & Yes & Yes & Yes \\" _n
+file write textab "~~Water district $\times$ year & & &  & Yes & & \\" _n
 file write textab "[0.1em] " _n
 *file write textab "~~Unit-specific slopes in depth & & &  &  & Yes & Yes & Yes \\" _n
 *file write textab "[0.1em] " _n
@@ -918,7 +918,7 @@ file close textab
 ************************************************
 ************************************************
 
-** 6. Electricity summary stats
+** 6. Deadweight loss
 {
 use "$dirpath_data/results/externality_calcs_june2016_rast_dd_mth_2SP.dta", clear
 keep if in_regs==1
