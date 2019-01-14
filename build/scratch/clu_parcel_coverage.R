@@ -44,13 +44,13 @@ parcel_coverage_all <-
   str_replace_all("_", " ") 
 
 parcel_coverage <- 
-  list.files(file.path(build_spatial, "Parcels")) %>%
+  list.files(file.path(build_spatial, "Parcels/parcels_counties")) %>%
   str_replace_all(".RDS", "") %>%
   str_replace_all("_", " ") 
 
 # clu coverage
 clu_coverage <-
-  list.files(file.path(build_spatial, "CLU")) %>%
+  list.files(file.path(build_spatial, "CLU/clu_counties")) %>%
   str_replace_all(".RDS", "") %>%
   str_replace_all("_", " ") 
 
@@ -60,7 +60,7 @@ clu_coverage <-
 # ========================================================================
 ca_counties <- 
   counties(state = "ca", class = "sf") %>%
-  select(County = NAME)
+  dplyr::select(County = NAME)
 
 coverage_counties <-
   ca_counties %>%

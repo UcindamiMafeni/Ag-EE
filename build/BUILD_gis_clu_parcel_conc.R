@@ -20,13 +20,17 @@ num_workers <- 4
 
 # function for intersecting CLU with Parcels
 clu_parcel_int <- function(countyname){
+
+  # read in clu and parcel shapefiles
   tic(countyname)
   input_path <- 
     str_replace_all(basename(countyname), " ", "_") %>%
     paste0(., ".RDS")
-  parcel <- readRDS(file.path(build_spatial, "Parcels", input_path))
-  clu <- readRDS(file.path(build_spatial, "CLU", input_path))
+  parcel <- readRDS(file.path(build_spatial, "Parcels/parcels_counties", input_path))
+  clu <- readRDS(file.path(build_spatial, "CLU/clu_counties", input_path))
 
+  # intersect parcel and clu - calculate intersection acreage and mark 
+  # which parcel has most of the CLU 
   clu_parcel <-
     st_intersection(parcel, clu) %>%
     mutate(IntAcres = as.numeric(st_area(.)) * m2_to_acre, 
@@ -49,8 +53,9 @@ clu_parcel_int <- function(countyname){
 # ==========================================================================
 plan(multiprocess(workers = eval(num_workers)))
 
+# find list of counties where both clu and parcel shapefiles are cleaned
 parcel_counties <- 
-  list.files(file.path(build_spatial, "Parcels")) %>%
+  list.files(file.path(build_spatial, "Parcels/parcel_counties")) %>%
   str_replace_all(".RDS", "") %>%
   str_replace_all("_", " ") 
 
@@ -61,8 +66,11 @@ clu_counties <-
 
 conc_counties <- intersect(parcel_counties, clu_counties)
 
+# loop over counties to intersect clu and parcels
 clu_parcel_conc <- 
   conc_counties %>%
   future_map_dfr(clu_parcel_int, .progress = TRUE)
 
 saveRDS(clu_parcel_conc, file.path(build_spatial, "cross/clu_parcel_conc.RDS"))
+
+  
