@@ -918,7 +918,7 @@ file close textab
 ************************************************
 ************************************************
 
-** 6. Deadweight loss
+** 6. Deadweight loss table
 {
 use "$dirpath_data/results/externality_calcs_june2016_rast_dd_mth_2SP.dta", clear
 keep if in_regs==1
@@ -954,19 +954,19 @@ foreach i in 10 20 30 {
 	sum n_j_pos`i' if q_old>1 & q_old!=. & basin_group==121, detail
 	local E1_`i' = string(r(mean), "%9.0fc")
 
-	sum n_j_pos`i'_upc if q_old>1 & q_old!=. & basin_group==121, detail
+	sum n_j_pos`i'_upr if q_old>1 & q_old!=. & basin_group==121, detail
 	local E2_`i' = string(r(mean), "%9.0fc")
 
 	sum n_j_pos`i' if q_old>1 & q_old!=. & basin_group==68, detail
 	local E3_`i' = string(r(mean), "%9.0fc")
 
-	sum n_j_pos`i'_upc if q_old>1 & q_old!=. & basin_group==68, detail
+	sum n_j_pos`i'_upr if q_old>1 & q_old!=. & basin_group==68, detail
 	local E4_`i' = string(r(mean), "%9.0fc")
 
 	sum n_j_pos`i' if q_old>1 & q_old!=. & basin_group==122, detail
 	local E5_`i' = string(r(mean), "%9.0fc")
 
-	sum n_j_pos`i'_upc if q_old>1 & q_old!=. & basin_group==122, detail
+	sum n_j_pos`i'_upr if q_old>1 & q_old!=. & basin_group==122, detail
 	local E6_`i' = string(r(mean), "%9.0fc")
 
 	sum dW_`i' if q_old>1 & q_old!=. & basin_group==121, detail
@@ -983,7 +983,7 @@ foreach i in 10 20 30 {
 		local H1_`i' = "\mathbf{\phantom{-}" + "`H1_`i''" + "}"
 	}
 
-	sum dW_`i'_upc if q_old>1 & q_old!=. & basin_group==121, detail
+	sum dW_`i'_upr if q_old>1 & q_old!=. & basin_group==121, detail
 	local F2_`i' = string(r(p25),"%9.2f")
 	if r(p25)>0 {
 		local F2_`i' = "\mathbf{\phantom{-}" + "`F2_`i''" + "}"
@@ -1010,7 +1010,7 @@ foreach i in 10 20 30 {
 		local H3_`i' = "\mathbf{\phantom{-}" + "`H3_`i''" + "}"
 	}
 
-	sum dW_`i'_upc if q_old>1 & q_old!=. & basin_group==68, detail
+	sum dW_`i'_upr if q_old>1 & q_old!=. & basin_group==68, detail
 	local F4_`i' = string(r(p25),"%9.2f")
 	if r(p25)>0 {
 		local F4_`i' = "\mathbf{\phantom{-}" + "`F4_`i''" + "}"
@@ -1038,7 +1038,7 @@ foreach i in 10 20 30 {
 		local H5_`i' = "\mathbf{\phantom{-}" + "`H5_`i''" + "}"
 	}
 
-	sum dW_`i'_upc if q_old>1 & q_old!=. & basin_group==122, detail
+	sum dW_`i'_upr if q_old>1 & q_old!=. & basin_group==122, detail
 	local F6_`i' = string(r(p25),"%9.2f")
 	if r(p25)>0 {
 		local F6_`i' = "\mathbf{\phantom{-}" + "`F6_`i''" + "}"
@@ -1120,7 +1120,7 @@ file write textab "the net effect on \emph{total} consumer surplus, subtracting 
 file write textab "in July summed across all units \$j\$. Bolded numbers indicate positive welfare changes, consistent with unit \$i\$ imposing a negative  " _n
 file write textab "open-access externality greater than its own private benefit. . \`\`APEP'' columns include only neighbors in our APEP-matched estimation sample, which almost certainly  " _n
 file write textab "understates the magnitude of \$ \sum_j \Delta CS_j\$ (by summing over only a subset of nearby agricultural groundwater pumpers).  " _n
-file write textab "\`\`Scaled'' columns inflate the number of \$i\$'s neighbors based on the ratio of match-to-unmatched PGE agricultural  " _n
+file write textab "\`\`Scaled'' columns conservately inflate the number of \$i\$'s neighbors based on the ratio of match-to-unmatched PGE agricultural  " _n
 file write textab "service points in each groundwater basin. We calculate all changes in consumer surplus by parameterizing unit-specific groundwater  " _n
 file write textab "demand curves, imposing a homogeneous and constant elasticity of \$\epsilon = -1.12\$ (based on our estimate from Table  " _n
 file write textab "\ref{tab:water_regs_combined}, Column (2)). All units are in \\$/AF. " _n
