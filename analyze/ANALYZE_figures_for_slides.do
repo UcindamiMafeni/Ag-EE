@@ -162,55 +162,55 @@ foreach r in 5 10 20 30 {
 
 twoway ///
 	(kdensity dcs_i if in_kdens, lcolor(maroon) lw(medium))  ///
-	, xline(0, lcolor(gs5) lw(thin)) xscale(r(-6,2.2)) xlab(-6(2)2, labsize(vlarge)) ///
+	, xline(0, lcolor(gs5) lw(thin)) xscale(r(-6,3.2)) xlab(-6(1)3, labsize(vlarge)) ///
 	xtitle("$ per AF" " " " ", size(vlarge)) ///
 	ylab(,nogrid nolabels noticks) ytitle("") yscale(lcolor(white)) ///
 	graphr(color(white) lc(white)) ///
 	/*title("TEMP", size(vlarge) color(black))*/ ///
-	text(0.08 -4 "Farm i's {&Delta}CS", place(n) size(vlarge) color(maroon)) 
+	text(0.08 -4 "Farm {it:i}{subscript: }'s {&Delta}CS{it:{subscript:i}}", place(n) size(vlarge) color(maroon)) 
 graph export "$dirpath/output/ext_dcs_i.eps", replace
 
 twoway ///
 	(kdensity dcs_i if in_kdens, lcolor(maroon) lw(medium))  ///
-	(kdensity sum_dcs_j_pos5 if in_kdens, lcolor(green) lw(medium) lpattern(solid))  ///
-	(kdensity sum_dcs_j_pos10 if in_kdens, lcolor(green) lw(medium) lpattern(longdash))  ///
-	(kdensity sum_dcs_j_pos20 if in_kdens, lcolor(green) lw(medium) lpattern(shortdash))  ///
-	, xline(0, lcolor(gs5) lw(thin)) xscale(r(-6,2.2)) xlab(-6(2)2, labsize(vlarge)) ///
+	(kdensity sum_dcs_j_pos10 if in_kdens, lcolor(green) lw(medium) lpattern(solid))  ///
+	(kdensity sum_dcs_j_pos20 if in_kdens, lcolor(green) lw(medium) lpattern(longdash))  ///
+	(kdensity sum_dcs_j_pos30 if in_kdens, lcolor(green) lw(medium) lpattern(shortdash))  ///
+	, xline(0, lcolor(gs5) lw(thin)) xscale(r(-6,3.2)) xlab(-6(1)3, labsize(vlarge)) ///
 	xtitle("$ per AF", size(vlarge)) ///
 	ylab(,nogrid nolabels noticks) ytitle("") yscale(lcolor(white)) ///
 	graphr(color(white) lc(white)) ///
 	/*title("TEMP", size(vlarge) color(black))*/ ///
-	text(0.08 -4 "Farm i's {&Delta}CS", place(n) size(large) color(maroon)) ///
-	text(6 1.2 "Neighbors'" "{&Sigma}{&Delta}CS" "(sample)", place(n) size(vlarge) color(green)) ///
-	legend(order(2 "5 miles  " 3 "10 miles  " 4 "20 miles") col(3) size(vlarge))
+	text(0.12 -4 "Farm {it:i}{subscript: }'s {&Delta}CS{it:{subscript:i}}", place(n) size(vlarge) color(maroon)) ///
+	text(3 1.9 "Neighbors'" "{&Sigma}{it:{subscript:j }}{&Delta}CS{it:{subscript:j}}" "(sample)", place(n) size(vlarge) color(green)) ///
+	legend(order(2 "10 miles  " 3 "20 miles  " 4 "30 miles") col(3) size(vlarge))
 graph export "$dirpath/output/ext_dcs_j.eps", replace
 
 twoway ///
 	(kdensity dcs_i if in_kdens, lcolor(maroon) lw(medium))  ///
-	(kdensity sum_dcs_j_pos5_upr if in_kdens, lcolor(green) lw(medium) lpattern(solid))  ///
-	(kdensity sum_dcs_j_pos10_upr if in_kdens, lcolor(green) lw(medium) lpattern(longdash))  ///
-	(kdensity sum_dcs_j_pos20_upr if in_kdens, lcolor(green) lw(medium) lpattern(shortdash))  ///
-	, xline(0, lcolor(gs5) lw(thin)) xscale(r(-6,2.2)) xlab(-6(2)2, labsize(vlarge)) ///
+	(kdensity sum_dcs_j_pos10_upr if in_kdens, lcolor(green) lw(medium) lpattern(solid))  ///
+	(kdensity sum_dcs_j_pos20_upr if in_kdens, lcolor(green) lw(medium) lpattern(longdash))  ///
+	(kdensity sum_dcs_j_pos30_upr if in_kdens, lcolor(green) lw(medium) lpattern(shortdash))  ///
+	, xline(0, lcolor(gs5) lw(thin)) xscale(r(-6,3.2)) xlab(-6(1)3, labsize(vlarge)) ///
 	xtitle("$ per AF", size(vlarge)) ///
 	ylab(,nogrid nolabels noticks) ytitle("") yscale(lcolor(white)) ///
 	graphr(color(white) lc(white)) ///
 	/*title("TEMP", size(vlarge) color(black))*/ ///
-	text(0.07 -4 "Farm i's {&Delta}CS", place(n) size(large) color(maroon)) ///
-	text(1.5 1.4 "Neighbors'" "{&Sigma}{&Delta}CS" "(scaled)", place(n) size(vlarge) color(green)) ///
-	legend(order(2 "5 miles  " 3 "10 miles  " 4 "20 miles") col(3) size(vlarge))
+	text(0.12 -4 "Farm {it:i}{subscript: }'s {&Delta}CS{it:{subscript:i}}", place(n) size(large) color(maroon)) ///
+	text(1.1 2.4 "Neighbors'" "{&Sigma}{it:{subscript:j }}{&Delta}CS{it:{subscript:j}}" "(scaled)", place(n) size(vlarge) color(green)) ///
+	legend(order(2 "10 miles  " 3 "20 miles  " 4 "30 miles") col(3) size(vlarge))
 graph export "$dirpath/output/ext_dcs_j_scaled.eps", replace
 
 twoway ///
-	(kdensity dW_5_upr if in_kdens, lcolor(midblue) lw(medium) lpattern(solid))  ///
-	(kdensity dW_10_upr if in_kdens, lcolor(midblue) lw(medium) lpattern(longdash))  ///
-	(kdensity dW_20_upr if in_kdens, lcolor(midblue) lw(medium) lpattern(shortdash))  ///
-	, xline(0, lcolor(gs5) lw(thin)) xscale(r(-6,2.2)) xlab(-6(2)2, labsize(vlarge)) ///
+	(kdensity dW_10_upr if in_kdens, lcolor(midblue) lw(medium) lpattern(solid))  ///
+	(kdensity dW_20_upr if in_kdens, lcolor(midblue) lw(medium) lpattern(longdash))  ///
+	(kdensity dW_30_upr if in_kdens, lcolor(midblue) lw(medium) lpattern(shortdash))  ///
+	, xline(0, lcolor(gs5) lw(thin)) xscale(r(-6,3.2)) xlab(-6(1)3, labsize(vlarge)) ///
 	xtitle("$ per AF", size(vlarge)) ///
 	ylab(,nogrid nolabels noticks) ytitle("") yscale(lcolor(white)) ///
 	graphr(color(white) lc(white)) ///
 	/*title("TEMP", size(vlarge) color(black))*/ ///
-	text(.4 -3 "{&Delta}W = {&Delta}CS{subscript:i} + {&Sigma}{subscript:-i}{&Delta}CS{subscript:-i}" "(scaled)", place(n) size(vlarge) color(midblue)) ///
-	legend(order(1 "5 miles  " 2 "10 miles  " 3 "20 miles") col(3) size(vlarge))
+	text(.13 -4 "{&Delta}W = {&Delta}CS{it:{subscript:i}} + {&Sigma}{it:{subscript:j }}{&Delta}CS{it:{subscript:j}}" "(scaled)", place(n) size(vlarge) color(midblue)) ///
+	legend(order(1 "10 miles  " 2 "20 miles  " 3 "30 miles") col(3) size(vlarge))
 graph export "$dirpath/output/ext_dw_scaled.eps", replace
 
 
