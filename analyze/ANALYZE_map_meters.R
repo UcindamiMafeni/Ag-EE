@@ -192,3 +192,57 @@ postscript(paste0(mapsDir,"/pge_ca_map.eps"),width=360)
 dev.off()
 
 
+
+################################################################
+### METER MAP with legend with counts
+
+
+cols <- c("c1"=eltblue,"c2"=dknavy)
+shapes <- c("s1"=21,"s2"=22)
+labels  <- c("108,172 unmatched",
+             "11,851 matched")
+
+postscript(paste0(mapsDir,"/pge_ca_map_counts.eps"),width=360)
+ggplot() +
+  geom_polygon(data = pgeDF, aes(x = long, y = lat, group = group),
+               color = 'gray75', fill = 'NA') +
+  geom_polygon(data = caDF, aes(x = long, y = lat, group = group),
+               color = 'black', fill = 'NA') +
+  geom_point(data = latlonDF_3, aes(x = prem_long, y = prem_lat,
+                                    color = "c1"), shape = 19, alpha=1, size=0.1) +
+  geom_point(data = latlonDF_1, aes(x = prem_long, y = prem_lat,
+                                    color = "c2"), shape = 19, alpha=1, size=0.1) +
+  coord_fixed(ratio = 1.25) +
+  theme_bw() +
+  theme(panel.background = element_rect(fill = NA),
+        axis.ticks = element_blank(),
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        legend.key = element_rect(fill='white'),
+        legend.key.size = unit(1.5, 'lines'),
+        legend.title = element_text(size=1),
+        legend.text = element_text(size=24),
+        legend.position = c(0.73,0.76),
+        legend.margin = margin(t=0,r=0,b=0,l=0),
+        legend.box.margin = margin(t=0,r=0,b=0,l=0),
+        plot.background = element_rect(fill='white'),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        plot.margin = margin(t=0,r=0,b=0,l=0)
+  ) +
+  labs(x="", y="", title="") +
+  scale_color_manual(name = "",
+                     breaks = c("c1","c2"), 
+                     values = cols,
+                     labels = labels) +
+  guides(colour = guide_legend(override.aes = list(size=3)))
+
+# scale_shape_manual(name = "",
+#                    breaks = c("s1","s2"),
+#                    values = shapes,
+#                    labels = labels) 
+# 
+dev.off()
+
+

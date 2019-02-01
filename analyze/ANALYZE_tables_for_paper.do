@@ -441,9 +441,9 @@ keep if inlist(rhs,"log_p_mean","(log_p_mean = log_mean_p_kwh_ag_default)","(log
 keep if inlist(fes,"sp_group#month modate", ///
 					"sp_group#month sp_group#rt_large_ag modate", ///
 					"sp_group#month sp_group#rt_large_ag basin_group#year wdist_group#year modate", ///
-					"sp_group#rt_large_ag sp_group#month basin_group#year wdist_group#year modate sp_group#c.modate")
+					"sp_group#rt_large_ag sp_group#month modate sp_group#c.modate")
 drop if rhs=="log_p_mean" & fes!="sp_group#month modate"										
-drop if rhs=="(log_p_mean = log_p_mean_deflag*)" & fes!="sp_group#month sp_group#rt_large_ag basin_group#year wdist_group#year modate"
+drop if rhs=="(log_p_mean = log_p_mean_deflag*)" & fes!="sp_group#month sp_group#rt_large_ag modate"
 assert _N==6
 
 gen col = .			
@@ -451,8 +451,8 @@ replace col = 1 if fes=="sp_group#month modate" & rhs=="log_p_mean"
 replace col = 2 if fes=="sp_group#month modate" & rhs=="(log_p_mean = log_mean_p_kwh_ag_default)"
 replace col = 3 if fes=="sp_group#month sp_group#rt_large_ag modate" & rhs=="(log_p_mean = log_mean_p_kwh_ag_default)"
 replace col = 4 if fes=="sp_group#month sp_group#rt_large_ag basin_group#year wdist_group#year modate" & rhs=="(log_p_mean = log_mean_p_kwh_ag_default)"
-replace col = 5 if fes=="sp_group#month sp_group#rt_large_ag basin_group#year wdist_group#year modate" & rhs!="(log_p_mean = log_mean_p_kwh_ag_default)"
-replace col = 6 if fes=="sp_group#rt_large_ag sp_group#month basin_group#year wdist_group#year modate sp_group#c.modate" & rhs=="(log_p_mean = log_mean_p_kwh_ag_default)"
+replace col = 5 if fes=="sp_group#month sp_group#rt_large_ag modate" & rhs!="(log_p_mean = log_mean_p_kwh_ag_default)"
+replace col = 6 if fes=="sp_group#rt_large_ag sp_group#month modate sp_group#c.modate" & rhs=="(log_p_mean = log_mean_p_kwh_ag_default)"
 
 assert col!=.
 sort col
@@ -522,9 +522,9 @@ file write textab "~~Month-of-sample  & Yes  & Yes  & Yes  & Yes  & Yes  & Yes  
 file write textab "[0.1em] " _n
 file write textab "~~Unit $\times$ physical capital & & & Yes & Yes & Yes & Yes  \\" _n
 file write textab "[0.1em] " _n
-file write textab "~~Water basin $\times$ year & & &  & Yes & Yes & Yes  \\" _n
+file write textab "~~Water basin $\times$ year & & &  & Yes & &  \\" _n
 file write textab "[0.1em] " _n
-file write textab "~~Water district $\times$ year & & &  & Yes & Yes & Yes \\" _n
+file write textab "~~Water district $\times$ year & & &  & Yes & & \\" _n
 file write textab "[0.1em] " _n
 *file write textab "~~Unit-specific slopes in depth & & &  &  & Yes & Yes & Yes \\" _n
 *file write textab "[0.1em] " _n
@@ -853,7 +853,7 @@ file write textab "Instrument(s): \\" _n
 file write textab "[0.1em] " _n
 file write textab "~~ Default $\log\big(P^{\text{elec}}_{it}\big)$  &  & Yes & Yes  & Yes  & Yes & \\" _n
 file write textab "[0.1em] " _n
-file write textab "~~ Default $\log\big(P^{\text{elec}}_{it}\big)$, laggeed  & & &  &  & & Yes \\" _n
+file write textab "~~ Default $\log\big(P^{\text{elec}}_{it}\big)$, lagged  & & &  &  & & Yes \\" _n
 file write textab "[1.5em] " _n
 file write textab "Fixed effects: \\" _n
 file write textab "[0.1em] " _n
@@ -913,6 +913,222 @@ file write textab "\end{table}" _n
 
 file close textab
 
+}
+
+************************************************
+************************************************
+
+** 6. Deadweight loss table
+{
+use "$dirpath_data/results/externality_calcs_june2016_rast_dd_mth_2SP.dta", clear
+keep if in_regs==1
+
+unique sp_uuid if q_old>1 & q_old!=. & basin_group==121
+local A1 = string(r(unique),"%9.0fc")
+
+unique sp_uuid if q_old>1 & q_old!=. & basin_group==68
+local A2 = string(r(unique),"%9.0fc")
+
+unique sp_uuid if q_old>1 & q_old!=. & basin_group==122
+local A3 = string(r(unique),"%9.0fc")
+
+
+sum dcs_i if q_old>1 & q_old!=. & basin_group==121, detail
+local B1 = string(r(p25),"%9.2f")
+local C1 = string(r(p50),"%9.2f")
+local D1 = string(r(p75),"%9.2f")
+
+sum dcs_i if q_old>1 & q_old!=. & basin_group==68, detail
+local B2 = string(r(p25),"%9.2f")
+local C2 = string(r(p50),"%9.2f")
+local D2 = string(r(p75),"%9.2f")
+
+sum dcs_i if q_old>1 & q_old!=. & basin_group==122, detail
+local B3 = string(r(p25),"%9.2f")
+local C3 = string(r(p50),"%9.2f")
+local D3 = string(r(p75),"%9.2f")
+
+
+foreach i in 10 20 30 {
+
+	sum n_j_pos`i' if q_old>1 & q_old!=. & basin_group==121, detail
+	local E1_`i' = string(r(mean), "%9.0fc")
+
+	sum n_j_pos`i'_upr if q_old>1 & q_old!=. & basin_group==121, detail
+	local E2_`i' = string(r(mean), "%9.0fc")
+
+	sum n_j_pos`i' if q_old>1 & q_old!=. & basin_group==68, detail
+	local E3_`i' = string(r(mean), "%9.0fc")
+
+	sum n_j_pos`i'_upr if q_old>1 & q_old!=. & basin_group==68, detail
+	local E4_`i' = string(r(mean), "%9.0fc")
+
+	sum n_j_pos`i' if q_old>1 & q_old!=. & basin_group==122, detail
+	local E5_`i' = string(r(mean), "%9.0fc")
+
+	sum n_j_pos`i'_upr if q_old>1 & q_old!=. & basin_group==122, detail
+	local E6_`i' = string(r(mean), "%9.0fc")
+
+	sum dW_`i' if q_old>1 & q_old!=. & basin_group==121, detail
+	local F1_`i' = string(r(p25),"%9.2f")
+	if r(p25)>0 {
+		local F1_`i' = "\mathbf{\phantom{-}" + "`F1_`i''" + "}"
+	}
+	local G1_`i' = string(r(p50),"%9.2f")
+	if r(p50)>0 {
+		local G1_`i' = "\mathbf{\phantom{-}" + "`G1_`i''" + "}"
+	}
+	local H1_`i' = string(r(p75),"%9.2f")
+	if r(p75)>0 {
+		local H1_`i' = "\mathbf{\phantom{-}" + "`H1_`i''" + "}"
+	}
+
+	sum dW_`i'_upr if q_old>1 & q_old!=. & basin_group==121, detail
+	local F2_`i' = string(r(p25),"%9.2f")
+	if r(p25)>0 {
+		local F2_`i' = "\mathbf{\phantom{-}" + "`F2_`i''" + "}"
+	}
+	local G2_`i' = string(r(p50),"%9.2f")
+	if r(p50)>0 {
+		local G2_`i' = "\mathbf{\phantom{-}" + "`G2_`i''" + "}"
+	}
+	local H2_`i' = string(r(p75),"%9.2f")
+	if r(p75)>0 {
+		local H2_`i' = "\mathbf{\phantom{-}" + "`H2_`i''" + "}"
+	}
+	sum dW_`i' if q_old>1 & q_old!=. & basin_group==68, detail
+	local F3_`i' = string(r(p25),"%9.2f")
+	if r(p25)>0 {
+		local F3_`i' = "\mathbf{\phantom{-}" + "`F3_`i''" + "}"
+	}
+	local G3_`i' = string(r(p50),"%9.2f")
+	if r(p50)>0 {
+		local G3_`i' = "\mathbf{\phantom{-}" + "`G3_`i''" + "}"
+	}
+	local H3_`i' = string(r(p75),"%9.2f")
+	if r(p75)>0 {
+		local H3_`i' = "\mathbf{\phantom{-}" + "`H3_`i''" + "}"
+	}
+
+	sum dW_`i'_upr if q_old>1 & q_old!=. & basin_group==68, detail
+	local F4_`i' = string(r(p25),"%9.2f")
+	if r(p25)>0 {
+		local F4_`i' = "\mathbf{\phantom{-}" + "`F4_`i''" + "}"
+	}
+	local G4_`i' = string(r(p50),"%9.2f")
+	if r(p50)>0 {
+		local G4_`i' = "\mathbf{\phantom{-}" + "`G4_`i''" + "}"
+	}
+	local H4_`i' = string(r(p75),"%9.2f")
+	if r(p75)>0 {
+		local H4_`i' = "\mathbf{\phantom{-}" + "`H4_`i''" + "}"
+	}
+
+	sum dW_`i' if q_old>1 & q_old!=. & basin_group==122, detail
+	local F5_`i' = string(r(p25),"%9.2f")
+	if r(p25)>0 {
+		local F5_`i' = "\mathbf{\phantom{-}" + "`F5_`i''" + "}"
+	}
+	local G5_`i' = string(r(p50),"%9.2f")
+	if r(p50)>0 {
+		local G5_`i' = "\mathbf{\phantom{-}" + "`G5_`i''" + "}"
+	}
+	local H5_`i' = string(r(p75),"%9.2f")
+	if r(p75)>0 {
+		local H5_`i' = "\mathbf{\phantom{-}" + "`H5_`i''" + "}"
+	}
+
+	sum dW_`i'_upr if q_old>1 & q_old!=. & basin_group==122, detail
+	local F6_`i' = string(r(p25),"%9.2f")
+	if r(p25)>0 {
+		local F6_`i' = "\mathbf{\phantom{-}" + "`F6_`i''" + "}"
+	}
+	local G6_`i' = string(r(p50),"%9.2f")
+	if r(p50)>0 {
+		local G6_`i' = "\mathbf{\phantom{-}" + "`G6_`i''" + "}"
+	}
+	local H6_`i' = string(r(p75),"%9.2f")
+	if r(p75)>0 {
+		local H6_`i' = "\mathbf{\phantom{-}" + "`H6_`i''" + "}"
+	}
+
+}
+	
+	// Build table
+file open textab using "$dirpath_output/table_externality_calcs.tex", write text replace
+
+file write textab "\begin{table}\centering" _n
+file write textab "\caption{\normalsize Deadweight Loss Calculations for June 2016}" _n
+file write textab "\label{tab:externality_calcs}" _n
+file write textab "\small" _n
+file write textab "\begin{adjustbox}{center} " _n
+file write textab "\begin{tabular}{lcccccccccc}" _n
+file write textab "\hline" _n
+file write textab "\hline" _n
+file write textab "\\ " _n
+file write textab "\vspace{-8mm}" _n
+file write textab "\\" _n
+file write textab "& \multicolumn{2}{c}{Sacramento Valley}" _n  
+file write textab "&& \multicolumn{2}{c}{Salinas Valley} " _n
+file write textab "&&  \multicolumn{2}{c}{San Joaqu\'{i}n Valley} \\" _n
+file write textab "[.1em]" _n
+file write textab "\cline{2-9}" _n
+file write textab "\\" _n
+file write textab "\vspace{-9mm}" _n
+file write textab "\\" _n
+file write textab "APEP units (\$i\$) &  \multicolumn{2}{c}{`A1'} &&  \multicolumn{2}{c}{`A2'} &&  \multicolumn{2}{c}{`A3'} \\ " _n
+file write textab "[.5em]" _n
+file write textab "\$\Delta CS_i\$ from 1 AF less \\ " _n
+file write textab "[.15em]" _n
+file write textab "~~~25th percentile   &  \multicolumn{2}{c}{\$`B1'\$} &&  \multicolumn{2}{c}{\$`B2'\$} &&  \multicolumn{2}{c}{\$`B3'\$}\\  " _n
+file write textab "[.05em]" _n
+file write textab "~~~50th percentile  &  \multicolumn{2}{c}{\$`C1'\$} &&  \multicolumn{2}{c}{\$`C2'\$} &&  \multicolumn{2}{c}{\$`C3'\$} \\ " _n
+file write textab "[.05em]" _n
+file write textab "~~~75th percentile  &  \multicolumn{2}{c}{\$`D1'\$} &&  \multicolumn{2}{c}{\$`D2'\$} &&  \multicolumn{2}{c}{\$`D3'\$} \\ " _n
+foreach i in 10 20 30 {
+	file write textab "[1.5em]" _n
+	file write textab "\multicolumn{1}{c}{\bf `i'-mile radius~~~~}  & ~APEP~ & ~Scaled~ & &  ~APEP~ & ~Scaled~ & & ~APEP~ & ~Scaled~ \\ " _n
+	file write textab "[.2em]" _n
+	file write textab "\hline" _n
+	file write textab "\\" _n
+	file write textab "\vspace{-9mm}" _n
+	file write textab "\\" _n
+	file write textab "Mean \# of neighbors (\$j\$) & `E1_`i'' & `E2_`i'' && `E3_`i'' & `E4_`i'' && `E5_`i'' & `E6_`i'' \\" _n
+	file write textab "[.5em]" _n
+	file write textab "\$\Delta CS_i + \sum_j \Delta CS_j\$    \\ " _n
+	file write textab "[.15em]" _n
+	file write textab "~~~25th percentile  & \$`F1_`i''\$ & \$`F2_`i''\$ && \$`F3_`i''\$ & \$`F4_`i''\$ && $`F5_`i''\$ & \$`F6_`i''\$ \\  " _n
+	file write textab "[.05em]" _n
+	file write textab "~~~50th percentile  & \$`G1_`i''\$ & \$`G2_`i''\$ && \$`G3_`i''\$ & \$`G4_`i''\$ && $`G5_`i''\$ & \$`G6_`i''\$ \\  " _n
+	file write textab "[.05em]" _n
+	file write textab "~~~75th percentile  & \$`H1_`i''\$ & \$`H2_`i''\$ && \$`H3_`i''\$ & \$`H4_`i''\$ && $`H5_`i''\$ & \$`H6_`i''\$ \\  " _n
+}
+file write textab "[0.2em]" _n
+file write textab "\hline" _n
+file write textab "\end{tabular}" _n
+file write textab "\end{adjustbox}" _n
+file write textab "\captionsetup{width=\textwidth}" _n
+file write textab "\caption*{\scriptsize \emph{Notes:} " _n
+file write textab "This table reports calculations for the open-access externality, for service point \$i\$ in our main estimation sample located  " _n
+file write textab "in the three largest groundwater basins (Sacramento Valley, Salinas Valley, and San Joaqu\'{i}n Valley). This simple exercise  " _n
+file write textab "includes only service points with positive groundwater extraction in June 2016, with counts reported in the top row. For each " _n
+file write textab "unit \$i\$, we calculate their private decrease in consumer surplus from pumping 1 AF less in June, 2016 (reported in the top  " _n
+file write textab "panel). Next, we translate unit \$i\$'s 1-AF lower extraction in June into the corresponding marginal increase in groundwater  " _n
+file write textab "levels in July across \$i\$-centered circles of radius \$r\$. For neighboring units \$j\$ within each circle, this marginal increase  " _n
+file write textab "in groundwater levels translates to a marginal decrease in \$j\$'s effective price of groundwater. The bottom three panels report  " _n
+file write textab "the net effect on \emph{total} consumer surplus, subtracting \$i\$'s lost consumer surplus in June from increased consumer surplus  " _n
+file write textab "in July summed across all units \$j\$. Bolded numbers indicate positive welfare changes, consistent with unit \$i\$ imposing a negative  " _n
+file write textab "open-access externality greater than its own private benefit. . \`\`APEP'' columns include only neighbors in our APEP-matched estimation sample, which almost certainly  " _n
+file write textab "understates the magnitude of \$ \sum_j \Delta CS_j\$ (by summing over only a subset of nearby agricultural groundwater pumpers).  " _n
+file write textab "\`\`Scaled'' columns conservately inflate the number of \$i\$'s neighbors based on the ratio of match-to-unmatched PGE agricultural  " _n
+file write textab "service points in each groundwater basin. We calculate all changes in consumer surplus by parameterizing unit-specific groundwater  " _n
+file write textab "demand curves, imposing a homogeneous and constant elasticity of \$\epsilon = -1.12\$ (based on our estimate from Table  " _n
+file write textab "\ref{tab:water_regs_combined}, Column (2)). All units are in \\$/AF. " _n
+file write textab "}" _n
+file write textab "\end{table}" _n
+
+
+file close textab
 }
 
 ************************************************

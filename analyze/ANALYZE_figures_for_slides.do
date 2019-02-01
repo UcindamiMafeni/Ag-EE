@@ -13,7 +13,213 @@ global dirpath_data "$dirpath/data"
 ************************************************
 ************************************************
  
-** 1. Histogram of incentive per kWh expected savings
+** 1. Histogram of average annual bill ($)
+{
+use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
+assert regexm(rt_sched_cd,"AG")==1
+gen matched = merge_sp_water_panel==3 & flag_weird_cust==0
+tab matched
+
+	// collapse to annual billed amount per SP
+unique sp_uuid modate
+assert r(unique)==r(N)	
+egen n_month = count(modate), by(sp_uuid)
+gen n_year = n_month/12
+*egen tag = tag(sp_uuid)
+*hist n_year if tag
+collapse (sum) mnth_bill_amount (min) matched, by(sp_uuid n_year n_month) fast
+unique sp_uuid 
+assert r(unique)==r(N)
+gen yrly_bill_amount = mnth_bill_amount / n_year
+
+	// bottom code zeros
+replace yrly_bill_amount = 0 if yrly_bill_amount<0
+
+sum yrly_bill_amount, detail
+
+hist yrly_bill_amount if yrly_bill_amount<60000
+hist yrly_bill_amount if yrly_bill_amount<60000 & matched==1
+hist yrly_bill_amount if yrly_bill_amount<60000 & matched==0
+tabstat yrly_bill_amount, by(matched) s(p5 p25 p50 p75 p95 n)
+
+sum yrly_bill_amount if yrly_bill_amount>0 & matched, detail
+gen yrly_bill_top15k = max(min(yrly_bill_amount,15000),0)
+hist yrly_bill_top15k if matched
+
+gen yrly_bill_top50k = max(min(yrly_bill_amount,50000),0)
+hist yrly_bill_top50k if matched
+
+gen yrly_bill_top100k = max(min(yrly_bill_amount,100000),0)
+hist yrly_bill_top100k if matched
+
+gen yrly_bill_top80k = max(min(yrly_bill_amount,80000),0)
+hist yrly_bill_top80k if matched
+
+gen yrly_bill_top60k = max(min(yrly_bill_amount,60000),0)
+hist yrly_bill_top60k if matched
+
+replace yrly_bill_top80k = yrly_bill_top80k/1000
+
+twoway hist yrly_bill_top80k if matched ///
+	, freq fcolor(navy) lcolor(black) lw(thin) w(2.5) s(0) ///
+	xscale(r(0,60)) xlab(0(20)80, labsize(vlarge)) ///
+	xtitle("Thousand dollars per year", size(vlarge)) ///
+	yscale(r(0,1000)) ylab(0 400 800 1200,nogrid angle(0) labsize(vlarge)) ///
+	ytitle("Number of service points", size(vlarge)) ///
+	graphr(color(white) lc(white)) ///
+	title("Average Amount Billed", size(vlarge) color(black))
+graph export "$dirpath/output/hist_avg_annual_bill.eps", replace
+
+}
+
+************************************************
+************************************************
+
+** 2. Histogram of average monthly bill (kWh)
+{
+use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
+assert regexm(rt_sched_cd,"AG")==1
+gen matched = merge_sp_water_panel==3 & flag_weird_cust==0
+tab matched
+unique sp_uuid modate
+assert r(unique)==r(N)	
+
+	// drop zero months
+drop if mnth_bill_kwh<=0
+
+	// collapse to SP level
+collapse (mean) mnth_bill_kwh (min) matched, by(sp_uuid) fast
+
+replace mnth_bill_kwh = mnth_bill_kwh/1000
+gen mnth_bill_mwh_top30 = min(mnth_bill_kwh,30)
+gen mnth_bill_mwh_top50 = min(mnth_bill_kwh,50)
+
+twoway hist mnth_bill_mwh_top50
+twoway hist mnth_bill_mwh_top50 if matched
+twoway hist mnth_bill_mwh_top50 if !matched
+
+twoway hist mnth_bill_mwh_top50 if matched ///
+	, freq fcolor(navy) lcolor(black) lw(thin) w(2.5) s(0) ///
+	xscale(r(0,50)) xlab(0(10)50, labsize(vlarge)) ///
+	xtitle("MWh per (non-zero) bill", size(vlarge)) ///
+	ylab(0(500)2000,nogrid angle(0) labsize(vlarge)) ytitle("Number of service points", size(vlarge)) ///
+	graphr(color(white) lc(white)) ///
+	title("Average MWh Billed", size(vlarge) color(black))
+graph export "$dirpath/output/hist_avg_bill_mwh.eps", replace
+
+}
+
+************************************************
+************************************************
+
+** 3. Time series rate changes
+{
+use "$dirpath_data/merged/ag_rates_avg_by_month.dta", clear
+replace rt_sched_cd = subinstr(rt_sched_cd,"AG-","",1)
+reshape wide *kwh, i(modate) j(rt_sched_cd) string
+tsset modate
+
+local xmin = ym(2008,1)
+local xmax = ym(2017,9)
+local xlabmax = ym(2017,1)
+keep if inrange(modate,`xmin',`xmax')
+
+twoway (tsline mean_p_kwh4A, color(eltblue) lwidth(medthick)) ///
+	(tsline mean_p_kwh4B, color(midblue) lwidth(medthick)) ///
+	(tsline mean_p_kwh5C, color(dknavy) lwidth(medthick)), ///
+	xscale(r(`xmin',`xmax')) xlab(`xmin'(36)`xlabmax', labsize(large)) ///
+	xtitle("Month", size(large)) ///
+	ylab(0(0.05)0.25,nogrid angle(0) labsize(large)) ytitle("Avg marginal price ($/kWh)", size(large)) ///
+	graphr(color(white) lc(white)) ///
+	title("Monthly Average Marginal Price", size(vlarge) color(black)) ///
+	legend(order(1 "AG-4A    " 2 "AG-4B    " 3 "AG-5C")  col(3) size(large))
+graph export "$dirpath/output/ts_marg_price_3rates.eps", replace
+
+
+}
+
+************************************************
+************************************************
+
+** 4. Kernel densities of DWL
+{
+use "$dirpath_data/results/externality_calcs_june2016_rast_dd_mth_2SP.dta", clear
+keep if in_regs==1
+keep if basin_group==122 // San Joaquin Valley only
+keep if q_old>1 & q_old!=. 
+
+local N_total = _N
+
+	// Define 10-90 sample
+sum dcs_i, detail
+gen in_kdens = inrange(dcs_i,r(p10),r(p90))	
+
+	// Create scaled-up estimates
+foreach r in 5 10 20 30 {
+	gen sum_dcs_j_pos`r'_upr = sum_dcs_j_pos`r'*scale_up_rates
+	gen sum_dcs_j_pos`r'_upc = sum_dcs_j_pos`r'*scale_up_counts
+}
+
+twoway ///
+	(kdensity dcs_i if in_kdens, lcolor(maroon) lw(medium))  ///
+	, xline(0, lcolor(gs5) lw(thin)) xscale(r(-6,3.2)) xlab(-6(1)3, labsize(vlarge)) ///
+	xtitle("$ per AF" " " " ", size(vlarge)) ///
+	ylab(,nogrid nolabels noticks) ytitle("") yscale(lcolor(white)) ///
+	graphr(color(white) lc(white)) ///
+	/*title("TEMP", size(vlarge) color(black))*/ ///
+	text(0.08 -4 "Farm {it:i}{subscript: }'s {&Delta}CS{it:{subscript:i}}", place(n) size(vlarge) color(maroon)) 
+graph export "$dirpath/output/ext_dcs_i.eps", replace
+
+twoway ///
+	(kdensity dcs_i if in_kdens, lcolor(maroon) lw(medium))  ///
+	(kdensity sum_dcs_j_pos10 if in_kdens, lcolor(green) lw(medium) lpattern(solid))  ///
+	(kdensity sum_dcs_j_pos20 if in_kdens, lcolor(green) lw(medium) lpattern(longdash))  ///
+	(kdensity sum_dcs_j_pos30 if in_kdens, lcolor(green) lw(medium) lpattern(shortdash))  ///
+	, xline(0, lcolor(gs5) lw(thin)) xscale(r(-6,3.2)) xlab(-6(1)3, labsize(vlarge)) ///
+	xtitle("$ per AF", size(vlarge)) ///
+	ylab(,nogrid nolabels noticks) ytitle("") yscale(lcolor(white)) ///
+	graphr(color(white) lc(white)) ///
+	/*title("TEMP", size(vlarge) color(black))*/ ///
+	text(0.12 -4 "Farm {it:i}{subscript: }'s {&Delta}CS{it:{subscript:i}}", place(n) size(vlarge) color(maroon)) ///
+	text(3 1.9 "Neighbors'" "{&Sigma}{it:{subscript:j }}{&Delta}CS{it:{subscript:j}}" "(sample)", place(n) size(vlarge) color(green)) ///
+	legend(order(2 "10 miles  " 3 "20 miles  " 4 "30 miles") col(3) size(vlarge))
+graph export "$dirpath/output/ext_dcs_j.eps", replace
+
+twoway ///
+	(kdensity dcs_i if in_kdens, lcolor(maroon) lw(medium))  ///
+	(kdensity sum_dcs_j_pos10_upr if in_kdens, lcolor(green) lw(medium) lpattern(solid))  ///
+	(kdensity sum_dcs_j_pos20_upr if in_kdens, lcolor(green) lw(medium) lpattern(longdash))  ///
+	(kdensity sum_dcs_j_pos30_upr if in_kdens, lcolor(green) lw(medium) lpattern(shortdash))  ///
+	, xline(0, lcolor(gs5) lw(thin)) xscale(r(-6,3.2)) xlab(-6(1)3, labsize(vlarge)) ///
+	xtitle("$ per AF", size(vlarge)) ///
+	ylab(,nogrid nolabels noticks) ytitle("") yscale(lcolor(white)) ///
+	graphr(color(white) lc(white)) ///
+	/*title("TEMP", size(vlarge) color(black))*/ ///
+	text(0.12 -4 "Farm {it:i}{subscript: }'s {&Delta}CS{it:{subscript:i}}", place(n) size(large) color(maroon)) ///
+	text(1.1 2.4 "Neighbors'" "{&Sigma}{it:{subscript:j }}{&Delta}CS{it:{subscript:j}}" "(scaled)", place(n) size(vlarge) color(green)) ///
+	legend(order(2 "10 miles  " 3 "20 miles  " 4 "30 miles") col(3) size(vlarge))
+graph export "$dirpath/output/ext_dcs_j_scaled.eps", replace
+
+twoway ///
+	(kdensity dW_10_upr if in_kdens, lcolor(midblue) lw(medium) lpattern(solid))  ///
+	(kdensity dW_20_upr if in_kdens, lcolor(midblue) lw(medium) lpattern(longdash))  ///
+	(kdensity dW_30_upr if in_kdens, lcolor(midblue) lw(medium) lpattern(shortdash))  ///
+	, xline(0, lcolor(gs5) lw(thin)) xscale(r(-6,3.2)) xlab(-6(1)3, labsize(vlarge)) ///
+	xtitle("$ per AF", size(vlarge)) ///
+	ylab(,nogrid nolabels noticks) ytitle("") yscale(lcolor(white)) ///
+	graphr(color(white) lc(white)) ///
+	/*title("TEMP", size(vlarge) color(black))*/ ///
+	text(.13 -4 "{&Delta}W = {&Delta}CS{it:{subscript:i}} + {&Sigma}{it:{subscript:j }}{&Delta}CS{it:{subscript:j}}" "(scaled)", place(n) size(vlarge) color(midblue)) ///
+	legend(order(1 "10 miles  " 2 "20 miles  " 3 "30 miles") col(3) size(vlarge))
+graph export "$dirpath/output/ext_dw_scaled.eps", replace
+
+
+}
+
+************************************************
+************************************************
+
+** 5. Histogram of incentive per kWh expected savings
 {
 use "$dirpath_data/pge_cleaned/pump_test_project_data.dta" , clear
 gen subsidy_per_kwh = subsidy_proj / est_savings_kwh_yr
@@ -58,120 +264,8 @@ graph export "$dirpath/output/hist_project_subsidy_per_kwh.eps", replace
 
 ************************************************
 ************************************************
- 
-** 2. Histogram of average annual bill ($)
-{
-use "$dirpath_data/merged/sa_bill_elec_panel.dta", clear
-keep if pull=="20180719"
-keep if regexm(rt_sched_cd,"AG")==1
-
-unique sa_uuid bill_start_dt
-assert r(unique)==r(N)
-
-sum total_bill_amount if total_bill_amount>0, detail
-gen total_bill_top15k = max(min(total_bill_amount,15000),0)
-hist total_bill_top15k
-
-egen max_total_bill = max(total_bill_amount), by(sp_uuid)
-sum max_total_bill, detail
-
-*drop if total_bill_kwh<=0
-gen days_count = bill_length-1
-collapse (sum) total_bill_amount  days_count, by(sp_uuid)
-replace total_bill_amount = total_bill_amount/(days_count/365)
-
-hist total_bill_amount
-gen total_bill_top50k = max(min(total_bill_amount,50000),0)
-hist total_bill_top50k
-
-gen total_bill_top100k = max(min(total_bill_amount,100000),0)
-hist total_bill_top100k
-
-gen total_bill_top80k = max(min(total_bill_amount,80000),0)
-hist total_bill_top80k
-
-gen total_bill_top60k = max(min(total_bill_amount,60000),0)
-hist total_bill_top60k
-
-replace total_bill_top60k = total_bill_top60k/1000
-
-twoway hist total_bill_top60k ///
-	, freq fcolor(navy) lcolor(black) lw(thin) w(2.5) s(0) ///
-	xscale(r(0,60)) xlab(0(10)60, labsize(vlarge)) ///
-	xtitle("Thousand dollars per year", size(vlarge)) ///
-	ylab(,nogrid angle(0) labsize(vlarge)) ytitle("Number of service points", size(vlarge)) ///
-	graphr(color(white) lc(white)) ///
-	title("Average Amount Billed", size(vlarge) color(black))
-graph export "$dirpath/output/hist_avg_annual_bill.eps", replace
-
-sum total_bill_top60k, detail
-
-}
-
-************************************************
-************************************************
- 
-** 3. Histogram of average monthly bill (kWh)
-{
-use "$dirpath_data/merged/sa_bill_elec_panel.dta", clear
-keep if pull=="20180719"
-keep if regexm(rt_sched_cd,"AG")==1
-
-unique sa_uuid bill_start_dt
-assert r(unique)==r(N)
-
-drop if total_bill_kwh<=0
-collapse (mean) total_bill_kwh, by(sp_uuid)
-replace total_bill_kwh = total_bill_kwh/1000
-gen total_bill_mwh_top30 = min(total_bill_kwh,30)
-gen total_bill_mwh_top50 = min(total_bill_kwh,50)
-
-twoway hist total_bill_mwh_top50 ///
-	, freq fcolor(navy) lcolor(black) lw(thin) w(2.5) s(0) ///
-	xscale(r(0,50)) xlab(0(10)50, labsize(vlarge)) ///
-	xtitle("MWh per (non-zero) bill", size(vlarge)) ///
-	ylab(0(500)2000,nogrid angle(0) labsize(vlarge)) ytitle("Number of service points", size(vlarge)) ///
-	graphr(color(white) lc(white)) ///
-	title("Average MWh Billed", size(vlarge) color(black))
-graph export "$dirpath/output/hist_avg_bill_mwh.eps", replace
-
-sum total_bill_mwh_top50, detail
-
-}
-
-************************************************
-************************************************
-
-** 4. Time series rate changes
-{
-use "$dirpath_data/merged/ag_rates_avg_by_month.dta", clear
-replace rt_sched_cd = subinstr(rt_sched_cd,"AG-","",1)
-reshape wide *kwh, i(modate) j(rt_sched_cd) string
-tsset modate
-
-local xmin = ym(2008,1)
-local xmax = ym(2017,9)
-local xlabmax = ym(2017,1)
-keep if inrange(modate,`xmin',`xmax')
-
-twoway (tsline mean_p_kwh4A, color(eltblue) lwidth(medthick)) ///
-	(tsline mean_p_kwh4B, color(midblue) lwidth(medthick)) ///
-	(tsline mean_p_kwh5C, color(dknavy) lwidth(medthick)), ///
-	xscale(r(`xmin',`xmax')) xlab(`xmin'(36)`xlabmax', labsize(large)) ///
-	xtitle("Month", size(large)) ///
-	ylab(0(0.05)0.25,nogrid angle(0) labsize(large)) ytitle("Avg marginal price ($/kWh)", size(large)) ///
-	graphr(color(white) lc(white)) ///
-	title("Monthly Average Marginal Price", size(vlarge) color(black)) ///
-	legend(order(1 "AG-4A    " 2 "AG-4B    " 3 "AG-5C")  col(3) size(large))
-graph export "$dirpath/output/ts_marg_price_3rates.eps", replace
-
-
-}
-
-************************************************
-************************************************
-
-** 5. Hourly prices against hourly usage histogram
+  
+** 6. Hourly prices against hourly usage histogram
 {
 use "$dirpath_data/merged/sp_hourly_elec_panel_20180719.dta", clear
 *keep if inlist(month(date),5,6,7,8,9,10)
@@ -258,7 +352,7 @@ graph export "$dirpath/output/hourly_hist_prices_choosers.eps", replace
 ************************************************
 ************************************************
 
-** 6. Hourly reg coefficient plot
+** 7. Hourly reg coefficient plot
 {
 use "$dirpath/output/hourly_regs_season.dta", clear
 rename hr hour
