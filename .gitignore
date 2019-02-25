@@ -1,7 +1,7 @@
 *.Rproj*
 .Rhistory
 paper/.texpadtmp/
-build/scratch
+build/scratch/
 
 ## Core latex/pdflatex auxiliary files:
 *.aux
