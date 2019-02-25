@@ -16,7 +16,7 @@ if(Sys.getenv("USERNAME") == "Yixin Sun"){
 
 source(file.path(root_gh, "build/constants.R"))
 
-num_workers <- 4
+num_workers <- 2
 
 # function for intersecting CLU with Parcels
 clu_parcel_int <- function(countyname){
@@ -34,12 +34,15 @@ clu_parcel_int <- function(countyname){
   clu_parcel <-
     st_intersection(parcel, clu) %>%
     mutate(IntAcres = as.numeric(st_area(.)) * m2_to_acre, 
-           IntPerc = IntAcres / ParcelAcres) %>%
-    select(ParcelID, CLU_ID, IntAcres, IntPerc) %>%
-    mutate(County = countyname) %>%
+           IntPerc = IntAcres / CLUAcres) %>%
     st_set_geometry(NULL) %>%
+    select(ParcelID, CLU_ID, IntAcres, IntPerc) %>%
+    mutate(County = countyname, 
+      IntPerc = if_else(IntPerc > 1, 1, IntPerc)) %>%
+    filter(IntPerc < Inf) %>%
     group_by(CLU_ID) %>%
-    mutate(Largest = IntAcres == max(IntAcres)) %>%
+    arrange(-IntAcres) %>%
+    mutate(Largest = row_number() == 1) %>%
     ungroup
 
   saveRDS(clu_parcel, file.path(build_spatial, "cross/clu_parcel", input_path))
@@ -49,18 +52,18 @@ clu_parcel_int <- function(countyname){
 }
 
 # ==========================================================================
-# FILTER OUT FRESNO FOR RIGHT NOW
+# Intersect CLU and Parcel shapefiles
 # ==========================================================================
 plan(multiprocess(workers = eval(num_workers)))
 
 # find list of counties where both clu and parcel shapefiles are cleaned
 parcel_counties <- 
-  list.files(file.path(build_spatial, "Parcels/parcel_counties")) %>%
+  list.files(file.path(build_spatial, "Parcels/parcels_counties")) %>%
   str_replace_all(".RDS", "") %>%
   str_replace_all("_", " ") 
 
 clu_counties <-
-  list.files(file.path(build_spatial, "CLU")) %>%
+  list.files(file.path(build_spatial, "CLU/clu_counties")) %>%
   str_replace_all(".RDS", "") %>%
   str_replace_all("_", " ") 
 
@@ -69,8 +72,8 @@ conc_counties <- intersect(parcel_counties, clu_counties)
 # loop over counties to intersect clu and parcels
 clu_parcel_conc <- 
   conc_counties %>%
-  future_map_dfr(clu_parcel_int, .progress = TRUE)
+  future_map_dfr(clu_parcel_int, .progress = TRUE) 
 
 saveRDS(clu_parcel_conc, file.path(build_spatial, "cross/clu_parcel_conc.RDS"))
 
-  
+summary(clu_parcel_conc)

@@ -79,8 +79,8 @@ cdl_dict <-
 # ===========================================================================
 # Run arcpy script and read in data generated from that program
 # ===========================================================================
-#setwd(file.path(root_gh, "build"))
-#shell('python "BUILD_gis_clu_cdl_conc.py"')
+# setwd(file.path(root_gh, "build"))
+# shell('python "BUILD_gis_clu_cdl_conc.py"')
 
 # reading in clu_cdl concordance
 read_clu_cdl <- function(path){
@@ -162,7 +162,8 @@ toc()
 
 clu_cdl <-
   clu_cdl %>%
-  rbind(clu_cdl_overlap)
+  rbind(clu_cdl_overlap) %>%
+  filter(!is.na(Fraction))
 
 # ===========================================================================
 # check and save

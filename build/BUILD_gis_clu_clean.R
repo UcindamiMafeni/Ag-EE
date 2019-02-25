@@ -65,4 +65,4 @@ clu <-
   st_sf(crs = main_crs)
 st_write(clu, file.path(build_spatial, "CLU/clu_poly"), 
 	driver = "ESRI Shapefile", delete_layer = TRUE)
-saveRDS(clu, file.path(build_spatial, "CLU/clu.Rda"))
+saveRDS(clu, file.path(build_spatial, "CLU/clu.RDS"))

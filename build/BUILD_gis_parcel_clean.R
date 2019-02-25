@@ -158,9 +158,9 @@ combine_parcels <- function(countyname){
 # ===========================================================================
 # run functions through counties that just have one shapefile and are small
 # ===========================================================================
-to_ignore <- 
-  c("2014", "parcels14", "Santa Clara", "San Diego", "Merced", 
-  	"Orange", "Kern", "Nevada", "Los Angeles", "Riverside", "Yolo")
+to_ignore <- c("2014", "parcels14", "Kern", "Merced", "Yolo", "Los Angeles", 
+	"Santa Clara", "Nevada", "Riverside", "Orange", "San Diego")
+
 all_counties <- 
 	  list.files(file.path(raw_spatial, "Parcels_R/2014"), pattern = "*.RDS") %>%
 	  str_replace_all(., "_", " ") %>%
@@ -169,13 +169,6 @@ all_counties <-
 
 all_counties[-which(all_counties %in% to_ignore )] %>%
   walk(combine_parcels)
-
-
-county_names <-
-  c("Alameda", "Amador", "Fresno", "Glenn", "Lake", "Lassen", "Mariposa", "Modoc", "Placer", "San Bernardino", 
-  	"Shasta", "Siskiyou", "Solano", "Stanislaus") %>%
-  walk(combine_parcels)
-
 
 # ============================================================================
 # Clean Kern
@@ -201,7 +194,7 @@ kern <-
   rbind(kern_all, kern14) %>%
   standardize_parcels(., "Kern")
 
-saveRDS(kern, file = file.path(build_spatial, "Parcels", "Kern.RDS"))
+saveRDS(kern, file = file.path(build_spatial, "Parcels", "parcels_counties", "Kern.RDS"))
 
 # ============================================================================
 # Clean Merced
@@ -231,7 +224,7 @@ merced <-
   rbind(merced_parcel, merced_williamson, merced14) %>%
   standardize_parcels(., "Merced")
 
-saveRDS(merced, file = file.path(build_spatial, "Parcels", "Merced.RDS"))
+saveRDS(merced, file = file.path(build_spatial, "Parcels", "parcels_counties", "Merced.RDS"))
 
 # ============================================================================
 # Clean Yolo
@@ -255,7 +248,7 @@ yolo <-
   rbind(yolo_tax, yolo14) %>%
   standardize_parcels(., "Yolo")
 
-saveRDS(yolo, file = file.path(build_spatial, "Parcels", "Yolo.RDS"))
+saveRDS(yolo, file = file.path(build_spatial, "Parcels", "parcels_counties", "Yolo.RDS"))
 
 # ============================================================================
 # Clean Santa Clara
@@ -265,18 +258,6 @@ sc_land <-
   file.path(raw_spatial, "Parcels_R/Santa Clara/FY2016_LAND_PARCELS.RDS") %>%
   readRDS() %>%
   st_transform(main_crs)
-
-# sc_air <- 
-#   file.path(raw_spatial, "Parcels_R/Santa Clara/FY2016_AIR_PARCELS.RDS") %>%
-#   readRDS() %>%
-#   st_transform(main_crs)
-
-# check <-
-#   sc_air %>%
-#   select(AirAPN = APN) %>%
-#   mutate(AirArea = as.numeric(st_area(.))) %>%
-#   st_intersection(select(sc_land, LandAPN = APN) %>% mutate(LandArea = as.numeric(st_area(.)))) %>%
-#   mutate(IntArea = as.numeric(st_area(.))) 
 
 sc2014 <-
   readRDS(file.path(raw_spatial, "Parcels_R/2014", "Santa_Clara.RDS")) %>%
@@ -288,7 +269,7 @@ Santa_Clara <-
   rbind(sc2014) %>%
   standardize_parcels("Santa Clara")
 
-saveRDS(Santa_Clara, file = file.path(build_spatial, "Parcels", "Santa_Clara.RDS"))
+saveRDS(Santa_Clara, file = file.path(build_spatial, "Parcels", "parcels_counties", "Santa_Clara.RDS"))
 
 # ============================================================================
 # Clean Nevada
@@ -303,20 +284,83 @@ nevada_info <-
   select(APN)
 
 nevada14 <-
-  readRDS(file.path(raw_spatial, "Parcels_R/2014", "Santa_Clara.RDS")) %>%
+  readRDS(file.path(raw_spatial, "Parcels_R/2014", "Nevada.RDS")) %>%
   select(APN, geometry = SHAPE) 
 
 Nevada <-
   rbind(nevada_info, nevada14) %>%
   standardize_parcels("Nevada")
 
-saveRDS(Nevada, file = file.path(build_spatial, "Parcels", "Nevada.RDS"))
+saveRDS(Nevada, file = file.path(build_spatial, "Parcels", "parcels_counties", "Nevada.RDS"))
+
+# ============================================================================
+# Los Angeles
+# ============================================================================
+
+# ============================================================================
+# Orange
+# ============================================================================
+# just read in parcel polygons file, not irrigation
+orange_parcels <-
+  file.path(raw_spatial, "Parcels_R/Orange/Parcel_Polygons.RDS") %>%
+  readRDS() %>%
+  st_transform(main_crs) %>%
+  select(geometry) %>%
+  mutate(APN = NA)
+
+orange14 <-
+  readRDS(file.path(raw_spatial, "Parcels_R/2014", "Orange.RDS")) %>%
+  select(APN, geometry = SHAPE) 
+
+Orange <-
+  rbind(orange14, orange_parcels)%>%
+  st_buffer(0.00001) %>%
+  standardize_parcels("Orange") 
+
+saveRDS(Orange, file = file.path(build_spatial, "Parcels", "parcels_counties", "Orange.RDS"))
+
+# ============================================================================
+# Riverside
+# ============================================================================
+riverside <-
+  file.path(raw_spatial, "Parcels_R/Riverside/Riverside.RDS") %>%
+  readRDS() %>%
+  st_transform(main_crs) %>%
+  select(geometry) %>%
+  mutate(APN = NA)-
+
+riverside14 <-
+  readRDS(file.path(raw_spatial, "Parcels_R/2014", "Riverside.RDS")) %>%
+  select(APN, geometry = SHAPE) 
+
+Riverside <-
+  rbind(riverside, riverside14) %>%
+  standardize_parcels("Riverside")
+
+# ============================================================================
+# San Diego
+# ============================================================================
+# parcels file is a superset of the east, north, and south files
+sandiego <- 
+  file.path(raw_spatial, "Parcels_R/San Diego/PARCELS.RDS") %>%
+  readRDS() %>%
+  st_transform(main_crs) %>%
+  select(APN)
+
+sandiego14 <-
+  readRDS(file.path(raw_spatial, "Parcels_R/2014", "San_Diego.RDS")) %>%
+  select(APN, geometry = SHAPE) 
+
+
+San_Diego %>%
+  rbind(sandiego, sandiego14) %>%
+  standardize_parcels("San Diego")
 
 # ============================================================================
 # combine parcels into one file
 # ============================================================================
 parcels <-
-  file.path(build_spatial, "Parcels") %>%
+  file.path(build_spatial, "Parcels", "parcels_counties") %>%
   list.files(full.names = TRUE, pattern = "*.RDS") %>%
   map_dfr(readRDS) %>%
   st_sf(crs = main_crs)
