@@ -125,6 +125,22 @@ assert kwhaf_apep_measured_init!=.
 la var kwhaf_apep_measured_init "KWH/AF as measued by initial APEP tests (constant within SP)"
 drop temp*
 
+** Construct distance between SP and APEP coordinates
+preserve 
+use "$dirpath_data/pge_cleaned/apep_pump_gis.dta", clear
+keep latlon_group pumplatnew pumplongnew
+duplicates drop
+unique latlon_group
+assert r(unique)==r(N)
+tempfile latlon_pump
+save `latlon_pump'
+restore
+merge m:1 latlon_group using `latlon_pump', keep(1 3) nogen
+geodist prem_lat prem_long pumplatnew pumplongnew, gen(latlon_miles_apart) miles
+la var pumplatnew "APEP pump latitude"
+la var pumplongnew "APEP pump longitude"
+la var latlon_miles_apart "Miles b/tw matched SP lat/lon and APEP lat/lon"
+
 ** Prep for lagging instruments
 sort sp_uuid modate
 tsset sp_group modate
@@ -140,11 +156,23 @@ save "$dirpath_data/merged/sp_month_water_panel.dta", replace
 *******************************************************************************
 
 ** 2. Merge a few things back into electricity panel 
-{
+if 1==1{
 use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
+cap drop flag_bad_drwdwn
+cap drop flag_weird_pump
+cap drop flag_weird_cust
+cap drop months_until_test
+cap drop months_since_test
+cap drop months_to_nearest_test
+cap drop latlon_group
+cap drop latlon_miles_apart
+cap drop apep_proj_count
+cap drop merge_sp_water_panel
 merge 1:1 sp_uuid modate using "$dirpath_data/merged/sp_month_water_panel.dta", ///
-	keepusing(flag_bad_drwdwn flag_weird_pump flag_weird_cust) keep(1 3) ///
-	gen(merge_sp_water_panel)
+	keepusing(flag_bad_drwdwn flag_weird_pump flag_weird_cust ///
+	months_until_test months_since_test months_to_nearest_test ///
+	latlon_group latlon_miles_apart apep_proj_count) ///
+	keep(1 3) gen(merge_sp_water_panel)
 la var merge_sp_water_panel "3 = merges into corresponding SP-month panel for water regressions"	
 compress
 save "$dirpath_data/merged/sp_month_elec_panel.dta", replace
