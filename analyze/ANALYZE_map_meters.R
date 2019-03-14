@@ -199,7 +199,7 @@ dev.off()
 
 cols <- c("c1"=eltblue,"c2"=dknavy)
 shapes <- c("s1"=21,"s2"=22)
-labels  <- c("108,172 unmatched",
+labels  <- c("96,321 unmatched",
              "11,851 matched")
 
 postscript(paste0(mapsDir,"/pge_ca_map_counts.eps"),width=360)
@@ -238,11 +238,11 @@ ggplot() +
                      labels = labels) +
   guides(colour = guide_legend(override.aes = list(size=3)))
 
-# scale_shape_manual(name = "",
-#                    breaks = c("s1","s2"),
-#                    values = shapes,
-#                    labels = labels) 
-# 
+  # scale_shape_manual(name = "",
+  #                    breaks = c("s1","s2"),
+  #                    values = shapes,
+  #                    labels = labels) 
+  # 
 dev.off()
 
 
