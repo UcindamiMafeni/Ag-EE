@@ -286,7 +286,7 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 				// Skip regressions that are already stored in output file
 				preserve
 				cap {
-					use "$dirpath_data/results/regs_Qelec_Pelec.dta", clear
+					use "$dirpath_data/results/regs_Qelec_Pelec_bigloop.dta", clear
 					count if panel=="monthly" & pull=="`pull'" & sample=="`if_sample'" & fes=="`FEs'" & rhs=="`RHS'"
 					if r(N)==1 {
 						local skip = "skip"
@@ -350,10 +350,10 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 					gen n_SPs = e(N_clust1)
 					gen n_modates = e(N_clust2)
 					gen dof = e(df_r)
-					cap append using "$dirpath_data/results/regs_Qelec_Pelec.dta"
+					cap append using "$dirpath_data/results/regs_Qelec_Pelec_bigloop.dta"
 					duplicates drop 
 					compress
-					save "$dirpath_data/results/regs_Qelec_Pelec.dta", replace
+					save "$dirpath_data/results/regs_Qelec_Pelec_bigloop.dta", replace
 					restore
 				}
 				
@@ -381,10 +381,10 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 					gen dof = e(df_r)
 					gen fstat_rk = e(rkf)
 					gen fstat_cd = e(cdf)
-					cap append using "$dirpath_data/results/regs_Qelec_Pelec.dta"
+					cap append using "$dirpath_data/results/regs_Qelec_Pelec_bigloop.dta"
 					duplicates drop 
 					compress
-					save "$dirpath_data/results/regs_Qelec_Pelec.dta", replace
+					save "$dirpath_data/results/regs_Qelec_Pelec_bigloop.dta", replace
 					restore
 				}		
 			}
