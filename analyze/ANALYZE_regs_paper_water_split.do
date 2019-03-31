@@ -38,9 +38,6 @@ keep if flag_weird_pump==0
 // Drop weird customers (non-ag rates, irrigation districts, etc.)
 keep if flag_weird_cust==0 
 
-// Drop SPs that don't merge into APEP dataset (for consistency with water regressiosn)
-keep if merge_sp_water_panel==3
-	
 // Define dependent variable
 local DEPVAR = "ihs_kwh"
 	
