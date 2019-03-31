@@ -18,6 +18,18 @@ if 1==1{
 ** Load monthly dataset for electricity regressions
 use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
 
+** Drop old versions of variables I want to overwrite here
+cap drop flag_bad_drwdwn
+cap drop flag_weird_pump
+cap drop flag_weird_cust
+cap drop months_until_test
+cap drop months_since_test
+cap drop months_to_nearest_test
+cap drop latlon_group
+cap drop latlon_miles_apart
+cap drop apep_proj_count
+cap drop merge_sp_water_panel
+
 ** Merge in SP-month panel of constructed KWHAF conversions
 merge 1:1 sp_uuid modate using "$dirpath_data/merged/sp_month_kwhaf_panel.dta"
 egen temp = mode(pull), by(sp_uuid)
@@ -141,11 +153,41 @@ la var pumplatnew "APEP pump latitude"
 la var pumplongnew "APEP pump longitude"
 la var latlon_miles_apart "Miles b/tw matched SP lat/lon and APEP lat/lon"
 
-** Prep for lagging instruments
-sort sp_uuid modate
-tsset sp_group modate
+** Lag depth instrument(s)
+preserve
+use "$dirpath_data/groundwater/groundwater_depth_sp_month_rast.dta", clear
+keep basin_id gw_mth_bsn_mean2 modate
+duplicates drop
+unique basin_id modate
+assert r(unique)==r(N)
+egen temp = group(basin_id)
+tsset temp modate
+gen L6_gw_mth_bsn_mean2 = L6.gw_mth_bsn_mean2
+gen L12_gw_mth_bsn_mean2 = L12.gw_mth_bsn_mean2
+drop temp
+tempfile basins
+save `basins'
+merge 1:m basin_id modate using "$dirpath_data/groundwater/groundwater_depth_sp_month_rast.dta" 
+keep sp_uuid modate L6 L12
+tempfile lagged_depth
+save `lagged_depth'
+restore
+merge 1:1 sp_uuid modate using `lagged_depth', nogen keep(1 3)
+rename L6_gw_mth_bsn_mean2 L6_gw_mean_depth_mth_2SP
+rename L12_gw_mth_bsn_mean2 L12_gw_mean_depth_mth_2SP
+gen L6_ln_gw_mean_depth_mth_2SP = ln(L6_gw_mean_depth_mth_2SP)
+gen L12_ln_gw_mean_depth_mth_2SP = ln(L12_gw_mean_depth_mth_2SP)
+la var L6_gw_mean_depth_mth_2SP "6-month lag of gw_mean_depth_mth_2SP"
+la var L12_gw_mean_depth_mth_2SP "12-month lag of gw_mean_depth_mth_2SP"
+la var L6_ln_gw_mean_depth_mth_2SP "6-month lag of ln_gw_mean_depth_mth_2SP"
+la var L12_ln_gw_mean_depth_mth_2SP "12-month lag of ln_gw_mean_depth_mth_2SP"
+
 
 ** Compress, and save
+unique sp_uuid modate
+assert r(unique)==r(N)
+sort sp_uuid modate
+tsset sp_group modate
 compress
 save "$dirpath_data/merged/sp_month_water_panel.dta", replace
 
