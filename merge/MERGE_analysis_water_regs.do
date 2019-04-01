@@ -75,6 +75,44 @@ foreach v of varlist af* {
 	la var `v2' "`v2lab'"
 }
 
+** Apply log, log+1 tranformations to AF_water 
+foreach v of varlist af_rast_dd_mth_2SP {
+	local vlab: variable label `v'
+
+	local v2 = subinstr("`v'","af_","log1_10000af_",1)
+	gen `v2' = ln(10000*`v'+1)
+	replace `v2' = . if `v'<0
+	local v2lab = subinstr("`vlab'","AF water","Log+1 10000*AF water",1)
+	la var `v2' "`v2lab'"
+
+	local v2 = subinstr("`v'","af_","log1_100af_",1)
+	gen `v2' = ln(100*`v'+1)
+	replace `v2' = . if `v'<0
+	local v2lab = subinstr("`vlab'","AF water","Log+1 100*AF water",1)
+	la var `v2' "`v2lab'"
+	
+	local v2 = subinstr("`v'","af_","log1_af_",1)
+	gen `v2' = ln(`v'+1)
+	replace `v2' = . if `v'<0
+	local v2lab = subinstr("`vlab'","AF water","Log+1 AF water",1)
+	la var `v2' "`v2lab'"
+
+	local v2 = subinstr("`v'","af_","log_10000af_",1)
+	gen `v2' = ln(10000*`v')
+	local v2lab = subinstr("`vlab'","AF water","Log 10000*AF water",1)
+	la var `v2' "`v2lab'"
+
+	local v2 = subinstr("`v'","af_","log_100af_",1)
+	gen `v2' = ln(100*`v')
+	local v2lab = subinstr("`vlab'","AF water","Log 100*AF water",1)
+	la var `v2' "`v2lab'"
+
+	local v2 = subinstr("`v'","af_","log_af_",1)
+	gen `v2' = ln(`v')
+	local v2lab = subinstr("`vlab'","AF water","Log AF water",1)
+	la var `v2' "`v2lab'"
+}
+
 ** Calcualte water prices: $/AF = $/kwh * kwh/AF
 foreach v of varlist kwhaf* {
 	local v2 = subinstr("`v'","kwhaf_","mean_p_af_",1)
