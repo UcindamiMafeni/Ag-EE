@@ -97,16 +97,6 @@ foreach v of varlist af_rast_dd_mth_2SP {
 	local v2lab = subinstr("`vlab'","AF water","Log+1 AF water",1)
 	la var `v2' "`v2lab'"
 
-	local v2 = subinstr("`v'","af_","log_10000af_",1)
-	gen `v2' = ln(10000*`v')
-	local v2lab = subinstr("`vlab'","AF water","Log 10000*AF water",1)
-	la var `v2' "`v2lab'"
-
-	local v2 = subinstr("`v'","af_","log_100af_",1)
-	gen `v2' = ln(100*`v')
-	local v2lab = subinstr("`vlab'","AF water","Log 100*AF water",1)
-	la var `v2' "`v2lab'"
-
 	local v2 = subinstr("`v'","af_","log_af_",1)
 	gen `v2' = ln(`v')
 	local v2lab = subinstr("`vlab'","AF water","Log AF water",1)
