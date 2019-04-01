@@ -59,6 +59,7 @@ gen t_log_p_kwh = .
 gen beta_log_kwhaf = .
 gen se_log_kwhaf = .
 gen t_log_kwhaf = .
+gen pval_equal = .
 gen vce = ""
 gen n_obs = .
 gen n_SPs = .
@@ -146,12 +147,15 @@ foreach c in 1 2 3 4 5 6 {
 	replace beta_log_p_kwh = _b[log_p_mean] in `c'
 	replace se_log_p_kwh = _se[log_p_mean] in `c'
 	replace t_log_p_kwh =  _b[log_p_mean]/_se[log_p_mean] in `c'
-	cap replace beta_log_kwhaf = _b[ln_kwhaf_rast_dd_mth_2SP]-1 in `c'
-	cap replace se_log_kwhaf = _se[ln_kwhaf_rast_dd_mth_2SP] in `c'
-	cap replace t_log_kwhaf = (_b[ln_kwhaf_rast_dd_mth_2SP]-1)/_se[ln_kwhaf_rast_dd_mth_2SP] in `c'
-	cap replace beta_log_kwhaf = _b[ln_kwhaf_rast_dd_qtr_2SP]-1 in `c'
-	cap replace se_log_kwhaf = _se[ln_kwhaf_rast_dd_qtr_2SP] in `c'
-	cap replace t_log_kwhaf = (_b[ln_kwhaf_rast_dd_qtr_2SP]-1)/_se[ln_kwhaf_rast_dd_qtr_2SP] in `c'
+	local kwhaf_var = word("`RHS'",2)
+	if "`kwhaf_var'"=="=" {
+		local kwhaf_var = word("`RHS'",wordcount("`RHS'"))
+	}
+	replace beta_log_kwhaf = _b[`kwhaf_var']-1 in `c'
+	replace se_log_kwhaf = _se[`kwhaf_var'] in `c'
+	replace t_log_kwhaf = (_b[`kwhaf_var']-1)/_se[`kwhaf_var'] in `c'
+	test log_p_mean = `kwhaf_var' - 1
+	replace pval_equal = r(p) in `c'
 	replace vce = "cluster `VCE'" in `c'
 	replace n_obs = e(N) in `c'
 	replace n_SPs = e(N_clust1) in `c'
