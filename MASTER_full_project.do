@@ -13,103 +13,128 @@ global dirpath_code "S:/Louis/backup/AgEE/AgEE_code"
 ** additional directory paths
 global dirpath_data "$dirpath/data"
 
-*******************************************************************************
+*********************************************************************************
+*********************************************************************************
 
-*************** BUILD ****************
-*** 1: IMPORT DATA TO STATA
+*** All project code is linearized below [direct dependencies are in brackets] 
+
+************ BUILD (B) ************ BUILD (B) ************ BUILD (B) ************ 
+************ BUILD (B) ************ BUILD (B) ************ BUILD (B) ************  
+
+*** B1: IMPORT DATA TO STATA
 do "$dirpath_code/build/BUILD_import_data.do"
 
-*** 2: CREATE LIST OF NAICS CODES
+*** B2: CREATE LIST OF NAICS CODES
 do "$dirpath_code/build/BUILD_naics_descr.do"
 
-*** 3: CLEAN CUSTOMER DATA
+*** B3: CLEAN CUSTOMER DATA [B1 B2]
 do "$dirpath_code/build/BUILD_clean_customer_data.do"
 	// calls auxilary GIS scripts "BUILD_gis_climate_zone_20180322.R" 
 	//                        and "BUILD_gis_climate_zone_20180719.R"
 	//                        and "BUILD_gis_climate_zone_20180827.R"
 
-*** 4: CLEAN BILLING DATA
+*** B4: CLEAN BILLING DATA [B1]
 do "$dirpath_code/build/BUILD_clean_bill_data.do"
 
-*** 5: CLEAN ENERGY EFFICIENCY DATA
+*** B5: CLEAN ENERGY EFFICIENCY DATA [B1]
 do "$dirpath_code/build/BUILD_clean_energy_efficiency_data.do"
 
-*** 6: CLEAN INTERVAL DATA
+*** B6: CLEAN INTERVAL DATA [B1]
 do "$dirpath_code/build/BUILD_clean_interval_data.do"
 
-*** 7: CLEAN METER BADGE NUMBER DATA
+*** B7: CLEAN METER BADGE NUMBER DATA [B1]
 do "$dirpath_code/build/BUILD_clean_badge_number_data.do"
 
-*** 8: CROSS-VALIDATE BILLING VS. INTERVAL DATA
+*** B8: CROSS-VALIDATE BILLING VS. INTERVAL DATA [B4 B6]
 do "$dirpath_code/build/BUILD_compare_billing_interval.do" 
 
-*** 9: CROSS-VALIDATE BILLING VS. CUSTOMER DATA
+*** B9: CROSS-VALIDATE BILLING VS. CUSTOMER DATA [B3 B8]
 do "$dirpath_code/build/BUILD_compare_billing_customer.do"
 
-*** 10: CROSS-VALIDATE CUSTOMER VS. BILLING/INTERVAL DATA
+*** B10: CROSS-VALIDATE CUSTOMER VS. BILLING/INTERVAL DATA [B3 B6 B9]
 do "$dirpath_code/build/BUILD_compare_customer_usage.do"
 
-*** 11: CROSS-VALIDATE CUSTOMER VS. EE DATA
+*** B11: CROSS-VALIDATE CUSTOMER VS. EE DATA [B5 B10]
 do "$dirpath_code/build/BUILD_compare_customer_ee.do"
 
-*** 12: CROSS-VALIDATE CUSTOMER VS. METER HISTORY DATA, CREATE XWALK
+*** B12: CROSS-VALIDATE CUSTOMER VS. METER HISTORY DATA, CREATE XWALK [B7 B11]
 do "$dirpath_code/build/BUILD_compare_customer_meter.do"
 
-*** 13: MONTHIFY BILLING DATA
+*** B13: MONTHIFY BILLING DATA [B9]
 do "$dirpath_code/build/BUILD_monthify_billing_data.do"
 
-*** 14: CLEAN PUMP TEST DATA
+*** B14: CLEAN PUMP TEST DATA [B1]
 do "$dirpath_code/build/BUILD_clean_pump_test_data.do"
 
-*** 15: CLEAN PUMP TEST PROJECT DATA
+*** B15: CLEAN PUMP TEST PROJECT DATA [B1 B14]
 do "$dirpath_code/build/BUILD_clean_pump_test_project_data.do"
 
-*** 16: CLEAN PGE RATE DATA
+*** B16: CLEAN PGE RATE DATA
 do "$dirpath_code/build/BUILD_clean_rate_data.do"
 
-*** 17: BUILD EVENT DAY DATASET
+*** B17: BUILD EVENT DAY DATASET
 do "$dirpath_code/build/BUILD_event_days.do"
 
-*** 18: ASSIGN SPS AND APEP PUMPS TO VARIOUS POLYGONS
+*** B18: CONVERT PARCEL SHAPEFILES TO USABLE FORMAT
+// "BUILD_parcel_conversion.R"
+
+*** B19: CLEAN PARCEL SHAPEFILES [B18]
+// "BUILD_parcel_clean.R"
+	
+*** B20: CLEAN COMMON LAND UNIT SHAPEFILES
+// "BUILD_clu_clean.R"
+
+*** B21: CREATE CONCORDANCE THAT OVERLAYS CLU & PARCEL SHAPEFILES [B19 B20]
+// "BUILD_gis_clu_parcel_conc.R"
+	
+*** B22: COOKIE-CUTTER CROPLAND DATA LAYER ANNUAL FOR EACH CLU [B20]
+// "BUILD_gis_clu_cdl_conc.R"
+	// calls auxiliary programs "BUILD_gis_clu_cdl_conc.py"
+	//                      and "constants.R"
+
+*** B23: ASSIGN SPS AND APEP PUMPS TO VARIOUS POLYGONS [B11 B14 B19 B20 B21 B22]
 do "$dirpath_code/build/BUILD_assign_gis_polygons.do"
 	// calls auxilary GIS scripts "BUILD_gis_water_districts.R" 
 	//                        and "BUILD_gis_counties.R"
 	//                        and "BUILD_gis_water_basins.R"
 
-*** 19: ASSIGN DAILY MIN/MAX TEMPERATURE TO EACH SP AND APEP PUMP
+*** B24: ASSIGN DAILY MIN/MAX TEMPERATURE TO EACH SP AND APEP PUMP [B23]
 do "$dirpath_code/build/BUILD_daily_temperatures.do"
 	// calls auxilary GIS scripts "BUILD_prism_daily_temperature.R" 
 
-*** 20: CLEAN CA DWR GROUNDWATER DATA
+*** B25: CLEAN CA DWR GROUNDWATER DATA [B23]
 do "$dirpath_code/build/BUILD_clean_cadwr_groundwater.do"
 	// calls auxilary GIS scripts "BUILD_gis_gw_depth_raster.R" 
 	//                        and "BUILD_gis_gw_depth_extract.R"
 
 
-*************** MERGE ****************
+	
 
-*** 1: MERGE BILLING/INTERVAL DATA WITH RATE DATA
+************ MERGE (M) ************ MERGE (M) ************ MERGE (M) ************ 
+************ MERGE (M) ************ MERGE (M) ************ MERGE (M) ************  
+
+*** M1: MERGE BILLING/INTERVAL DATA WITH RATE DATA [B8 B9 B16 B17]
 do "$dirpath_code/merge/MERGE_bills_interval_rates.do"
 
-*** 2: ASSIGN AVERAGE PRICES TO BILLS WITHOUT AMI DATA (EXTRAPOLATION)
+*** M2: ASSIGN AVERAGE PRICES TO BILLS WITHOUT AMI DATA (EXTRAPOLATION) [B9 M1]
 do "$dirpath_code/merge/MERGE_bills_noninterval_rates.do"
 
-*** 3: ASSIGN AVERAGE PRICES TO ALL (MONTHIFIED) BILLS (INTERNALLY CONSISTENT)
+*** M3: ASSIGN AVERAGE PRICES TO ALL (MONTHIFIED) BILLS (INTERNALLY CONSISTENT) [B9 B16 B17]
 do "$dirpath_code/merge/MERGE_bills_rate_nomerge.do"
 
-*** 4. CONSTRUCT INSTRUMENTS FOR ELECTRICITY PRICE
+*** M4: CONSTRUCT INSTRUMENTS FOR ELECTRICITY PRICE [B16 B17 M1 M3]
 do "$dirpath_code/merge/MERGE_instruments.do"
 
-*** 5. CONSTRUCT PANEL DATASETS FOR ELECTRICITY REGRESSIONS
+*** M5: CONSTRUCT PANEL DATASETS FOR ELECTRICITY REGRESSIONS [B12 B13 B23 B24 B25 M1 M3 M4]
 do "$dirpath_code/merge/MERGE_analysis_elec_regs.do"
 
-*** 6: MERGE CUSTOMER DETAILS & APEP DATASETS TO CONSTRUCT MASTER XSECTION(S) FOR EVENTUAL PANEL(S)
+*** M6: MERGE CUSTOMER DETAILS & APEP DATASETS TO CONSTRUCT MASTER XSECTION(S) [B9 B11 B12 B14 B15 B23 B25]
 do "$dirpath_code/merge/MERGE_customer_apep_units.do"
 
-*** 7: CONSTRUCT PANEL OF KWH/AF CONVERSION RATES
+*** M7: CONSTRUCT PANEL OF KWH/AF CONVERSION RATES [B14 B23 B25 M6]
 do "$dirpath_code/merge/MERGE_panel_kwhaf.do"
 
-*** 8. CONSTRUCT PANEL DATASETS FOR WATER REGRESSIONS
+*** M8: CONSTRUCT PANEL DATASETS FOR WATER REGRESSIONS [B23 B25 M5 M7]
 do "$dirpath_code/merge/MERGE_analysis_water_regs.do"
 
 
