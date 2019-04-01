@@ -81,7 +81,7 @@ global VCE = "sp_group modate"
 	
 	
 // Loop over sensitivities
-forvalues c = 1/53 {
+forvalues c = 1/51 {
 
 	// Reset default locals
 	local if_sample = "${if_sample}"
@@ -112,7 +112,7 @@ forvalues c = 1/53 {
 		local RHS = "(ln_mean_p_af_rast_dd_mth_2SP = ln_gw_mean_depth_mth_2SP)"
 	}
 	if `c'==6 {
-		local sens = "IV with average depth, not default tariff"
+		local sens = "IV with lagged average depth, not default tariff"
 		local RHS = "(ln_mean_p_af_rast_dd_mth_2SP = L6_ln_gw_mean_depth_mth_2SP L12_ln_gw_mean_depth_mth_2SP)"
 	}
 	if `c'==7 {
@@ -124,193 +124,185 @@ forvalues c = 1/53 {
 		local DEPVAR = "log1_af_rast_dd_mth_2SP"
 	}
 	if `c'==9 {
-		local sens = "Depvar: log(100*Q)"
-		local DEPVAR = "log_100af_rast_dd_mth_2SP"
-	}
-	if `c'==10 {
 		local sens = "Depvar: log(1+100*Q)"
 		local DEPVAR = "log1_100af_rast_dd_mth_2SP"
 	}
-	if `c'==11 {
-		local sens = "Depvar: log(10000*Q)"
-		local DEPVAR = "log_10000af_rast_dd_mth_2SP"
-	}
-	if `c'==12 {
+	if `c'==10 {
 		local sens = "Depvar: log(1+10000*Q)"
 		local DEPVAR = "log1_10000af_rast_dd_mth_2SP"
 	}
-	if `c'==13 {
+	if `c'==11 {
 		local sens = "Depvar: log(Q); IV with average depth"
 		local DEPVAR = "log_af_rast_dd_mth_2SP"
 		local RHS = "(ln_mean_p_af_rast_dd_mth_2SP = ln_gw_mean_depth_mth_2SP)"
 	}
-	if `c'==14 {
+	if `c'==12 {
 		local sens = "Depvar: log(1+Q); IV with average depth"
 		local DEPVAR = "log1_af_rast_dd_mth_2SP"
 		local RHS = "(ln_mean_p_af_rast_dd_mth_2SP = ln_gw_mean_depth_mth_2SP)"
 	}
-	if `c'==15 {
+	if `c'==13 {
 		local sens = "Depvar: log(100*Q); IV with average depth"
 		local DEPVAR = "log_100af_rast_dd_mth_2SP"
 		local RHS = "(ln_mean_p_af_rast_dd_mth_2SP = ln_gw_mean_depth_mth_2SP)"
 	}
-	if `c'==16 {
+	if `c'==14 {
 		local sens = "Depvar: log(1+100*Q); IV with average depth"
 		local DEPVAR = "log1_100af_rast_dd_mth_2SP"
 		local RHS = "(ln_mean_p_af_rast_dd_mth_2SP = ln_gw_mean_depth_mth_2SP)"
 	}	
-	if `c'==17 {
+	if `c'==15 {
 		local sens = "Depvar: log(1000*Q); IV with average depth"
 		local DEPVAR = "log_10000af_rast_dd_mth_2SP"
 		local RHS = "(ln_mean_p_af_rast_dd_mth_2SP = ln_gw_mean_depth_mth_2SP)"
 	}
-	if `c'==18 {
+	if `c'==16 {
 		local sens = "Depvar: log(1+10000*Q); IV with average depth"
 		local DEPVAR = "log1_10000af_rast_dd_mth_2SP"
 		local RHS = "(ln_mean_p_af_rast_dd_mth_2SP = ln_gw_mean_depth_mth_2SP)"
 	}	
-	if `c'==19 {
+	if `c'==17 {
 		local sens = "Within-category switchers only"
 		local if_sample = "${if_sample} & sp_same_rate_in_cat==0"
 	}
-	if `c'==20 {
+	if `c'==18 {
 		local sens = "Within-category non-switchers only"
 		local if_sample = "${if_sample} & sp_same_rate_in_cat==1"
 	}
-	if `c'==21 {
+	if `c'==19 {
 		local sens = "Within 60 months of pump test"
 		local if_sample = "${if_sample} & months_to_nearest_test<=60"
 	}
-	if `c'==22 {
+	if `c'==20 {
 		local sens = "Within 48 months of pump test"
 		local if_sample = "${if_sample} & months_to_nearest_test<=48"
 	}
-	if `c'==23 {
+	if `c'==21 {
 		local sens = "Within 36 months of pump test"
 		local if_sample = "${if_sample} & months_to_nearest_test<=36"
 	}
-	if `c'==24 {
+	if `c'==22 {
 		local sens = "Within 24 months of pump test"
 		local if_sample = "${if_sample} & months_to_nearest_test<=24"
 	}
-	if `c'==25 {
+	if `c'==23 {
 		local sens = "Within 12 months of pump test"
 		local if_sample = "${if_sample} & months_to_nearest_test<=12"
 	}
-	if `c'==26 {
+	if `c'==24 {
 		local sens = "Dropping APEP-subsidized projects"
 		local if_sample = "${if_sample} & apep_proj_count==0"
 	}
-	if `c'==27 {
+	if `c'==25 {
 		local sens = "Latlons within 100 miles"
 		local if_sample = "${if_sample} & latlon_miles_apart<=100"
 	}
-	if `c'==28 {
+	if `c'==26 {
 		local sens = "Latlons within 50 miles"
 		local if_sample = "${if_sample} & latlon_miles_apart<=50"
 	}
-	if `c'==29 {
+	if `c'==27 {
 		local sens = "Latlons within 25 miles"
 		local if_sample = "${if_sample} & latlon_miles_apart<=25"
 	}
-	if `c'==30 {
+	if `c'==28 {
 		local sens = "Latlons within 10 miles"
 		local if_sample = "${if_sample} & latlon_miles_apart<=10"
 	}
-	if `c'==31 {
+	if `c'==29 {
 		local sens = "Latlons within 5 miles"
 		local if_sample = "${if_sample} & latlon_miles_apart<=5"
 	}
-	if `c'==32 {
+	if `c'==30 {
 		local sens = "Latlons within 1 miles"
 		local if_sample = "${if_sample} & latlon_miles_apart<=1"
 	}
-	if `c'==33 {
+	if `c'==31 {
 		local sens = "Summer months only"
 		local if_sample = "${if_sample} & summer==1"
 	}
-	if `c'==34 {
+	if `c'==32 {
 		local sens = "Winter months only"
 		local if_sample = "${if_sample} & summer==0"
 	}
-	if `c'==35 {
+	if `c'==33 {
 		local sens = "Removing SPs with exactly 1 pump test"
 		local if_sample = "${if_sample} & apep_interp_case!=1"
 	}
-	if `c'==36 {
+	if `c'==34 {
 		local sens = "Removing SPs with >1 pump tests"
 		local if_sample = "${if_sample} & apep_interp_case==1"
 	}
-	if `c'==37 {
+	if `c'==35 {
 		local sens = "Removing SPs with multiple pumps"
 		local if_sample = "${if_sample} & inlist(apep_interp_case,1,2) "
 	}
-	if `c'==38 {
+	if `c'==36 {
 		local sens = "Removing SPs with a bad drawdown flag"
 		local if_sample = "${if_sample} & flag_bad_drwdwn==1 "
 	}
-	if `c'==39 {
+	if `c'==37 {
 		local sens = "Removing SPs without high-confidence drawdown predictions"
 		local if_sample = "${if_sample} & drwdwn_predict_step<=2 "
 	}
-	if `c'==40 {
+	if `c'==38 {
 		local sens = "Removing SPs without medium-to-high-confidence drawdown predictions"
 		local if_sample = "${if_sample} & drwdwn_predict_step<=4 "
 	}
-	if `c'==41 {
+	if `c'==39 {
 		local sens = "APEP-measured KWHAF (independent of depth), with avg depth IV"
 		local DEPVAR = "ihs_af_apep_measured"
 		local RHS = "(ln_mean_p_af_apep_measured = log_mean_p_kwh_ag_default)" 
 	}
-	if `c'==42 {
+	if `c'==40 {
 		local sens = "Using pump latlon instead of SP latlon"
 		local DEPVAR = "ihs_af_rast_dd_mth_2"
 		local RHS = "(ln_mean_p_af_rast_dd_mth_2 = log_mean_p_kwh_ag_default)" 
 	}
-	if `c'==43 {
+	if `c'==41 {
 		local sens = "Calculating KWHAF using predicted drawdown instead of fixed drawdown"
 		local DEPVAR = "ihs_af_rast_ddhat_mth_2SP"
 		local RHS = "(ln_mean_p_af_rast_ddhat_mth_2SP = log_mean_p_kwh_ag_default)" 
 	}
-	if `c'==44 {
+	if `c'==42 {
 		local sens = "Calculating KWHAF using mean depth instead of rasterized depth"
 		local DEPVAR = "ihs_af_mean_dd_mth_2SP"
 		local RHS = "(ln_mean_p_af_mean_dd_mth_2SP = log_mean_p_kwh_ag_default)" 
 	}
-	if `c'==45 {
+	if `c'==43 {
 		local sens = "Calculating KWHAF using mean depth AND predicted drawdown"
 		local DEPVAR = "ihs_af_mean_ddhat_mth_2SP"
 		local RHS = "(ln_mean_p_af_mean_ddhat_mth_2SP = log_mean_p_kwh_ag_default)" 
 	}
-	if `c'==46 {
+	if `c'==44 {
 		local sens = "San Joaquin basin only"
 		local if_sample = "${if_sample} & basin_group==122"
 	}
-	if `c'==47 {
+	if `c'==45 {
 		local sens = "Sacramento basin only"
 		local if_sample = "${if_sample} & basin_group==121"
 	}
-	if `c'==48 {
+	if `c'==46 {
 		local sens = "Salinas basin only"
 		local if_sample = "${if_sample} & basin_group==68"
 	}
-	if `c'==49 {
+	if `c'==47 {
 		local sens = "Salinas, Sacramento, and San Joaquin basins"
 		local if_sample = "${if_sample} & inlist(basin_group,68,121,122)"
 	}
+	if `c'==48 {
+		local sens = "Unit-specific linear time trends"
+		local FEs = "sp_group#month sp_group#rt_large_ag modate sp_group#c.modate"
+	}
+	if `c'==49 {
+		local sens = "Unit-specific linear time trends"
+		local FEs = "sp_group#month sp_group#rt_large_ag modate sp_group#c.modate"
+	}
 	if `c'==50 {
-		local sens = "Unit-specific linear time trends"
-		local FEs = "sp_group#month sp_group#rt_large_ag modate sp_group#c.modate"
-	}
-	if `c'==51 {
-		local sens = "Unit-specific linear time trends"
-		local FEs = "sp_group#month sp_group#rt_large_ag modate sp_group#c.modate"
-	}
-	if `c'==52 {
 		local sens = "Basin by month-of-sample FEs"
 		local FEs = "sp_group#month sp_group#rt_large_ag modate#basin_group" 
 	}
-	if `c'==53 {
+	if `c'==51 {
 		local sens = "Water district by month-of-sample FEs"
 		local FEs = "sp_group#month sp_group#rt_large_ag modate#wdist_group" 
 	}
