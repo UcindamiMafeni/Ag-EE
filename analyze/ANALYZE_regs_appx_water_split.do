@@ -54,6 +54,7 @@ gen t_log_p_kwh = .
 gen beta_log_kwhaf = .
 gen se_log_kwhaf = .
 gen t_log_kwhaf = .
+gen pval_equal = .
 gen vce = ""
 gen n_obs = .
 gen n_SPs = .
@@ -89,7 +90,7 @@ global VCE = "sp_group modate"
 	
 	
 // Loop over sensitivities
-forvalues c = 1/35 {
+forvalues c = 1/34 {
 
 	// Reset default locals
 	local if_sample = "${if_sample}"
@@ -254,6 +255,8 @@ forvalues c = 1/35 {
 	replace beta_log_kwhaf = _b[`kwhaf_var']-1 in `c'
 	replace se_log_kwhaf = _se[`kwhaf_var'] in `c'
 	replace t_log_kwhaf = (_b[`kwhaf_var']-1)/_se[`kwhaf_var'] in `c'
+	test log_p_mean = `kwhaf_var' - 1
+	replace pval_equal = r(p) in `c'
 	replace vce = "cluster `VCE'" in `c'
 	replace n_obs = e(N) in `c'
 	replace n_SPs = e(N_clust1) in `c'
