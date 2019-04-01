@@ -93,7 +93,7 @@ global VCE = "sp_group modate"
 	
 	
 // Loop over sensitivities
-forvalues c = 1/25 {
+forvalues c = 1/27 {
 
 	// Reset default locals
 	local if_sample = "${if_sample}"
@@ -155,52 +155,60 @@ forvalues c = 1/25 {
 		local if_sample = "${if_sample} & months_to_nearest_test<=24"
 	}
 	if `c'==14 {
+		local sens = "Within 12 months of pump test"
+		local if_sample = "${if_sample} & months_to_nearest_test<=12"
+	}
+	if `c'==15 {
 		local sens = "Dropping APEP-subsidized projects"
 		local if_sample = "${if_sample} & apep_proj_count==0"
 	}
-	if `c'==15 {
+	if `c'==16 {
 		local sens = "Latlons within 100 miles"
 		local if_sample = "${if_sample} & latlon_miles_apart<=100"
 	}
-	if `c'==16 {
+	if `c'==17 {
 		local sens = "Latlons within 50 miles"
 		local if_sample = "${if_sample} & latlon_miles_apart<=50"
 	}
-	if `c'==17 {
+	if `c'==18 {
 		local sens = "Latlons within 25 miles"
 		local if_sample = "${if_sample} & latlon_miles_apart<=25"
 	}
-	if `c'==18 {
+	if `c'==19 {
 		local sens = "Latlons within 10 miles"
 		local if_sample = "${if_sample} & latlon_miles_apart<=10"
 	}
-	if `c'==19 {
+	if `c'==20 {
 		local sens = "Latlons within 5 miles"
 		local if_sample = "${if_sample} & latlon_miles_apart<=5"
 	}
-	if `c'==20 {
+	if `c'==21 {
 		local sens = "Latlons within 1 miles"
 		local if_sample = "${if_sample} & latlon_miles_apart<=1"
 	}
-	if `c'==21 {
+	if `c'==22 {
 		local sens = "Summer months only"
 		local if_sample = "${if_sample} & summer==1"
 	}
-	if `c'==22 {
+	if `c'==23 {
 		local sens = "Winter months only"
 		local if_sample = "${if_sample} & summer==0"
 	}
-	if `c'==23 {
+	if `c'==24 {
 		local sens = "San Joaquin basin only"
 		local if_sample = "${if_sample} & basin_group==122"
 	}
-	if `c'==24 {
+	if `c'==25 {
 		local sens = "Sacramento basin only"
 		local if_sample = "${if_sample} & basin_group==121"
 	}
-	if `c'==25 {
+	if `c'==26 {
 		local sens = "Salinas basin only"
 		local if_sample = "${if_sample} & basin_group==68"
+	}
+	if `c'==27 {
+		local sens = "Salinas, Sacramento, and San Joaquin basins"
+		local if_sample = "${if_sample} & inlist(basin_group,68,121,122)"
 	}
 	
 	// Run non-IV specification	
