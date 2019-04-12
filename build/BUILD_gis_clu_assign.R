@@ -16,6 +16,9 @@ rm(list = ls())
 
 #libP <- "C:/Program Files/Microsoft/R Open/R-3.4.4/library"
 
+#options(repos="https://cran.cnr.berkeley.edu")
+#install.packages(c("dplyr", "sf"))
+
 library(ggmap) #, lib.loc=libP)
 library(ggplot2) #, lib.loc=libP)
 library(gstat) #, lib.loc=libP)
@@ -29,39 +32,37 @@ library(SDMTools) #, lib.loc=libP)
 library(tidyverse)
 library(viridis)
 library(rvest)
+library(tmap)
+library(parallel)
+library(cluster)
+library(dplyr)
+library(data.table)
 
+path <- "T:/Projects/Pump Data/data"
 
 ##########################################
 ### 1. Prep all relevant in shapefiles ###
 ##########################################
 
-#Load Common Land Units shapefile
-setwd("S:/Matt/ag_pump/data/cleaned_spatial/CLU")
+#Load CLU SF data frame
+setwd(paste0(path,"/cleaned_spatial/CLU"))
 CLUs_sf <- readRDS("clu.RDS")
-  
+crs <- st_crs(CLUs_sf)
+
 #Export list of CLUs 
-setwd("S:/Matt/ag_pump/data/misc")
+setwd(paste0(path,"/misc"))
 CLUs_data <- CLUs_sf
 st_geometry(CLUs_data) <- NULL
 filename <- "CLUs_cleaned.csv"
-write.csv(CLUs_data, file=filename , row.names=FALSE, col.names=TRUE, quote=FALSE, append=FALSE)
-
-#Convert SF to SP
-CLUs <- sf:::as_Spatial(CLUs_sf$geom)
-CLUs <- SpatialPolygonsDataFrame(CLUs, CLUs_data, match.ID=FALSE)
+write.csv(CLUs_data, file=filename , row.names=FALSE, quote=FALSE)
+rm(CLUs_data)
 
 #Load CA state outline
-setwd("S:/Matt/ag_pump/data/spatial")
+setwd(paste0(path,"/spatial"))
 CAoutline <- readOGR(dsn = "State", layer = "CA_State_TIGER2016")
-proj4string(CAoutline)
-CAoutline <- spTransform(CAoutline, CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=GRS80 +towgs84=0,0,0"))
-
-#Confirm CLUs align with California map
-#ggplot() + 
-#  geom_polygon(data=CAoutline, aes(x=long, y=lat, group=group), 
-#               color="grey30", fill=NA, alpha=1) +
-#  geom_polygon(data=CLUs, aes(x=long, y=lat, group=group, color=rgb(0,0,1)), 
-#               color=rgb(0,1,0), fill=rgb(0,0,1), alpha=1) 
+CAoutline_sf <- st_as_sf(CAoutline)
+CAoutline_sf <- st_transform(CAoutline_sf, crs)
+rm(CAoutline)
 
 
 #####################################
@@ -69,101 +70,137 @@ CAoutline <- spTransform(CAoutline, CRS("+proj=longlat +datum=WGS84 +no_defs +el
 #####################################
 
 #Read PGE coordinates
-setwd("S:/Matt/ag_pump/data/misc")
+setwd(paste0(path,"/misc"))
 prems <- read.delim2("pge_prem_coord_3pulls.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
 prems$longitude <- as.numeric(prems$prem_lon)
 prems$latitude <- as.numeric(prems$prem_lat)
 
-#Convert to SpatialPointsDataFrame
+#Merge in assigned counties
+prems_counties <- read.delim2("pge_prem_coord_polygon_counties.txt",header=TRUE,sep="%",stringsAsFactors=FALSE)
+prems_counties <- prems_counties[,names(prems_counties) %in% c("sp_uuid","county")]
+stopifnot(prems$sp_uuid==prems_counties$sp_uuid) # confirm merge by row id is good
+prems$county <- prems_counties$county
+rm(prems_counties)
+
+#Convert to SF object
 coordinates(prems) <- ~ longitude + latitude
-proj4string(prems) <- proj4string(CLUs)
+prems_sf  <- st_as_sf(prems)
+st_crs(prems_sf) <- st_crs(CLUs_sf)
 
-#Assign each lat/lon to the CLU polygon it's contained in
-prems@data$IN_CLU <- over(prems, CLUs)
+#Assign each lat/lon to the polygon it's contained in
+prems_sf$in_clu_row <- sapply(st_intersects(prems_sf,CLUs_sf), function(z) if (length(z)==0) NA_integer_ else z[1])
 
-#Reproject everything into planar coordinates
-utmStr <- "+proj=utm +zone=%d +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"
-crs <- CRS(sprintf(utmStr, 10))
-CLUsUTM <- spTransform(CLUs, crs) #reproject into planar coordinates, because that's what the distance function uses
-premsUTM <- spTransform(prems, crs)
+#Package results
+prems_sf$in_clu <- is.na(prems_sf$in_clu_row)==0
+prems_sf$CLU_ID <- CLUs_sf$CLU_ID[prems_sf$in_clu_row]
+prems_sf$CLUCounty <- CLUs_sf$County[prems_sf$in_clu_row]
+prems_sf$CLUAcres <- CLUs_sf$CLUAcres[prems_sf$in_clu_row]
 
-#Create empy vectors to loop over, to calculate distance to a CLU
-n <- nrow(prems@data)
-nearestCLU_ID <- numeric(n)
-nearestCLU_dist_km <- numeric(n)
+#Save temporary results
+saveRDS(prems_sf, paste0(path,"/misc/temp1_prems_sf_in_clus.RDS"))
+prems_sf <- readRDS(paste0(path,"/misc/temp1_prems_sf_in_clus.RDS"))
 
 #Create vector of only those observations where CLU is missing
-missings <- c(1:n)[is.na(prems@data$IN_CLU$CLU_ID)]
+n <- nrow(prems_sf)
+missings <- c(1:n)[(is.na(prems_sf$in_clu_row) & is.na(prems_sf$county)==0)]
 
-#Calculate distance to a CLU polygon, for lat/lons not contained in a polygon
-for (j in seq_along(missings)) {
-  i <- missings[j]
-  temp <- CLUsUTM@data[which.min(gDistance(premsUTM[i,], CLUsUTM, byid=TRUE)),]
-  nearestCLU_ID[i]   <- as.character(temp$CLU_ID)
-  nearestCLU_dist_km[i] <- min(gDistance(premsUTM[i,], CLUsUTM, byid=TRUE))/1000
+#Convert into data.table, which is faster for the nearest distance function
+prems_dt <- as.data.table(prems_sf[,names(prems_sf) %in% 
+                                     c("sp_uuid","county","geometry","in_clu_row","in_clu")])
+
+#Convert polygons to lines (equivalent + faster for calculating minimum distance), and data.table
+CLUs_dt <- st_cast(CLUs_sf, 'MULTILINESTRING')
+CLUs_dt <- as.data.table(CLUs_dt)
+
+#Function to calculate distance to a CLU polygon, for lat/lons not contained in a polygon
+nearestFXN <- function(i) {
+  
+  # create single-row data table of prem lat/lon
+  temp_prems_dt <- prems_dt[i,]
+  
+  # extract county for missing i
+  #temp_county <- gsub(" ", "", temp_prems2_dt$county) 
+  
+  # create county-specific polygons object (actually a line data.table)
+  #temp_Parcels_conc_dt <- get(paste0("Parcels_conc_dt_",temp_county)) 
+  
+  # find ID nearest polygon (actually line) in county
+  temp_row <- st_nearest_feature(temp_prems_dt$geometry, CLUs_dt$geometry) 
+  
+  # assign index of nearest polygon (actually line)
+  out_id <- as.character(CLUs_dt[temp_row,]$CLU_ID)
+  
+  # convert single-row prems_dt into SF object, and add CRS units
+  temp_prems_sf <- st_as_sf(temp_prems_dt)
+  temp_prems_sf <- st_set_crs(temp_prems_sf, crs) 
+  
+  # convert nearest polygon into single-row SF object, and add CRS units
+  temp_CLUs_sf <- st_as_sf(CLUs_dt[temp_row,])
+  temp_CLUs_sf <- st_set_crs(temp_CLUs_sf, crs) 
+  
+  # find distance to nearest parcel (in meters)
+  out_dist <- st_distance(temp_prems_sf, temp_CLUs_sf, by_element=TRUE)
+  
+  # convert distance to kilometers
+  out_dist <- as.numeric(out_dist/1000)
+  
+  # package output
+  out <- c(i,out_id,out_dist)
+  names(out) <- c("prems_row","nearest_ID","nearest_dist_km")
+  return(out)
+  gc()
 }
 
-#Convert back to regular dataframe
-prems <- as.data.frame(prems)
+#Calculate distance to a CLU polygon, for lat/lons not contained in a polygon
+cl <- makeCluster(30) #(cores - 1)
+clusterEvalQ(cl, library(sf))
+clusterEvalQ(cl, library(data.table))
+clusterSetRNGStream(cl, 12345)
+clusterExport(cl=cl, varlist=c('nearestFXN','prems_dt','crs','CLUs_dt'))
+nearestFXN_out <- as.data.frame(t(parSapply(cl=cl, missings, function(x) nearestFXN(x))))
+stopCluster(cl)
 
-#Assign in_CLU dummy and store CLU ID and area
-prems$CLU_ID <- prems$IN_CLU.CLU_ID
-prems$CLU_county <- prems$IN_CLU.County
-prems$CLU_acres <- prems$IN_CLU.CLUAcres
-prems$in_CLU <- as.numeric(is.na(prems$CLU_ID)==0)
-summary(prems$in_CLU)
-summary(prems$in_CLU[prems$bad_geocode_flag==0])
-summary(prems$in_CLU[prems$bad_geocode_flag==0 & prems$pull=="20180719"])
+#Save temporary results
+saveRDS(nearestFXN_out, paste0(path,"/misc/temp2_prems_sf_in_clus.RDS"))
+nearestFXN_out <- readRDS(paste0(path,"/misc/temp2_prems_sf_in_clus.RDS"))
 
-#Append nearest CLU variables
-prems <- cbind(prems, nearestCLU_ID, nearestCLU_dist_km)
-summary(prems[prems$in_CLU==0,]$nearestCLU_dist_km)
-summary(prems[prems$in_CLU==0 & prems$bad_geocode_flag==0 & prems$pull=="20180719",]$nearestCLU_dist_km)
+#Fix data types
+nearestFXN_out$prems_row <- as.integer(as.character(nearestFXN_out$prems_row))
+nearestFXN_out$nearest_dist_km <- as.numeric(as.character(nearestFXN_out$nearest_dist_km))
 
-#Plot points in CLUs
-ggplot() + 
-  geom_polygon(data=CAoutline, aes(x=long, y=lat, group=group), 
-               color="grey30", fill=NA, alpha=1) +
-  #geom_polygon(data=CLUs, aes(x=long, y=lat, group=group), 
-  #             color="green", fill=NA, alpha=1) +
-  geom_point(data=prems[prems$in_CLU==1,], aes(x=longitude, y=latitude), color=rgb(0,0,1), shape=19, 
-             alpha=1, size=1) 
+#Merge in areas
+nearestFXN_out <- left_join(nearestFXN_out, CLUs_sf, by=c("nearest_ID"="CLU_ID"))
+nearestFXN_out <- nearestFXN_out[,names(nearestFXN_out) %in% c("prems_row","nearest_ID","nearest_dist_km","County","CLUAcres")]
+names(nearestFXN_out)[2] <- "nearest_CLU_ID"
+names(nearestFXN_out)[4] <- "nearest_CLUCounty"
+names(nearestFXN_out)[5] <- "nearest_CLUAcres"
 
-#Plot points NOT in CLUs
-ggplot() + 
-  geom_polygon(data=CAoutline, aes(x=long, y=lat, group=group), 
-               color="grey30", fill=NA, alpha=1) +
-  #geom_polygon(data=CLUs, aes(x=long, y=lat, group=group), 
-  #             color="green", fill=NA, alpha=1) +
-  geom_point(data=prems[(prems$in_CLU==0 & prems$bad_geocode_flag==0),], aes(x=longitude, y=latitude), color=rgb(0,0,1), shape=19, 
-             alpha=1, size=1) 
+#Expand nearest outputs into full size
+n_vect <- as.data.frame(c(1:n))
+names(n_vect) <- "prems_row"
+nearestFXN_out_expanded <- left_join(n_vect, nearestFXN_out, by="prems_row")
 
-#Plot points NOT in CLUs that are in APEP
-ggplot() + 
-  geom_polygon(data=CAoutline, aes(x=long, y=lat, group=group), 
-               color="grey30", fill=NA, alpha=1) +
-  #geom_polygon(data=CLUs, aes(x=long, y=lat, group=group), 
-  #             color="green", fill=NA, alpha=1) +
-  geom_point(data=prems[(prems$in_CLU==0 & prems$bad_geocode_flag==0 & prems$pull=="20180719"),], aes(x=longitude, y=latitude), color=rgb(0,0,1), shape=19, 
-             alpha=1, size=1) 
+#Tranfer nearest outcomes to main dataset
+prems_out <- st_drop_geometry(prems_sf)
+prems_out <- cbind(prems_out,nearestFXN_out_expanded)
 
-#Plot points NOT in CLUs that are in APEP, and are <2km from nearest CLUs
-ggplot() + 
-  geom_polygon(data=CAoutline, aes(x=long, y=lat, group=group), 
-               color="grey30", fill=NA, alpha=1) +
-  #geom_polygon(data=CLUs, aes(x=long, y=lat, group=group), 
-  #             color="green", fill=NA, alpha=1) +
-  geom_point(data=prems[(prems$in_CLU==0 & prems$bad_geocode_flag==0 & prems$pull=="20180719" & prems$nearestCLU_dist_km<2),], aes(x=longitude, y=latitude), color=rgb(0,0,1), shape=19, 
-             alpha=1, size=1) 
+#Diagnostics
+summary(as.numeric(prems_out$in_clu))
+summary(as.numeric(prems_out$in_clu[prems_out$bad_geocode_flag==0]))
+summary(as.numeric(prems_out$in_clu[prems_out$bad_geocode_flag==0 & prems_out$pull=="20180719"]))
+summary(prems_out[prems_out$in_clu==0,]$nearest_dist_km)
+summary(prems_out[prems_out$in_clu==0 & prems_out$bad_geocode_flag==0 & prems_out$pull=="20180719",]$nearest_dist_km)
 
 #Drop extraneous variables
-prems <- prems[c("sp_uuid","prem_lat","prem_long","longitude","latitude",
-                 "bad_geocode_flag","pull","CLU_ID","in_CLU","CLU_county","CLU_acres",
-                 "nearestCLU_ID", "nearestCLU_dist_km")]
+prems_out <- prems_out[,names(prems_out) %in% c("sp_uuid","prem_lat","prem_long","bad_geocode_flag","pull",
+                                                "in_clu","CLU_ID","CLUCounty","CLUAcres",
+                                                "nearest_CLU_ID","nearest_dist_km","nearest_CLUCounty","nearest_CLUAcres")]
 
 #Export results to csv
-filename <- "pge_prem_coord_polygon_clu.csv"
-write.csv(prems, file=filename , row.names=FALSE, col.names=TRUE, quote=FALSE, append=FALSE)
+filename <- paste0(path,"/misc/pge_prem_coord_polygon_clu.csv")
+write.csv(prems_out, file=filename , row.names=FALSE, quote=FALSE)
+
+
 
 
 #######################################
