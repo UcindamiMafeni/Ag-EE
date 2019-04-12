@@ -89,20 +89,30 @@ do "$dirpath_code/build/BUILD_event_days.do"
 	
 *** B22: COOKIE-CUTTER CROPLAND DATA LAYER ANNUAL FOR EACH CLU [B20]
 // "BUILD_gis_clu_cdl_conc.R"
-	// calls auxiliary programs "BUILD_gis_clu_cdl_conc.py"
-	//                      and "constants.R"
+	// calls auxiliary scripts "BUILD_gis_clu_cdl_conc.py"
+	//                     and "constants.R"
 
-*** B23: ASSIGN SPS AND APEP PUMPS TO VARIOUS POLYGONS [B11 B14 B19 B20 B21 B22]
+*** B23: ASSIGN SPS AND APEP PUMPS TO VARIOUS POLYGONS [B11 B14 B19 B20 B21]
 do "$dirpath_code/build/BUILD_assign_gis_polygons.do"
 	// calls auxilary GIS scripts "BUILD_gis_water_districts.R" 
 	//                        and "BUILD_gis_counties.R"
 	//                        and "BUILD_gis_water_basins.R"
+	//                        and "BUILD_gis_parcel_assign.R"
+	//                        and "BUILD_gis_clu_assign.R"
 
-*** B24: ASSIGN DAILY MIN/MAX TEMPERATURE TO EACH SP AND APEP PUMP [B23]
+*** B24: PROCESS CLU-PARCEL CONCORDANCE, AND AGGREGATE UNITS UP TO FIELDS AND FARMS [B21 B23]
+do "$dirpath_code/build/BUILD_aggr_units_fields_farms.do"
+	// calls auxiliary scripts "BUILD_export_clu_parcel_conc.R"
+
+*** B25: PROCESS CLU-CDL CONCORDANCE, AND CONSTRUCT ANNUAL PANEL OF CROPS [B22 B23 B24]
+do "$dirpath_code/build/BUILD_cdl_panel_crop_year.do"
+	// calls auxiliary scripts "BUILD_export_clu_cdl_conc.R"
+
+*** B26: ASSIGN DAILY MIN/MAX TEMPERATURE TO EACH SP AND APEP PUMP [B23]
 do "$dirpath_code/build/BUILD_daily_temperatures.do"
 	// calls auxilary GIS scripts "BUILD_prism_daily_temperature.R" 
 
-*** B25: CLEAN CA DWR GROUNDWATER DATA [B23]
+*** B27: CLEAN CA DWR GROUNDWATER DATA [B23]
 do "$dirpath_code/build/BUILD_clean_cadwr_groundwater.do"
 	// calls auxilary GIS scripts "BUILD_gis_gw_depth_raster.R" 
 	//                        and "BUILD_gis_gw_depth_extract.R"
@@ -125,16 +135,16 @@ do "$dirpath_code/merge/MERGE_bills_rate_nomerge.do"
 *** M4: CONSTRUCT INSTRUMENTS FOR ELECTRICITY PRICE [B16 B17 M1 M3]
 do "$dirpath_code/merge/MERGE_instruments.do"
 
-*** M5: CONSTRUCT PANEL DATASETS FOR ELECTRICITY REGRESSIONS [B12 B13 B23 B24 B25 M1 M3 M4]
+*** M5: CONSTRUCT PANEL DATASETS FOR ELECTRICITY REGRESSIONS [B12 B13 B23 B26 B27 M1 M3 M4]
 do "$dirpath_code/merge/MERGE_analysis_elec_regs.do"
 
-*** M6: MERGE CUSTOMER DETAILS & APEP DATASETS TO CONSTRUCT MASTER XSECTION(S) [B9 B11 B12 B14 B15 B23 B25]
+*** M6: MERGE CUSTOMER DETAILS & APEP DATASETS TO CONSTRUCT MASTER XSECTION(S) [B9 B11 B12 B14 B15 B23 B27]
 do "$dirpath_code/merge/MERGE_customer_apep_units.do"
 
-*** M7: CONSTRUCT PANEL OF KWH/AF CONVERSION RATES [B14 B23 B25 M6]
+*** M7: CONSTRUCT PANEL OF KWH/AF CONVERSION RATES [B14 B23 B27 M6]
 do "$dirpath_code/merge/MERGE_panel_kwhaf.do"
 
-*** M8: CONSTRUCT PANEL DATASETS FOR WATER REGRESSIONS [B23 B25 M5 M7]
+*** M8: CONSTRUCT PANEL DATASETS FOR WATER REGRESSIONS [B23 B27 M5 M7]
 do "$dirpath_code/merge/MERGE_analysis_water_regs.do"
 
 
