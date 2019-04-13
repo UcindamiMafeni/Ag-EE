@@ -3,13 +3,14 @@
 ##### 
 ######################################################################
 
+path <- "T:/Projects/Pump Data/"
 
 ############################ SETUP ####################################
 rm(list=ls())
 
 ### DIRECTORY PATHS
 # main directory
-setwd("S:/Matt/ag_pump")
+setwd(path)
 
 # main data directory
 dataDir <- paste(getwd(), "/data", sep = "")
