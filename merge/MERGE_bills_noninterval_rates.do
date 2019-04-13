@@ -6,7 +6,7 @@ set more off
 **** Script to assign PGE rates to billing data that don't merge into AMI ****
 ******************************************************************************
 
-global dirpath "S:/Matt/ag_pump"
+global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 	***** COME BACK AND FIX THIS STUFF LATER:

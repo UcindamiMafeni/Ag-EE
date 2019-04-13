@@ -6,7 +6,7 @@ set more off
 **** Script to merge full panel of customer-meter-pump test datasets ****
 *************************************************************************
 
-global dirpath "S:/Matt/ag_pump"
+global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 	***** COME BACK AND FIX THIS STUFF LATER:

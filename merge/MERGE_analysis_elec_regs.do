@@ -6,7 +6,7 @@ set more off
 **** Script to create analysis datasets monthly/hourly electricity regressions ****
 ***********************************************************************************
 
-global dirpath "S:/Matt/ag_pump"
+global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 ** PENDING:

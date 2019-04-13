@@ -7,7 +7,7 @@ set more off
 ************************************************************************
 
 
-global dirpath "S:/Matt/ag_pump"
+global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 

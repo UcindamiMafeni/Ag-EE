@@ -6,7 +6,7 @@ set more off
 **** Script to craete analysis datasets for camp ****
 *****************************************************
 
-global dirpath "S:/Matt/ag_pump"
+global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 
