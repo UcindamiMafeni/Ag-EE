@@ -6,7 +6,7 @@ set more off
 ** Script to run monthly water regressions (split) -- sensitivities to main spec **
 ***********************************************************************************
 
-global dirpath "S:/Matt/ag_pump"
+global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 ************************************************
