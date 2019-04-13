@@ -288,7 +288,10 @@ missings <- c(1:n)[(is.na(prems2_sf$in_parcel_row) & is.na(prems2_sf$county)==0)
 #Convert into data.table, which is faster for the nearest distance function
 prems2_dt <- as.data.table(prems2_sf[,names(prems2_sf) %in% 
                                      c("sp_uuid","county","geometry","in_parcel_row","in_parcel")])
-Parcels_conc_dt <- as.data.table(Parcels_conc_sf)
+
+#Convert polygons to lines (equivalent + faster for calculating minimum distance), and data.table
+Parcels_conc_dt <- st_cast(Parcels_conc_sf, 'MULTILINESTRING')
+Parcels_conc_dt <- as.data.table(Parcels_conc_dt)
 
 
 #Function to calculate distance to a parcel polygon, for lat/lons not contained in a polygon
@@ -550,7 +553,10 @@ missings <- c(1:n)[(is.na(pumps2_sf$in_parcel_row) & is.na(pumps2_sf$county)==0)
 #Convert into data.table, which is faster for the nearest distance function
 pumps2_dt <- as.data.table(pumps2_sf[,names(pumps2_sf) %in% 
                                        c("sp_uuid","county","geometry","in_parcel_row","in_parcel")])
-Parcels_conc_dt <- as.data.table(Parcels_conc_sf)
+
+#Convert polygons to lines (equivalent + faster for calculating minimum distance), and data.table
+Parcels_conc_dt <- st_cast(Parcels_conc_sf, 'MULTILINESTRING')
+Parcels_conc_dt <- as.data.table(Parcels_conc_dt)
 
 #Function to calculate distance to a parcel polygon, for lat/lons not contained in a polygon
 nearestFXN <- function(i) {
