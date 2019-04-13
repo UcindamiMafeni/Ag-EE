@@ -6,9 +6,9 @@ set more off
 **** MASTER DO FILE TO RUN ALL OTHER DOFILES *********
 ******************************************************
 
-global dirpath "S:/Matt/ag_pump"
-global dirpath_code "S:/Fiona/backup/Ag-EE"
-global dirpath_code "S:/Louis/backup/AgEE/AgEE_code"
+global dirpath "T:/Projects/Pump Data"
+*global dirpath_code "S:/Fiona/backup/Ag-EE"
+global dirpath_code "T:Home/Louis/backup/AgEE/AgEE_code"
 
 ** additional directory paths
 global dirpath_data "$dirpath/data"
