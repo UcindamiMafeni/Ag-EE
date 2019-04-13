@@ -16,12 +16,14 @@ library(rgeos) #, lib.loc=libP)
 library(raster) #, lib.loc=libP)
 library(SDMTools) #, lib.loc=libP)
 
+path <- "T:/Projects/Pump Data/"
+
 
 ##########################################
 ### 1. Prep all relevant in shapefiles ###
 ##########################################
 
-setwd("S:/Matt/ag_pump/data/spatial")
+setwd(paste0(path,"data/spatial"))
 
 #Load CLimate Zones shapefile
 cz <- readOGR(dsn = "CEC_climate_zones", layer = "CA_Building_Standards_Climate_Zones")
@@ -91,7 +93,7 @@ ggplot() +
 ############################################
 
 #Read PGE coordinates
-setwd("S:/Matt/ag_pump/data/misc")
+setwd(paste0(path,"data/misc"))
 prems <- read.delim2("pge_prem_coord_raw_20180322.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
 prems$longitude <- as.numeric(prems$prem_lon)
 prems$latitude <- as.numeric(prems$prem_lat)

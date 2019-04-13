@@ -28,12 +28,13 @@ library(rgeos) #, lib.loc=libP)
 library(raster) #, lib.loc=libP)
 library(SDMTools) #, lib.loc=libP)
 
+path <- "T:/Projects/Pump Data/"
 
 ##########################################
 ### 1. Prep all relevant in shapefiles ###
 ##########################################
 
-setwd("S:/Matt/ag_pump/data/spatial")
+setwd(paste0(path,"data/spatial"))
 
 #Load Water Basins shapefile
 wbasn <- readOGR(dsn = "CA_Bulletin_118_Groundwater_Basins", layer = "CA_Bulletin_118_Groundwater_Basins")
@@ -58,7 +59,7 @@ data <- wbasn@data
 summary(data$area_km2)
 
 #Export dataset of water basins
-setwd("S:/Matt/ag_pump/data/misc")
+setwd(paste0(path,"data/misc"))
 filename <- "ca_water_basins_raw.txt"
 write.table(data, file=filename , row.names=FALSE, col.names=TRUE, sep="%", quote=FALSE, append=FALSE)
 
@@ -69,7 +70,7 @@ write.table(data, file=filename , row.names=FALSE, col.names=TRUE, sep="%", quot
 #############################################
 
 #Read PGE coordinates
-setwd("S:/Matt/ag_pump/data/misc")
+setwd(paste0(path,"data/misc"))
 prems <- read.delim2("pge_prem_coord_3pulls.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
 prems$longitude <- as.numeric(prems$prem_lon)
 prems$latitude <- as.numeric(prems$prem_lat)
@@ -170,7 +171,7 @@ write.table(prems, file=filename , row.names=FALSE, col.names=TRUE, sep="%", quo
 ###############################################
 
 #Read APEP coordinates
-setwd("S:/Matt/ag_pump/data/misc")
+setwd(paste0(path,"data/misc"))
 pumps <- read.delim2("apep_pump_coord.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
 pumps$longitude <- as.numeric(pumps$pump_lon)
 pumps$latitude <- as.numeric(pumps$pump_lat)

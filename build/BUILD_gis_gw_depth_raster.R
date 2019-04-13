@@ -12,13 +12,14 @@ library(rgdal)
 library(raster)
 library(dplyr)
 
+path <- "T:/Projects/Pump Data/"
 
 ###################################################
 ### 1. Rasterize panels of groundwater readings ###
 ###################################################
 
 #Read groundwater depths by station and by month/quarter
-setwd("S:/Matt/ag_pump/data/misc")
+setwd(paste0(path,"data/misc"))
 gwmth <- read.delim2("ca_dwr_depth_latlon_month.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
 gwqtr <- read.delim2("ca_dwr_depth_latlon_quarter.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
 
@@ -121,7 +122,7 @@ for (ym in levels(gwmth$modate)) {
   print(Sys.time())
   
   #Save image of workspace
-  save.image(file = "S:/Matt/ag_pump/data/misc/temp_gw_idw_rasters.RData")
+  save.image(file = paste0(path,"data/misc/temp_gw_idw_rasters.RData"))
   
 }
 
@@ -213,11 +214,11 @@ for (yq in levels(gwqtr$qtr)) {
   print(Sys.time())
   
   #Save image of workspace
-  save.image(file = "S:/Matt/ag_pump/data/misc/temp_gw_idw_rasters.RData")
+  save.image(file = paste0(path,"data/misc/temp_gw_idw_rasters.RData"))
   
 }
 
 #Save image of workspace
-save.image(file = "S:/Matt/ag_pump/data/misc/temp_gw_idw_rasters.RData")
+save.image(file = paste0(path,"data/misc/temp_gw_idw_rasters.RData"))
 
 

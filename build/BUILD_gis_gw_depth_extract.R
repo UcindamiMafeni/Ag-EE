@@ -13,6 +13,7 @@ library(rgdal)
 library(raster)
 library(dplyr)
 
+path <- "T:/Projects/Pump Data/"
 
 ##################################################################################
 ### Extract groundwater depths for each SP, from each monthly/quarterly raster ###
@@ -20,17 +21,17 @@ library(dplyr)
 
 
 #Load monthly/quarterly rasters
-setwd("S:/Matt/ag_pump/data/misc")
+setwd(paste0(path,"data/misc"))
 load("temp_gw_idw_rasters.RData")
 
 #Read PGE coordinates
-setwd("S:/Matt/ag_pump/data/misc")
+setwd(paste0(path,"data/misc"))
 prems <- read.delim2("pge_prem_coord_3pulls.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
 prems$x <- as.numeric(prems$prem_lon)
 prems$y <- as.numeric(prems$prem_lat)
 
 #Read APEP coordinates
-setwd("S:/Matt/ag_pump/data/misc")
+setwd(paste0(path,"data/misc"))
 pumps <- read.delim2("apep_pump_coord.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
 pumps$x <- as.numeric(pumps$pump_lon)
 pumps$y <- as.numeric(pumps$pump_lat)
@@ -168,7 +169,7 @@ for (yq in levels(gwqtr$qtr)) {
 }  
 
 #Export SP and pump results to CSV
-setwd("S:/Matt/ag_pump/data/misc")
+setwd(paste0(path,"data/misc"))
 filename <- paste0("prems_gw_depths_from_rasters.csv")
 write.csv(prems, file=filename , row.names=FALSE, quote=FALSE)
 filename <- paste0("pumps_gw_depths_from_rasters.csv")

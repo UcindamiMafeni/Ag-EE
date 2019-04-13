@@ -27,12 +27,13 @@ library(rgeos) #, lib.loc=libP)
 library(raster) #, lib.loc=libP)
 library(SDMTools) #, lib.loc=libP)
 
+path <- "T:/Projects/Pump Data/"
 
 ##########################################
 ### 1. Prep all relevant in shapefiles ###
 ##########################################
 
-setwd("S:/Matt/ag_pump/data/spatial")
+setwd(paste0(path,"data/spatial"))
 
 #Load Water Districts shapefile
 wdist <- readOGR(dsn = "Water_Districts", layer = "Water_Districts")
@@ -62,7 +63,7 @@ summary(data$area_km2)
 ################################################
 
 #Read PGE coordinates
-setwd("S:/Matt/ag_pump/data/misc")
+setwd(paste0(path,"data/misc"))
 prems <- read.delim2("pge_prem_coord_3pulls.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
 prems$longitude <- as.numeric(prems$prem_lon)
 prems$latitude <- as.numeric(prems$prem_lat)
@@ -172,7 +173,7 @@ write.table(prems, file=filename , row.names=FALSE, col.names=TRUE, sep="%", quo
 ##################################################
 
 #Read APEP coordinates
-setwd("S:/Matt/ag_pump/data/misc")
+setwd(paste0(path,"data/misc"))
 pumps <- read.delim2("apep_pump_coord.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
 pumps$longitude <- as.numeric(pumps$pump_lon)
 pumps$latitude <- as.numeric(pumps$pump_lat)
