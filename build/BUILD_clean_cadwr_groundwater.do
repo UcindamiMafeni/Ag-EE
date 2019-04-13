@@ -9,7 +9,7 @@ set more off
 ** Downloaded at http://wdl.water.ca.gov/waterdatalibrary/groundwater/index.cfm 
 ** (top link on the page: https://d3.water.ca.gov/owncloud/index.php/s/smQyUOe4wkxwkNr)
 
-global dirpath "S:/Matt/ag_pump"
+global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 // PENDING

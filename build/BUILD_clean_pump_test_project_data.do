@@ -6,7 +6,7 @@ set more off
 **** Script to clean raw PGE data -- pump test project data file ******
 ***********************************************************************
 
-global dirpath "S:/Matt/ag_pump"
+global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 ** Load raw PGE customer data

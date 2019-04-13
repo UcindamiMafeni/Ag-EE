@@ -6,7 +6,7 @@ set more off
 **** Script to import and clean raw PGE data -- acoount-level EE data ********
 *******************************************************************************
 
-global dirpath "S:/Matt/ag_pump"
+global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 *******************************************************************************

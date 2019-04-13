@@ -6,9 +6,9 @@ set more off
 **** Script to import and clean raw PGE data -- customer details file *********
 *******************************************************************************
 
-global dirpath "S:/Matt/ag_pump"
+global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
-global dirpath_code "S:/Louis/backup/AgEE/AgEE_code/build"
+global dirpath_code "T:/Home/Louis/backup/AgEE/AgEE_code/build"
 *global R_exe_path "C:/PROGRA~1/MIE74D~1/ROPEN~1/bin/x64/R"
 *global R_lib_path "C:/Program Files/Microsoft/R Open/R-3.4.4/library"
 

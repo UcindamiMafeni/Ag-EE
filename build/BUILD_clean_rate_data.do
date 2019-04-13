@@ -7,7 +7,7 @@ memory clear
 set more off, perm
 version 13
 
-global dirpath "S:/Matt/ag_pump"
+global dirpath "T:/Projects/Pump Data"
 ** additional directory paths to make things easier
 global dirpath_data "$dirpath/data"
 global dirpath_data_temp "$dirpath/data/temp"
