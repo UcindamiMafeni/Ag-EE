@@ -122,7 +122,7 @@ nearestFXN <- function(i) {
   #temp_county <- gsub(" ", "", temp_prems2_dt$county) 
   
   # create county-specific polygons object (actually a line data.table)
-  #temp_Parcels_conc_dt <- get(paste0("Parcels_conc_dt_",temp_county)) 
+  #temp_CLUs_dt <- get(paste0("CLUs_dt_",temp_county)) 
   
   # find ID nearest polygon (actually line) in county
   temp_row <- st_nearest_feature(temp_prems_dt$geometry, CLUs_dt$geometry) 
@@ -138,7 +138,7 @@ nearestFXN <- function(i) {
   temp_CLUs_sf <- st_as_sf(CLUs_dt[temp_row,])
   temp_CLUs_sf <- st_set_crs(temp_CLUs_sf, crs) 
   
-  # find distance to nearest parcel (in meters)
+  # find distance to nearest CLU (in meters)
   out_dist <- st_distance(temp_prems_sf, temp_CLUs_sf, by_element=TRUE)
   
   # convert distance to kilometers
@@ -152,7 +152,7 @@ nearestFXN <- function(i) {
 }
 
 #Calculate distance to a CLU polygon, for lat/lons not contained in a polygon
-cl <- makeCluster(30) #(cores - 1)
+cl <- makeCluster(20) #(cores - 1)
 clusterEvalQ(cl, library(sf))
 clusterEvalQ(cl, library(data.table))
 clusterSetRNGStream(cl, 12345)
@@ -207,90 +207,131 @@ write.csv(prems_out, file=filename , row.names=FALSE, quote=FALSE)
 ### 3. Assign APEP lat/lons to CLUs ###
 #######################################
 
-#Read APEP coordinates
-setwd("S:/Matt/ag_pump/data/misc")
+#Read pump coordinates
+setwd(paste0(path,"/misc"))
 pumps <- read.delim2("apep_pump_coord.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
 pumps$longitude <- as.numeric(pumps$pump_lon)
 pumps$latitude <- as.numeric(pumps$pump_lat)
 
-#Convert to SpatialPointsDataFrame
+#Merge in assigned counties
+pumps_counties <- read.delim2("apep_pump_coord_polygon_counties.txt",header=TRUE,sep="%",stringsAsFactors=FALSE)
+pumps_counties <- pumps_counties[,names(pumps_counties) %in% c("latlon_group","county")]
+stopifnot(pumps$latlon_group==pumps_counties$latlon_group) # confirm merge by row id is good
+pumps$county <- pumps_counties$county
+rm(pumps_counties)
+
+#Convert to SF object
 coordinates(pumps) <- ~ longitude + latitude
-proj4string(pumps) <- proj4string(CLUs)
+pumps_sf  <- st_as_sf(pumps)
+st_crs(pumps_sf) <- st_crs(CLUs_sf)
 
-#Assign each lat/lon to the CLU polygon it's contained in
-pumps@data$IN_CLU <- over(pumps, CLUs)
+#Assign each lat/lon to the polygon it's contained in
+pumps_sf$in_clu_row <- sapply(st_intersects(pumps_sf,CLUs_sf), function(z) if (length(z)==0) NA_integer_ else z[1])
 
-#Reproject everything into planar coordinates
-utmStr <- "+proj=utm +zone=%d +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"
-crs <- CRS(sprintf(utmStr, 10))
-CLUsUTM <- spTransform(CLUs, crs) #reproject into planar coordinates, because that's what the distance function uses
-pumpsUTM <- spTransform(pumps, crs)
+#Package results
+pumps_sf$in_clu <- is.na(pumps_sf$in_clu_row)==0
+pumps_sf$CLU_ID <- CLUs_sf$CLU_ID[pumps_sf$in_clu_row]
+pumps_sf$CLUCounty <- CLUs_sf$County[pumps_sf$in_clu_row]
+pumps_sf$CLUAcres <- CLUs_sf$CLUAcres[pumps_sf$in_clu_row]
 
-#Create empy vectors to loop over, to calculate distance to a CLU
-n <- nrow(pumps@data)
-nearestCLU_ID <- numeric(n)
-nearestCLU_dist_km <- numeric(n)
+#Save temporary results
+saveRDS(pumps_sf, paste0(path,"/misc/temp1_pumps_sf_in_clus.RDS"))
+pumps_sf <- readRDS(paste0(path,"/misc/temp1_pumps_sf_in_clus.RDS"))
 
 #Create vector of only those observations where CLU is missing
-missings <- c(1:n)[is.na(pumps@data$IN_CLU$CLU_ID)]
+n <- nrow(pumps_sf)
+missings <- c(1:n)[(is.na(pumps_sf$in_clu_row) & is.na(pumps_sf$county)==0)]
 
-#Calculate distance to a CLU polygon, for lat/lons not contained in a polygon
-for (j in seq_along(missings)) {
-  i <- missings[j]
-  temp <- CLUsUTM@data[which.min(gDistance(pumpsUTM[i,], CLUsUTM, byid=TRUE)),]
-  nearestCLU_ID[i]   <- as.numeric(as.character(temp$CLU_ID))
-  nearestCLU_dist_km[i] <- min(gDistance(pumpsUTM[i,], CLUsUTM, byid=TRUE))/1000
+#Convert into data.table, which is faster for the nearest distance function
+pumps_dt <- as.data.table(pumps_sf[,names(pumps_sf) %in% 
+                                     c("latlon_group","county","geometry","in_clu_row","in_clu")])
+
+#Convert polygons to lines (equivalent + faster for calculating minimum distance), and data.table
+CLUs_dt <- st_cast(CLUs_sf, 'MULTILINESTRING')
+CLUs_dt <- as.data.table(CLUs_dt)
+
+#Function to calculate distance to a CLU polygon, for lat/lons not contained in a polygon
+nearestFXN <- function(i) {
+  
+  # create single-row data table of prem lat/lon
+  temp_pumps_dt <- pumps_dt[i,]
+  
+  # extract county for missing i
+  #temp_county <- gsub(" ", "", temp_pumps2_dt$county) 
+  
+  # create county-specific polygons object (actually a line data.table)
+  #temp_CLUs_dt <- get(paste0("CLUs_dt_",temp_county)) 
+  
+  # find ID nearest polygon (actually line) in county
+  temp_row <- st_nearest_feature(temp_pumps_dt$geometry, CLUs_dt$geometry) 
+  
+  # assign index of nearest polygon (actually line)
+  out_id <- as.character(CLUs_dt[temp_row,]$CLU_ID)
+  
+  # convert single-row pumps_dt into SF object, and add CRS units
+  temp_pumps_sf <- st_as_sf(temp_pumps_dt)
+  temp_pumps_sf <- st_set_crs(temp_pumps_sf, crs) 
+  
+  # convert nearest polygon into single-row SF object, and add CRS units
+  temp_CLUs_sf <- st_as_sf(CLUs_dt[temp_row,])
+  temp_CLUs_sf <- st_set_crs(temp_CLUs_sf, crs) 
+  
+  # find distance to nearest CLU (in meters)
+  out_dist <- st_distance(temp_pumps_sf, temp_CLUs_sf, by_element=TRUE)
+  
+  # convert distance to kilometers
+  out_dist <- as.numeric(out_dist/1000)
+  
+  # package output
+  out <- c(i,out_id,out_dist)
+  names(out) <- c("pumps_row","nearest_ID","nearest_dist_km")
+  return(out)
+  gc()
 }
 
-#Convert back to regular dataframe
-pumps <- as.data.frame(pumps)
+#Calculate distance to a CLU polygon, for lat/lons not contained in a polygon
+cl <- makeCluster(8) #(cores - 1)
+clusterEvalQ(cl, library(sf))
+clusterEvalQ(cl, library(data.table))
+clusterSetRNGStream(cl, 12345)
+clusterExport(cl=cl, varlist=c('nearestFXN','pumps_dt','crs','CLUs_dt'))
+nearestFXN_out <- as.data.frame(t(parSapply(cl=cl, missings, function(x) nearestFXN(x))))
+stopCluster(cl)
 
-#Assign in_CLU dummy and store CLU ID and area
-pumps$CLU_ID <- pumps$IN_CLU.CLU_ID
-pumps$CLU_county <- pumps$IN_CLU.County
-pumps$CLU_acres <- pumps$IN_CLU.CLUAcres
-pumps$in_CLU <- as.numeric(is.na(pumps$CLU_ID)==0)
-summary(pumps$in_CLU)
+#Save temporary results
+saveRDS(nearestFXN_out, paste0(path,"/misc/temp2_pumps_sf_in_clus.RDS"))
+nearestFXN_out_pumps <- readRDS(paste0(path,"/misc/temp2_pumps_sf_in_clus.RDS"))
 
-#Append nearest CLU variables
-pumps <- cbind(pumps, nearestCLU_ID, nearestCLU_dist_km)
-summary(pumps[pumps$in_CLU==0,]$nearestCLU_dist_km)
+#Fix data types
+nearestFXN_out_pumps$pumps_row <- as.integer(as.character(nearestFXN_out_pumps$pumps_row))
+nearestFXN_out_pumps$nearest_dist_km <- as.numeric(as.character(nearestFXN_out_pumps$nearest_dist_km))
 
-#Plot points in CLUs
-ggplot() + 
-  geom_polygon(data=CAoutline, aes(x=long, y=lat, group=group), 
-               color="grey30", fill=NA, alpha=1) +
-  #geom_polygon(data=CLUs, aes(x=long, y=lat, group=group), 
-  #             color="green", fill=NA, alpha=1) +
-  geom_point(data=pumps[pumps$in_CLU==1,], aes(x=longitude, y=latitude), color=rgb(0,0,1), shape=19, 
-             alpha=1, size=1) 
+#Merge in areas
+nearestFXN_out_pumps <- left_join(nearestFXN_out_pumps, CLUs_sf, by=c("nearest_ID"="CLU_ID"))
+nearestFXN_out_pumps <- nearestFXN_out_pumps[,names(nearestFXN_out_pumps) %in% c("pumps_row","nearest_ID","nearest_dist_km","County","CLUAcres")]
+names(nearestFXN_out_pumps)[2] <- "nearest_CLU_ID"
+names(nearestFXN_out_pumps)[4] <- "nearest_CLUCounty"
+names(nearestFXN_out_pumps)[5] <- "nearest_CLUAcres"
 
-#Plot points NOT in CLUs
-ggplot() + 
-  geom_polygon(data=CAoutline, aes(x=long, y=lat, group=group), 
-               color="grey30", fill=NA, alpha=1) +
-  #geom_polygon(data=CLUs, aes(x=long, y=lat, group=group), 
-  #             color="green", fill=NA, alpha=1) +
-  geom_point(data=pumps[(pumps$in_CLUs==0),], aes(x=longitude, y=latitude), color=rgb(0,0,1), shape=19, 
-             alpha=1, size=1) 
+#Expand nearest outputs into full size
+n_vect <- as.data.frame(c(1:n))
+names(n_vect) <- "pumps_row"
+nearestFXN_out_pumps_expanded <- left_join(n_vect, nearestFXN_out_pumps, by="pumps_row")
 
-#Plot points NOT in CLUs that are <2km from nearest CLU
-ggplot() + 
-  geom_polygon(data=CAoutline, aes(x=long, y=lat, group=group), 
-               color="grey30", fill=NA, alpha=1) +
-  #geom_polygon(data=CLUs, aes(x=long, y=lat, group=group), 
-  #             color="green", fill=NA, alpha=1) +
-  geom_point(data=pumps[(pumps$in_CLU==0 & pumps$nearestCLU_dist_km<2),], aes(x=longitude, y=latitude), color=rgb(0,0,1), shape=19, 
-             alpha=1, size=1) 
+#Tranfer nearest outcomes to main dataset
+pumps_out <- st_drop_geometry(pumps_sf)
+pumps_out <- cbind(pumps_out,nearestFXN_out_pumps_expanded)
 
+#Diagnostics
+summary(as.numeric(pumps_out$in_clu))
+summary(pumps_out[pumps_out$in_clu==0,]$nearest_dist_km)
 
 #Drop extraneous variables
-pumps <- pumps[c("latlon_group","pump_lat","pump_long","longitude","latitude",
-                 "CLU_ID","in_CLU","CLU_county","CLU_acres",
-                 "nearestCLU_ID", "nearestCLU_dist_km")]
+pumps_out <- pumps_out[,names(pumps_out) %in% c("latlon_group","pump_lat","pump_long",
+                                                "in_clu","CLU_ID","CLUCounty","CLUAcres",
+                                                "nearest_CLU_ID","nearest_dist_km","nearest_CLUCounty","nearest_CLUAcres")]
 
 #Export results to csv
-filename <- "apep_pump_coord_polygon_clu.csv"
-write.table(pumps, file=filename , row.names=FALSE, col.names=TRUE, quote=FALSE, append=FALSE)
-
+filename <- paste0(path,"/misc/pge_pump_coord_polygon_clu.csv")
+write.csv(pumps_out, file=filename , row.names=FALSE, quote=FALSE)
 
