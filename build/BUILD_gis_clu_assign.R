@@ -172,8 +172,8 @@ nearestFXN_out$nearest_dist_km <- as.numeric(as.character(nearestFXN_out$nearest
 nearestFXN_out <- left_join(nearestFXN_out, CLUs_sf, by=c("nearest_ID"="CLU_ID"))
 nearestFXN_out <- nearestFXN_out[,names(nearestFXN_out) %in% c("prems_row","nearest_ID","nearest_dist_km","County","CLUAcres")]
 names(nearestFXN_out)[2] <- "nearest_CLU_ID"
-names(nearestFXN_out)[4] <- "nearest_CLUCounty"
-names(nearestFXN_out)[5] <- "nearest_CLUAcres"
+names(nearestFXN_out)[5] <- "nearest_CLUCounty"
+names(nearestFXN_out)[4] <- "nearest_CLUAcres"
 
 #Expand nearest outputs into full size
 n_vect <- as.data.frame(c(1:n))
@@ -310,8 +310,8 @@ nearestFXN_out_pumps$nearest_dist_km <- as.numeric(as.character(nearestFXN_out_p
 nearestFXN_out_pumps <- left_join(nearestFXN_out_pumps, CLUs_sf, by=c("nearest_ID"="CLU_ID"))
 nearestFXN_out_pumps <- nearestFXN_out_pumps[,names(nearestFXN_out_pumps) %in% c("pumps_row","nearest_ID","nearest_dist_km","County","CLUAcres")]
 names(nearestFXN_out_pumps)[2] <- "nearest_CLU_ID"
-names(nearestFXN_out_pumps)[4] <- "nearest_CLUCounty"
-names(nearestFXN_out_pumps)[5] <- "nearest_CLUAcres"
+names(nearestFXN_out_pumps)[5] <- "nearest_CLUCounty"
+names(nearestFXN_out_pumps)[4] <- "nearest_CLUAcres"
 
 #Expand nearest outputs into full size
 n_vect <- as.data.frame(c(1:n))
@@ -332,6 +332,6 @@ pumps_out <- pumps_out[,names(pumps_out) %in% c("latlon_group","pump_lat","pump_
                                                 "nearest_CLU_ID","nearest_dist_km","nearest_CLUCounty","nearest_CLUAcres")]
 
 #Export results to csv
-filename <- paste0(path,"/misc/pge_pump_coord_polygon_clu.csv")
+filename <- paste0(path,"/misc/apep_pump_coord_polygon_clu.csv")
 write.csv(pumps_out, file=filename , row.names=FALSE, quote=FALSE)
 
