@@ -16,7 +16,7 @@ global dirpath_code "T:/Home/Louis/backup/AgEE/AgEE_code/build"
 *******************************************************************************
 
 ** 1. Save SP coordinates (techincally *premise* coordinates)
-if 1==1{
+if 1==0{
 
 ** Load all 3 PGE customer datasets
 use "$dirpath_data/pge_cleaned/pge_cust_detail_20180719.dta", clear
@@ -47,12 +47,11 @@ save "$dirpath_data/pge_cleaned/sp_premise_gis.dta", replace
 
 }
 	
-
 *******************************************************************************
 *******************************************************************************
 
 ** 2. Save APEP pump coordinates
-if 1==1{
+if 1==0{
 
 ** Load APEP test dataset
 use "$dirpath_data/pge_cleaned/pump_test_data.dta", clear
@@ -83,14 +82,12 @@ compress
 save "$dirpath_data/pge_cleaned/apep_pump_gis.dta", replace
 
 }
-	
-	
 
 *******************************************************************************
 *******************************************************************************
 
 ** 3. Assign SP coordinates to water districts
-if 1==1{
+if 1==0{
 
 ** Run auxilary GIS script "BUILD_gis_water_districts.R"
 
@@ -173,7 +170,7 @@ save "$dirpath_data/pge_cleaned/sp_premise_gis.dta", replace
 *******************************************************************************
 
 ** 4. Assign APEP coordinates to water districts
-if 1==1{
+if 1==0{
 
 ** Run auxilary GIS script "BUILD_gis_water_districts.R"
 
@@ -249,7 +246,7 @@ save "$dirpath_data/pge_cleaned/apep_pump_gis.dta", replace
 *******************************************************************************
 
 ** 5. Create unique water district identifier
-if 1==1{
+if 1==0{
 	
 	// The water district ID in the GIS attributes table is not *quite* unique
 	
@@ -298,7 +295,7 @@ save "$dirpath_data/pge_cleaned/apep_pump_gis.dta", replace
 *******************************************************************************
 
 ** 6. Assign SP coordinates to counties
-if 1==1{
+if 1==0{
 
 ** Run auxilary GIS script "BUILD_gis_counties.R"
 
@@ -368,7 +365,7 @@ save "$dirpath_data/pge_cleaned/sp_premise_gis.dta", replace
 *******************************************************************************
 
 ** 7. Assign APEP coordinates to counties
-if 1==1{
+if 1==0{
 
 ** Run auxilary GIS script "BUILD_gis_counties.R"
 
@@ -433,7 +430,7 @@ save "$dirpath_data/pge_cleaned/apep_pump_gis.dta", replace
 *******************************************************************************
 
 ** 8. Build dataset of California water basins 
-if 1==1{
+if 1==0{
 
 ** Import data table from GIS files of CA Water basins
 import delimited "$dirpath_data/misc/ca_water_basins_raw.txt", delimiter("%") clear
@@ -475,7 +472,7 @@ save "$dirpath_data/groundwater/ca_water_basins.dta", replace
 *******************************************************************************
 
 ** 9. Assign SP coordinates to water basins
-if 1==1{
+if 1==0{
 
 ** Run auxilary GIS script "BUILD_gis_water_basins.R"
 
@@ -559,7 +556,7 @@ save "$dirpath_data/pge_cleaned/sp_premise_gis.dta", replace
 *******************************************************************************
 
 ** 10. Assign APEP coordinates to water basins
-if 1==1{
+if 1==0{
 
 ** Run auxilary GIS script "BUILD_gis_water_basins.R"
 
@@ -636,7 +633,7 @@ save "$dirpath_data/pge_cleaned/apep_pump_gis.dta", replace
 *******************************************************************************
 
 ** 11. Make SP coordinates unique by SP
-if 1==1{
+if 1==0{
 
 use "$dirpath_data/pge_cleaned/sp_premise_gis.dta", clear
 duplicates t sp_uuid, gen(dup)
@@ -654,3 +651,586 @@ save "$dirpath_data/pge_cleaned/sp_premise_gis.dta", replace
 
 *******************************************************************************
 *******************************************************************************
+
+** 12. Assign SP coordinates to tax parcels (all parcels)
+if 1==0{
+
+** Run auxilary GIS script "BUILD_gis_parcel_assign.R"
+
+** Import results from GIS script
+insheet using "$dirpath_data/misc/pge_prem_coord_polygon_parcels.csv", double comma clear
+drop prem_lon prem_lat bad_geocode_flag
+
+** Clean GIS variables
+tostring sp_uuid pull, replace
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+assert length(sp_uuid)==10 & real(sp_uuid)!=.
+unique sp_uuid pull
+assert r(unique)==r(N)
+
+foreach v of varlist parcelid-nearest_parcelacres {
+	replace `v' = "" if `v'=="NA"
+}
+destring parcelacres nearest_dist_km nearest_parcelacres , replace
+
+foreach v of varlist nearest_* {
+	assert mi(`v') if mi(parcelid)==0
+}
+
+	// Convert from km to miles
+replace nearest_dist_km = nearest_dist_km*0.621371
+rename nearest_dist_km nearest_miles
+sum nearest_miles, detail // p90 = 16.7 but p75 = 0.01!!
+_pctile nearest_miles, p(75(1)90)
+local cutoff = 1 // some crazy sharp cutoff in the percentiles
+
+	// Fix logical
+replace in_parcel = "1" if in_parcel=="TRUE"
+replace in_parcel = "0" if in_parcel=="FALSE"
+destring in_parcel, replace
+assert inlist(in_parcel,0,1)
+	
+	// Assign nearest parcel within 1 miles (vast majority not in APEP)
+assert nearest_miles==. if in_parcel==1
+gen parcel_dist_miles = 0 if in_parcel==1
+replace parcel_dist_miles = nearest_miles if parcel_dist_miles==.
+sum parcel_dist_miles, det
+replace parcelid = nearest_parcelid if parcelid=="" & nearest_parcelid!="" & parcel_dist_miles<`cutoff'
+
+	// Transfer county for nearest parcels
+gen temp = subinstr(subinstr(nearest_parcelid,"-","",.),".","",.)
+forvalues n = 0/9 {
+	replace temp = subinstr(temp,"`n'","",.)
+}
+replace temp = trim(itrim(temp))
+gen temp2 = 0
+levelsof parcelcounty, local(levs)
+foreach lev in `levs'{
+	replace temp2 = 1 if temp=="`lev'"
+}
+assert temp2==1 if temp!=""
+replace parcelcounty = temp if parcelid!="" & parcelcounty=="" & parcel_dist_miles<`cutoff'
+rename parcelcounty parcel_county
+
+	// Transfer acres for nearest parcels
+replace parcelacres = nearest_parcelacres if parcelid!="" & parcelacres==. & parcel_dist_miles<`cutoff'
+rename parcelacres parcel_acres
+
+	// Drop nearest parcel variables
+drop nearest_* temp*	
+
+	// Label
+la var in_parcel "Dummy for SPs properly within parcel polygons, all parcels"
+la var parcelid "Unique parcel ID, all parcels (county, area, lon, lat)"	
+la var parcel_county "County of assigned parcel, all parcels"	
+la var parcel_acres "Area (acres) of assigned parcel, all parcels"
+la var parcel_dist_miles "Distance to assigned parcel, all parcels (cut off at 1 mile)"
+
+	// Save
+tempfile gis_out
+save `gis_out'
+
+** Merge results into merge back into main dataset
+use "$dirpath_data/pge_cleaned/sp_premise_gis.dta", clear
+merge 1:1 sp_uuid pull using `gis_out'	
+egen temp_max_merge = max(_merge), by(sp_uuid)
+assert _merge!=2 | temp_max_merge==3 // confirm everything merges in
+assert _merge!=3 if prem_lat==. | prem_long==. // confirm nothing merges if it has missing lat/lon
+assert (prem_lat==. | prem_long==.) if _merge==1	// confirm that all non-merges have missing lat/lon
+drop if _merge==2
+drop _merge temp*
+cap drop dup
+
+** Confirm uniqueness and save
+unique sp_uuid pull
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/pge_cleaned/sp_premise_gis.dta", replace	
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 13. Assign SP coordinates to tax parcels (CLU-merged parcels only!)
+if 1==0{
+
+** Run auxilary GIS script "BUILD_gis_parcel_assign.R"
+
+** Import results from GIS script
+insheet using "$dirpath_data/misc/pge_prem_coord_polygon_parcels_conc.csv", double comma clear
+drop prem_lon prem_lat bad_geocode_flag
+
+** Clean GIS variables
+tostring sp_uuid pull, replace
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+assert length(sp_uuid)==10 & real(sp_uuid)!=.
+unique sp_uuid pull
+assert r(unique)==r(N)
+
+foreach v of varlist parcelid-nearest_parcelacres {
+	replace `v' = "" if `v'=="NA"
+}
+destring parcelacres nearest_dist_km nearest_parcelacres , replace
+
+foreach v of varlist nearest_* {
+	assert mi(`v') if mi(parcelid)==0
+}
+
+	// Convert from km to miles
+replace nearest_dist_km = nearest_dist_km*0.621371
+rename nearest_dist_km nearest_miles
+sum nearest_miles, detail // p90 = 1.9 but p75 = 0.15
+_pctile nearest_miles, p(75(1)90)
+return list
+local cutoff = 1 // keep the same cutoff as above, which here is 88th pctile
+
+	// Fix logical
+replace in_parcel = "1" if in_parcel=="TRUE"
+replace in_parcel = "0" if in_parcel=="FALSE"
+destring in_parcel, replace
+assert inlist(in_parcel,0,1)
+	
+	// Assign nearest parcel within 1 miles (vast majority not in APEP)
+assert nearest_miles==. if in_parcel==1
+gen parcel_dist_miles = 0 if in_parcel==1
+replace parcel_dist_miles = nearest_miles if parcel_dist_miles==.
+sum parcel_dist_miles, det
+replace parcelid = nearest_parcelid if parcelid=="" & nearest_parcelid!="" & parcel_dist_miles<`cutoff'
+
+	// Transfer county for nearest parcels
+gen temp = subinstr(subinstr(nearest_parcelid,"-","",.),".","",.)
+forvalues n = 0/9 {
+	replace temp = subinstr(temp,"`n'","",.)
+}
+replace temp = trim(itrim(temp))
+gen temp2 = 0
+levelsof parcelcounty, local(levs)
+foreach lev in `levs'{
+	replace temp2 = 1 if temp=="`lev'"
+}
+tab temp if temp2!=1 & temp!=""
+replace parcelcounty = temp if parcelid!="" & parcelcounty=="" & parcel_dist_miles<`cutoff'
+rename parcelcounty parcel_county
+
+	// Transfer acres for nearest parcels
+replace parcelacres = nearest_parcelacres if parcelid!="" & parcelacres==. & parcel_dist_miles<`cutoff'
+rename parcelacres parcel_acres
+
+	// Drop nearest parcel variables
+drop nearest_* temp*	
+
+	// Label
+la var in_parcel "Dummy for SPs properly within parcel polygons, CLU-merged parcels"
+la var parcelid "Unique parcel ID, CLU-merged parcels (county, area, lon, lat)"	
+la var parcel_county "County of assigned parcel, CLU-merged parcels"	
+la var parcel_acres "Area (acres) of assigned parcel, CLU-merged parcels"
+la var parcel_dist_miles "Distance to assigned parcel, CLU-merged parcels (cut off at 1 mile)"
+
+	// Rename to differentiate from the all-parcel varaibles
+rename *parcel_* *parcel_conc_*
+rename in_parcel in_parcel_conc
+rename parcelid parcelid_conc
+	
+	// Save
+tempfile gis_out
+save `gis_out'
+
+** Merge results into merge back into main dataset
+use "$dirpath_data/pge_cleaned/sp_premise_gis.dta", clear
+merge 1:1 sp_uuid pull using `gis_out'	
+egen temp_max_merge = max(_merge), by(sp_uuid)
+assert _merge!=2 | temp_max_merge==3 // confirm everything merges in
+assert _merge!=3 if prem_lat==. | prem_long==. // confirm nothing merges if it has missing lat/lon
+assert (prem_lat==. | prem_long==.) if _merge==1	// confirm that all non-merges have missing lat/lon
+drop if _merge==2
+drop _merge temp*
+cap drop dup
+
+** Confirm uniqueness and save
+unique sp_uuid pull
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/pge_cleaned/sp_premise_gis.dta", replace	
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 14. Assign SP coordinates to CLUs 
+if 1==0{
+
+** Run auxilary GIS script "BUILD_gis_clu_assign.R"
+
+** Import results from GIS script
+insheet using "$dirpath_data/misc/pge_prem_coord_polygon_clu.csv", double comma clear
+drop prem_lon prem_lat bad_geocode_flag
+
+** Clean GIS variables
+tostring sp_uuid pull, replace
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+replace sp_uuid = "0" + sp_uuid if length(sp_uuid)<10
+assert length(sp_uuid)==10 & real(sp_uuid)!=.
+unique sp_uuid pull
+assert r(unique)==r(N)
+
+foreach v of varlist clu_id-nearest_clucounty {
+	replace `v' = "" if `v'=="NA"
+}
+destring cluacres nearest_dist_km nearest_cluacres , replace
+
+foreach v of varlist nearest_* {
+	assert mi(`v') if mi(clu_id)==0
+}
+
+	// Convert from km to miles
+replace nearest_dist_km = nearest_dist_km*0.621371
+rename nearest_dist_km nearest_miles
+sum nearest_miles, detail // p90 = .625
+local cutoff = 1 // for consistency with parcles cutoff
+
+	// Fix logical
+replace in_clu = "1" if in_clu=="TRUE"
+replace in_clu = "0" if in_clu=="FALSE"
+destring in_clu, replace
+assert inlist(in_clu,0,1)
+	
+	// Assign nearest CLU within 1 miles (vast majority not in APEP)
+assert nearest_miles==. if in_clu==1
+gen clu_dist_miles = 0 if in_clu==1
+replace clu_dist_miles = nearest_miles if clu_dist_miles==.
+sum clu_dist_miles, det
+replace clu_id = nearest_clu_id if clu_id=="" & nearest_clu_id!="" & clu_dist_miles<`cutoff'
+
+	// Transfer county for nearest CLUs
+replace clucounty = nearest_clucounty if clu_id!="" & clucounty=="" & clu_dist_miles<`cutoff'
+rename clucounty clu_county
+
+	// Transfer acres for nearest CLUs
+replace cluacres = nearest_cluacres if clu_id!="" & cluacres==. & clu_dist_miles<`cutoff'
+rename cluacres clu_acres
+
+	// Drop nearest CLU variables
+drop nearest_* 	
+
+	// Label
+la var in_clu "Dummy for SPs properly within CLU polygons"
+la var clu_id "Unique CLU ID (county, lon, lat, area)"	
+la var clu_county "County of assigned CLU"	
+la var clu_acres "Area (acres) of assigned CLU"
+la var clu_dist_miles "Distance to assigned CLU (cut off at 1 mile)"
+
+	// Save
+tempfile gis_out
+save `gis_out'
+
+** Merge results into merge back into main dataset
+use "$dirpath_data/pge_cleaned/sp_premise_gis.dta", clear
+merge 1:1 sp_uuid pull using `gis_out'	
+egen temp_max_merge = max(_merge), by(sp_uuid)
+assert _merge!=2 | temp_max_merge==3 // confirm everything merges in
+assert _merge!=3 if prem_lat==. | prem_long==. // confirm nothing merges if it has missing lat/lon
+assert (prem_lat==. | prem_long==.) if _merge==1	// confirm that all non-merges have missing lat/lon
+drop if _merge==2
+drop _merge temp*
+cap drop dup
+
+** Confirm uniqueness and save
+unique sp_uuid pull
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/pge_cleaned/sp_premise_gis.dta", replace	
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 15. Assign APEP coordinates to tax parcels (all parcels)
+if 1==1{
+
+** Run auxilary GIS script "BUILD_gis_parcel_assign.R"
+
+** Import results from GIS script
+insheet using "$dirpath_data/misc/apep_pump_coord_polygon_parcels.csv", double comma clear
+drop pump_lat pump_lon
+
+** Clean GIS variables
+destring latlon_group, replace
+assert latlon_group!=.
+unique latlon_group
+assert r(unique)==r(N)
+
+foreach v of varlist parcelid-nearest_parcelacres {
+	replace `v' = "" if `v'=="NA"
+}
+destring parcelacres nearest_dist_km nearest_parcelacres , replace
+
+foreach v of varlist nearest_* {
+	assert mi(`v') if mi(parcelid)==0
+}
+
+	// Convert from km to miles
+replace nearest_dist_km = nearest_dist_km*0.621371
+rename nearest_dist_km nearest_miles
+sum nearest_miles, detail // p90 = 16.7 but p75 = 0.01!!
+_pctile nearest_miles, p(75(1)90)
+local cutoff = 1 // some crazy sharp cutoff in the percentiles
+
+	// Fix logical
+replace in_parcel = "1" if in_parcel=="TRUE"
+replace in_parcel = "0" if in_parcel=="FALSE"
+destring in_parcel, replace
+assert inlist(in_parcel,0,1)
+	
+	// Assign nearest parcel within 1 miles (vast majority not in APEP)
+assert nearest_miles==. if in_parcel==1
+gen parcel_dist_miles = 0 if in_parcel==1
+replace parcel_dist_miles = nearest_miles if parcel_dist_miles==.
+sum parcel_dist_miles, det
+replace parcelid = nearest_parcelid if parcelid=="" & nearest_parcelid!="" & parcel_dist_miles<`cutoff'
+
+	// Transfer county for nearest parcels
+gen temp = subinstr(subinstr(nearest_parcelid,"-","",.),".","",.)
+forvalues n = 0/9 {
+	replace temp = subinstr(temp,"`n'","",.)
+}
+replace temp = trim(itrim(temp))
+gen temp2 = 0
+levelsof parcelcounty, local(levs)
+foreach lev in `levs'{
+	replace temp2 = 1 if temp=="`lev'"
+}
+assert temp2==1 if temp!=""
+replace parcelcounty = temp if parcelid!="" & parcelcounty=="" & parcel_dist_miles<`cutoff'
+rename parcelcounty parcel_county
+
+	// Transfer acres for nearest parcels
+replace parcelacres = nearest_parcelacres if parcelid!="" & parcelacres==. & parcel_dist_miles<`cutoff'
+rename parcelacres parcel_acres
+
+	// Drop nearest parcel variables
+drop nearest_* temp*	
+
+	// Label
+la var in_parcel "Dummy for SPs properly within parcel polygons, all parcels"
+la var parcelid "Unique parcel ID, all parcels (county, area, lon, lat)"	
+la var parcel_county "County of assigned parcel, all parcels"	
+la var parcel_acres "Area (acres) of assigned parcel, all parcels"
+la var parcel_dist_miles "Distance to assigned parcel, all parcels (cut off at 1 mile)"
+
+	// Save
+tempfile gis_out
+save `gis_out'
+
+** Merge results into merge back into main dataset
+use "$dirpath_data/pge_cleaned/apep_pump_gis.dta", clear
+merge m:1 latlon_group using `gis_out'	
+assert _merge==3 // confirm everything merges
+drop _merge
+
+** Confirm uniqueness and save
+unique apeptestid crop test_date_stata
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/pge_cleaned/apep_pump_gis.dta", replace	
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 16. Assign APEP coordinates to tax parcels (CLU-merged parcels only!)
+if 1==1{
+
+** Run auxilary GIS script "BUILD_gis_parcel_assign.R"
+
+** Import results from GIS script
+insheet using "$dirpath_data/misc/apep_pump_coord_polygon_parcels_conc.csv", double comma clear
+drop pump_lat pump_lon
+
+** Clean GIS variables
+destring latlon_group, replace
+assert latlon_group!=.
+unique latlon_group
+assert r(unique)==r(N)
+
+foreach v of varlist parcelid-nearest_parcelacres {
+	replace `v' = "" if `v'=="NA"
+}
+destring parcelacres nearest_dist_km nearest_parcelacres , replace
+
+foreach v of varlist nearest_* {
+	assert mi(`v') if mi(parcelid)==0
+}
+
+	// Convert from km to miles
+replace nearest_dist_km = nearest_dist_km*0.621371
+rename nearest_dist_km nearest_miles
+sum nearest_miles, detail // p90 = 1.9 but p75 = 0.15
+_pctile nearest_miles, p(75(1)90)
+return list
+local cutoff = 1 // keep the same cutoff as above, which here is 88th pctile
+
+	// Fix logical
+replace in_parcel = "1" if in_parcel=="TRUE"
+replace in_parcel = "0" if in_parcel=="FALSE"
+destring in_parcel, replace
+assert inlist(in_parcel,0,1)
+	
+	// Assign nearest parcel within 1 miles (vast majority not in APEP)
+assert nearest_miles==. if in_parcel==1
+gen parcel_dist_miles = 0 if in_parcel==1
+replace parcel_dist_miles = nearest_miles if parcel_dist_miles==.
+sum parcel_dist_miles, det
+replace parcelid = nearest_parcelid if parcelid=="" & nearest_parcelid!="" & parcel_dist_miles<`cutoff'
+
+	// Transfer county for nearest parcels
+gen temp = subinstr(subinstr(nearest_parcelid,"-","",.),".","",.)
+forvalues n = 0/9 {
+	replace temp = subinstr(temp,"`n'","",.)
+}
+replace temp = trim(itrim(temp))
+gen temp2 = 0
+levelsof parcelcounty, local(levs)
+foreach lev in `levs'{
+	replace temp2 = 1 if temp=="`lev'"
+}
+tab temp if temp2!=1 & temp!=""
+replace parcelcounty = temp if parcelid!="" & parcelcounty=="" & parcel_dist_miles<`cutoff'
+rename parcelcounty parcel_county
+
+	// Transfer acres for nearest parcels
+replace parcelacres = nearest_parcelacres if parcelid!="" & parcelacres==. & parcel_dist_miles<`cutoff'
+rename parcelacres parcel_acres
+
+	// Drop nearest parcel variables
+drop nearest_* temp*	
+
+	// Label
+la var in_parcel "Dummy for SPs properly within parcel polygons, CLU-merged parcels"
+la var parcelid "Unique parcel ID, CLU-merged parcels (county, area, lon, lat)"	
+la var parcel_county "County of assigned parcel, CLU-merged parcels"	
+la var parcel_acres "Area (acres) of assigned parcel, CLU-merged parcels"
+la var parcel_dist_miles "Distance to assigned parcel, CLU-merged parcels (cut off at 1 mile)"
+
+	// Rename to differentiate from the all-parcel varaibles
+rename *parcel_* *parcel_conc_*
+rename in_parcel in_parcel_conc
+rename parcelid parcelid_conc
+	
+	// Save
+tempfile gis_out
+save `gis_out'
+
+** Merge results into merge back into main dataset
+use "$dirpath_data/pge_cleaned/apep_pump_gis.dta", clear
+merge m:1 latlon_group using `gis_out'	
+assert _merge==3 // confirm everything merges
+drop _merge
+
+** Confirm uniqueness and save
+unique apeptestid crop test_date_stata
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/pge_cleaned/apep_pump_gis.dta", replace	
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 17. Assign APEP coordinates to CLUs 
+if 1==1{
+
+** Run auxilary GIS script "BUILD_gis_clu_assign.R"
+
+** Import results from GIS script
+insheet using "$dirpath_data/misc/apep_pump_coord_polygon_clu.csv", double comma clear
+drop pump_lat pump_lon
+
+** Clean GIS variables
+destring latlon_group, replace
+assert latlon_group!=.
+unique latlon_group
+assert r(unique)==r(N)
+
+foreach v of varlist clu_id-nearest_clucounty {
+	replace `v' = "" if `v'=="NA"
+}
+destring cluacres nearest_dist_km nearest_cluacres , replace
+
+foreach v of varlist nearest_* {
+	assert mi(`v') if mi(clu_id)==0
+}
+
+	// Convert from km to miles
+replace nearest_dist_km = nearest_dist_km*0.621371
+rename nearest_dist_km nearest_miles
+sum nearest_miles, detail // p90 = .625
+local cutoff = 1 // for consistency with parcles cutoff
+
+	// Fix logical
+replace in_clu = "1" if in_clu=="TRUE"
+replace in_clu = "0" if in_clu=="FALSE"
+destring in_clu, replace
+assert inlist(in_clu,0,1)
+	
+	// Assign nearest CLU within 1 miles (vast majority not in APEP)
+assert nearest_miles==. if in_clu==1
+gen clu_dist_miles = 0 if in_clu==1
+replace clu_dist_miles = nearest_miles if clu_dist_miles==.
+sum clu_dist_miles, det
+replace clu_id = nearest_clu_id if clu_id=="" & nearest_clu_id!="" & clu_dist_miles<`cutoff'
+
+	// Transfer county for nearest CLUs
+replace clucounty = nearest_clucounty if clu_id!="" & clucounty=="" & clu_dist_miles<`cutoff'
+rename clucounty clu_county
+
+	// Transfer acres for nearest CLUs
+replace cluacres = nearest_cluacres if clu_id!="" & cluacres==. & clu_dist_miles<`cutoff'
+rename cluacres clu_acres
+
+	// Drop nearest CLU variables
+drop nearest_* 	
+
+	// Label
+la var in_clu "Dummy for SPs properly within CLU polygons"
+la var clu_id "Unique CLU ID (county, lon, lat, area)"	
+la var clu_county "County of assigned CLU"	
+la var clu_acres "Area (acres) of assigned CLU"
+la var clu_dist_miles "Distance to assigned CLU (cut off at 1 mile)"
+
+	// Save
+tempfile gis_out
+save `gis_out'
+
+** Merge results into merge back into main dataset
+use "$dirpath_data/pge_cleaned/apep_pump_gis.dta", clear
+merge m:1 latlon_group using `gis_out'	
+assert _merge==3 // confirm everything merges
+drop _merge
+
+** Confirm uniqueness and save
+unique apeptestid crop test_date_stata
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/pge_cleaned/apep_pump_gis.dta", replace	
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
