@@ -67,21 +67,14 @@ CAoutline_sf <- st_as_sf(CAoutline)
 CAoutline_sf <- st_transform(CAoutline_sf, crs)
 rm(CAoutline)
 
-#Load parcel-CLU concordance
-setwd(paste0(path,"/cleaned_spatial/cross"))
-Parcels_conc <- readRDS("clu_parcel_conc.RDS")
-
-#Establish unique list of parcels that merge
-Parcels_conc_list <- as.data.frame(Parcels_conc$ParcelID)
-Parcels_conc_list <- unique(Parcels_conc_list)
+#Load parcel-CLU concordance list
+Parcels_conc_list <- as.data.frame(read.csv(paste0(path,"/misc/parcels_in_clus.csv")))
+Parcels_conc_list <- as.data.frame(Parcels_conc_list$parcelid)
 names(Parcels_conc_list) <- "ParcelID"
-Parcels_conc_list <- Parcels_conc_list[order(Parcels_conc_list$ParcelID),]
-Parcels_conc_list <- as.data.frame(Parcels_conc_list)
-names(Parcels_conc_list) <- "ParcelID"
+stopifnot(nrow(Parcels_conc_list)==nrow(unique(Parcels_conc_list))) #confirm uniqueness
 
 #Right-join list of merged parcels to full SF object
 Parcels_conc_sf <- right_join(Parcels_sf,Parcels_conc_list, by="ParcelID")
-rm(Parcels_conc)
 
 #Create county-specific SF data frames, and prep for nearest-polygon function
 counties <- levels(Parcels_conc_sf$County) # create index of counties
@@ -334,7 +327,7 @@ nearestFXN <- function(i) {
 }
 
 #Calculate distance to a parcel polygon, for lat/lons not contained in a polygon
-cl <- makeCluster(24) #(cores - 1)
+cl <- makeCluster(20) #(cores - 1)
 clusterEvalQ(cl, library(sf))
 clusterEvalQ(cl, library(data.table))
 clusterSetRNGStream(cl, 12345)
@@ -598,7 +591,7 @@ nearestFXN <- function(i) {
 }
 
 #Calculate distance to a parcel polygon, for lat/lons not contained in a polygon
-cl <- makeCluster(20) #(cores - 1)
+cl <- makeCluster(24) #(cores - 1)
 clusterEvalQ(cl, library(sf))
 clusterEvalQ(cl, library(data.table))
 clusterSetRNGStream(cl, 12345)
