@@ -68,7 +68,6 @@ replace overlapping = "0" if overlapping=="FALSE"
 destring overlapping, replace 
  
 ** Flag ever-crop CLUs
-use "$dirpath_data/cleaned_spatial/cdl_panel_crop_year.dta", clear
 gen noncrop = 0
 replace noncrop = 1 if landtype=="Aquaculture"
 replace noncrop = 1 if landtype=="Background"
