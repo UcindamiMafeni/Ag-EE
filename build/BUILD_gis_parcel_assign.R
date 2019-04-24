@@ -283,9 +283,9 @@ prems2_dt <- as.data.table(prems2_sf[,names(prems2_sf) %in%
                                      c("sp_uuid","county","geometry","in_parcel_row","in_parcel")])
 
 #Convert polygons to lines (equivalent + faster for calculating minimum distance), and data.table
-Parcels_conc_dt <- st_cast(Parcels_conc_sf, 'MULTILINESTRING')
-Parcels_conc_dt <- as.data.table(Parcels_conc_dt)
-
+#Parcels_conc_dt <- st_cast(Parcels_conc_sf, 'MULTILINESTRING') #this breaks for some reason
+#Parcels_conc_dt <- as.data.table(Parcels_conc_dt)
+Parcels_conc_dt <- as.data.table(Parcels_conc_sf)
 
 #Function to calculate distance to a parcel polygon, for lat/lons not contained in a polygon
 nearestFXN <- function(i) {
@@ -327,7 +327,7 @@ nearestFXN <- function(i) {
 }
 
 #Calculate distance to a parcel polygon, for lat/lons not contained in a polygon
-cl <- makeCluster(20) #(cores - 1)
+cl <- makeCluster(24) #(cores - 1)
 clusterEvalQ(cl, library(sf))
 clusterEvalQ(cl, library(data.table))
 clusterSetRNGStream(cl, 12345)
@@ -548,8 +548,9 @@ pumps2_dt <- as.data.table(pumps2_sf[,names(pumps2_sf) %in%
                                        c("sp_uuid","county","geometry","in_parcel_row","in_parcel")])
 
 #Convert polygons to lines (equivalent + faster for calculating minimum distance), and data.table
-Parcels_conc_dt <- st_cast(Parcels_conc_sf, 'MULTILINESTRING')
-Parcels_conc_dt <- as.data.table(Parcels_conc_dt)
+#Parcels_conc_dt <- st_cast(Parcels_conc_sf, 'MULTILINESTRING') #this breaks for some reason?
+#Parcels_conc_dt <- as.data.table(Parcels_conc_dt)
+Parcels_conc_dt <- as.data.table(Parcels_conc_sf)
 
 #Function to calculate distance to a parcel polygon, for lat/lons not contained in a polygon
 nearestFXN <- function(i) {
