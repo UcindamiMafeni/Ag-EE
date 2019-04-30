@@ -49,14 +49,6 @@ setwd(paste0(path,"/cleaned_spatial/Parcels"))
 Parcels_sf <- readRDS("parcels.RDS")
 crs <- st_crs(Parcels_sf)
 
-#Export list of Parcels 
-setwd(paste0(path,"/misc"))
-Parcels_data <- Parcels_sf
-st_geometry(Parcels_data) <- NULL
-filename <- "Parcels_cleaned.csv"
-write.csv(Parcels_data, file=filename , row.names=FALSE, quote=FALSE)
-rm(Parcels_data)
-
 #Drop columns to save memory
 Parcels_sf <- Parcels_sf[,names(Parcels_sf) %in% c("ParcelID","County","ParcelAcres")]
 
