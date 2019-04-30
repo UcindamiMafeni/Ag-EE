@@ -15,10 +15,14 @@ global dirpath_code "T:/Home/Louis/backup/AgEE/AgEE_code/build"
 *******************************************************************************
 *******************************************************************************
 
-** 1. Import and clean CLU/CDL concordance 
-{
+** 1. Run auxilary GIS script "BUILD_export_clu_parcel_concs.R" to export 
+**    all RDS files as csvs
 
-** Run auxilary GIS script "BUILD_export_clu_cdl_conc.R" to export as csv
+*******************************************************************************
+*******************************************************************************
+
+** 2. Import and clean CLU/CDL concordance 
+{
 
 ** Import parcel/CLU concordance
 insheet using "$dirpath_data/misc/clu_cdl_conc.csv", double clear
@@ -44,7 +48,7 @@ drop count total
 
 ** Confirm fractions sum to 1
 egen temp = sum(fraction), by(clu_id year)
-assert temp==1
+assert round(temp,0.000001)==1
 drop temp
 
 ** Area by crop
@@ -165,10 +169,8 @@ outsheet using "$dirpath_data/misc/ever_crop_clus.csv", comma replace
 *******************************************************************************
 *******************************************************************************
 
-** 2. Import and clean parcel/CLU concordance 
+** 3. Import and clean parcel/CLU concordance 
 {
-
-** Run auxilary GIS script "BUILD_export_clu_parcel_conc.R" to export as csv
 
 ** Import parcel/CLU concordance
 insheet using "$dirpath_data/misc/clu_parcel_conc.csv", double clear
@@ -192,8 +194,11 @@ restore
 merge m:1 clu_id using `cluacres', keep(1 3) nogen
 
 ** Confirm acres add up
-assert round(intacres,0.01)<=round(parcelacres,0.01)
-assert cluacres-intacres > -0.5
+gen temp1 = parcelacres-intacres
+assert temp1>-0.01
+gen temp2 = cluacres-intacres
+assert temp2>-0.5
+drop temp*
 
 ** Percents of intersected area
 rename intperc pct_int_clu
@@ -208,10 +213,14 @@ egen temp = max(pct_int_parcel), by(parcelid)
 gen largest_clu = pct_int_parcel==temp
 egen temp1 = sum(largest_clu), by(parcelid)
 egen temp2 = sum(largest_parcel), by(clu_id)
+assert temp2>=1 // every CLUs has at least 1 largest parcel
+unique clu_id
+local uniq = r(unique)
+unique clu_id if temp2>1
+di r(unique)/`uniq' // <0.1% of CLUs have a tie for largest parcel
 egen temp3 = max(intacres), by(parcelid)
 replace largest_clu = 0 if intacres<temp3 & temp1>1
 egen temp4 = max(largest_clu), by(parcelid)
-assert temp2==1
 assert temp4==1 | intacres==0
 drop temp*
  
@@ -285,6 +294,7 @@ la var max_intacres "Largest ever-crop CLU intersection for parcel"
 la var max_largest_parcel "Is parcel ever the model parcel in an ever-crop CLU?"
 la var n_clus "Number of ever-crop CLUs that parcel is matched to"
 sort *
+cap drop merge_ever_crop_clus
 compress
 save "$dirpath_data/cleaned_spatial/clu_parcel_conc.dta", replace
 
