@@ -49,14 +49,6 @@ setwd(paste0(path,"/cleaned_spatial/CLU"))
 CLUs_sf <- readRDS("clu.RDS")
 crs <- st_crs(CLUs_sf)
 
-#Export list of CLUs 
-setwd(paste0(path,"/misc"))
-CLUs_data <- CLUs_sf
-st_geometry(CLUs_data) <- NULL
-filename <- "CLUs_cleaned.csv"
-write.csv(CLUs_data, file=filename , row.names=FALSE, quote=FALSE)
-rm(CLUs_data)
-
 #Load CA state outline
 setwd(paste0(path,"/spatial"))
 CAoutline <- readOGR(dsn = "State", layer = "CA_State_TIGER2016")
