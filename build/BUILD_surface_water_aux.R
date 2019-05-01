@@ -91,7 +91,6 @@ sum(is.na(data$FACE_VALUE_AMOUNT))
 
 ###5
 
-#data <- read.csv(file='E:/Chicago/Work/EPIC/Surface Water/Haggerty/haggerty_wr70_0201.csv',header=T, sep=',') #69234 rows
 
 data$FACE_VALUE_AMOUNT = as.numeric(as.character(data$FACE_VALUE_AMOUNT))
 
