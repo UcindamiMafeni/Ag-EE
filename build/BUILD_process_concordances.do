@@ -257,7 +257,7 @@ assert r(unique)==r(N)
 compress
 save "$dirpath_data/cleaned_spatial/clu_parcel_conc.dta", replace
 
-** Export list of parcels with more than 1% or area or more than 1 acre in a CLU
+** Isolate parcels with more than 1% of TOTAL area or more than 1 TOTAL acre in an ever-crop CLU
 use "$dirpath_data/cleaned_spatial/clu_parcel_conc.dta", clear
 collapse (sum) sum_pct_int_parcel=pct_int_parcel sum_intacres=intacres ///
 	(max) max_intacres=intacres max_largest_parcel=largest_parcel ///
@@ -280,14 +280,13 @@ keep if (sum_pct_int_parcel>0.1 & sum_pct_int_parcel!=.) /// keep if >10% of are
 	  | (max_largest_parcel==1) // OR if modal parcel in any single ever-crop CLU
 hist sum_pct_int_parcel
 sum sum_pct_int_parcel, detail
-outsheet using "$dirpath_data/misc/parcels_in_clus.csv", comma replace
 restore
-tempfile parcels_subset
-save `parcels_subset'
+tempfile parcels_slivers
+save `parcels_slivers'
 
 ** Merge back into concordance dataset and save
 use "$dirpath_data/cleaned_spatial/clu_parcel_conc.dta", clear
-merge m:1 parcelid using `parcels_subset', nogen  
+merge m:1 parcelid using `parcels_slivers', nogen  
 la var sum_pct_int_parcel "Pct of parcel acres in ANY ever-crop CLU intersection"
 la var sum_intacres "Sum of parcel acres in ANY ever-crop CLU intersection"
 la var max_intacres "Largest ever-crop CLU intersection for parcel"
@@ -295,8 +294,107 @@ la var max_largest_parcel "Is parcel ever the model parcel in an ever-crop CLU?"
 la var n_clus "Number of ever-crop CLUs that parcel is matched to"
 sort *
 cap drop merge_ever_crop_clus
+
+** Flag parcels to drop because their TOTAL intersections are too small
+gen drop_parcelid_total = !( ///
+	(sum_pct_int_parcel>0.1 & sum_pct_int_parcel!=.) /// keep if >10% of area overlaps with an ever-crop CLU
+	| (sum_intacres>1 & sum_intacres!=.) /// OR if >1 acres of area overlaps with an ever-crop CLU
+	| (max_largest_parcel==1) /// OR if modal parcel in any single ever-crop CLU
+	)
+unique parcelid
+local uniq = r(unique)
+unique parcelid if drop_parcelid_total==0
+di r(unique)/`uniq' // 77% of parcels will remain
+unique clu_id if ever_crop_clu==1
+local uniq = r(unique)
+unique clu_id if ever_crop_clu==1 & drop_parcelid_total==0
+assert r(unique)==`uniq' // confirm no ever-crop CLUs will get fully dropped
+
+** What's a sliver? Want to isolate bad matches induced by measurement error!
+sum intacres, detail
+hist intacres if intacres<5, freq
+hist intacres if intacres<1, freq
+hist intacres if intacres<0.5, freq
+hist intacres if intacres<0.5 & drop_parcelid_total==0, freq
+hist intacres if intacres<1 & drop_parcelid_total==0 & (intacres>0.02 | parcelacres<1), freq
+hist intacres if intacres<1 & drop_parcelid_total==0 & (intacres>0.04 | parcelacres<1), freq
+hist intacres if intacres<1 & drop_parcelid_total==0 & (intacres>0.08 | parcelacres<1), freq
+hist intacres if intacres<1 & drop_parcelid_total==0 & (intacres>0.12 | parcelacres<1), freq
+hist intacres if intacres<1 & drop_parcelid_total==0 & (intacres>0.16 | parcelacres<1), freq
+hist intacres if intacres<1 & drop_parcelid_total==0 & (intacres>0.18 | parcelacres<1), freq
+hist intacres if intacres<1 & drop_parcelid_total==0 & (intacres>0.20 | parcelacres<1), freq
+hist intacres if intacres<1 & drop_parcelid_total==0 & (intacres>0.18 | parcelacres<1) & cluacres>1, freq
+hist intacres if intacres<1 & drop_parcelid_total==0 & (intacres>0.18 | parcelacres<1) & cluacres>1 & largest_parcel==0, freq
+	// can't kill the weird peak around 0.14
+sum intacres if intacres<1 & drop_parcelid_total==0 & (intacres>0.18 | parcelacres<1), detail	
+tabstat	intacres if intacres<1 & drop_parcelid_total==0 & (intacres>0.18 | parcelacres<1), ///
+	by(county) s(p50 count)
+hist intacres if intacres<0.5 & county=="Kern", freq
+hist intacres if intacres<0.5 & county=="Fresno", freq
+hist intacres if intacres<0.5 & county=="Tulare", freq
+hist intacres if intacres<0.5 & county=="San Joaquin", freq
+	// shows up in some counties, not in others
+gen temp_ratio = parcelacres/intacres
+sum temp_ratio if inrange(intacres,0.14,0.17), detail // AHA! it's just a local mode in parcel size!
+sum temp_ratio if inrange(intacres,0.24,0.27), detail // % of 1's falls by half!
+	// NOT a problem, thankfully!
+hist intacres if intacres<1 & drop_parcelid_total==0 & (intacres>0.05 | parcelacres<.15) & temp_ratio>1.5, freq
+local sliver = 0.05 // define slivers as less than 50 feet x 50 feet, quite conservative
+
+** Flag parcels-CLU pairs with only slivers of area
+gen temp_int_sliver = intacres<`sliver' 
+unique parcelid 
+local uniq = r(unique)
+unique parcelid if temp_int_sliver==0
+di 1 - r(unique)/`uniq' // 0.5% of parcels never have more than a sliver in any sigle CLU
+unique clu_id 
+local uniq = r(unique)
+unique clu_id if temp_int_sliver==0
+di 1 - r(unique)/`uniq' // 0.02% of CLUs never have more than a sliver in any sigle parcel
+
+** Flag parcels that never merge more than a sliver
+egen temp_int_sliver_minp = min(temp_int_sliver), by(parcelid)
+egen temp_tag_p = tag(parcelid)
+sum parcelacres if temp_int_sliver_minp==1 & temp_tag_p, detail
+
+** Confirm largest parcel flag works
+egen temp_lp_flag = max(largest_parcel), by(clu_id)
+assert temp_lp_flag==1
+
+** Flag parcels to drop because their MAX intersections are too small
+gen drop_slivers = temp_int_sliver // drop all slivers (i.e. <0.05 acres)
+replace drop_slivers = 0 if parcelacres<3*`sliver' // but not if total parcel area < 3 slivers
+replace drop_slivers = 1 if intacres<0.01 // but yes if area is less than 20 feet x 20 feet 
+replace drop_slivers = 0 if largest_parcel==1 // and not if largest parcel matched to a CLU
+unique parcelid
+local uniq = r(unique)
+unique parcelid if drop_parcelid_total==0 & drop_slivers==0
+di r(unique)/`uniq' // 77% of parcels will remain
+unique clu_id if ever_crop_clu==1
+local uniq = r(unique)
+unique clu_id if ever_crop_clu==1 & drop_parcelid_total==0 & drop_slivers==0
+assert r(unique)==`uniq' // confirm no ever-crop CLUs will get fully dropped
+
+** Clean up
+tab drop*
+la var drop_parcelid_total "Parcel's total ever-crop merged area is <10% and <1 acre"
+la var drop_slivers "Intersection too tiny: <0.01 acres or (<0.05 acres & parcel <0.15 acres)"
+drop temp*
+sort *
 compress
 save "$dirpath_data/cleaned_spatial/clu_parcel_conc.dta", replace
+
+** Export list of ever-CLU-matched parcels to csv, as input into "BUILD_gis_parcel_assign.R"
+use "$dirpath_data/cleaned_spatial/clu_parcel_conc.dta", clear
+unique parcelid
+drop if drop_parcelid_total==1
+unique parcelid
+drop if drop_slivers==1
+unique parcelid
+keep parcelid
+duplicates drop
+outsheet using "$dirpath_data/misc/parcels_in_clus.csv", comma replace
+
 
 }
 
