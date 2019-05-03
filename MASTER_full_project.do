@@ -93,7 +93,8 @@ do "$dirpath_code/build/BUILD_event_days.do"
 	//                     and "constants.R"
 
 *** B23: PROCESS TWO CONCORDANCES IN STATA [B21 B22]
-do "$dirpath_code/build/BUILD_process_concordances.do"	
+do "$dirpath_code/build/BUILD_process_concordances.do"
+	// calls auxiliary script "BUILD_export_clu_parcel_concs.R"
 	
 *** B24: ASSIGN SPS AND APEP PUMPS TO VARIOUS POLYGONS [B11 B14 B19 B20 B23]
 do "$dirpath_code/build/BUILD_assign_gis_polygons.do"
@@ -121,6 +122,9 @@ do "$dirpath_code/build/BUILD_clean_cadwr_groundwater.do"
 	//                        and "BUILD_gis_gw_depth_extract.R"
 
 	
+
+*** B??: CLEAN AND COMBINE SURFACE WATER DATA
+do "$dirpath_code/build/???"
 
 *** B??: CLEAN CA WELL COMPLETION REPORT DATA 
 do "$dirpath_code/build/BUILD_clean_well_completion.do"
