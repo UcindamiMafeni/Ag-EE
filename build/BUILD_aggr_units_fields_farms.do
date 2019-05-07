@@ -944,16 +944,74 @@ save "$dirpath_data/cleaned_spatial/clu_parcel_conc_groups_full.dta", replace
 
 *******************************************************************************
 *******************************************************************************
+
+** 5. Merge group identifiers into SP GIS dataset
+{
+	// Start with SP GIS assignments
+use "$dirpath_data/pge_cleaned/sp_premise_gis.dta", clear
+
+	// Rename unrestricted polygon identifiers
+rename clu_id clu_id_unr
+rename parcelid parcelid_unr
+
+	// Merge in CLU groups (ever-crop)
+rename clu_id_ec clu_id
+merge m:1 clu_id using "$dirpath_data/cleaned_spatial/clu_conc_groups.dta", ///
+	keep(1 3) nogen keepusing(clu_group*)
+rename clu_group* clu_group*_ec
+rename clu_id clu_id_ec
+	
+	// Merge in CLU groups (unrestricted)
+rename clu_id_unr clu_id
+merge m:1 clu_id using "$dirpath_data/cleaned_spatial/clu_conc_groups.dta", ///
+	keep(1 3) nogen keepusing(clu_group*)
+rename clu_group* clu_group*_unr
+rename *_ec_unr *_ec
+rename clu_id clu_id_unr
+
+	// Merge in parcel groups (concorcdance)
+rename parcelid_conc parcelid
+merge m:1 parcelid using "$dirpath_data/cleaned_spatial/parcel_conc_groups.dta", ///
+	keep(1 3) nogen keepusing(parcel_group*)
+rename parcel_group* parcel_group*_conc
+rename parcelid parcelid_conc
+	
+	// Merge in parcel groups (unrestricted)
+rename parcelid_unr parcelid
+merge m:1 parcelid using "$dirpath_data/cleaned_spatial/parcel_conc_groups.dta", ///
+	keep(1 3) nogen keepusing(parcel_group*)
+rename parcel_group* parcel_group*_unr
+rename *_conc_unr *_conc
+rename parcelid parcelid_unr
+
+	// Test whether assigned CLU groups (EC) match to assigned parcelid_conc
+	
+	
+	// Test whether assigned parcel groups (conc) match to assigned clu_id_ec
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
 /*	
 
+CHECKS:
 
+A) clu_id_ec matches clu_id
+
+B) parcelid_conc matches parcelid
+
+C) clu_id_ec and clu_id in the same clu_group
+
+D) clu_group matches to assigned parcelid_conc
+
+E) parcel_group matches to assigned clu_id[_ec]
+
+F) SP and APEP coordinates have same clu_group assignments
+
+G) SP and APEP coordinates have same parcel_group assigments
 	
-WHAT'S A UNIT? -> ALL POINTS IN A (SUPER)-POLYGON WHERE:
-
-a) restricted parcel/CLU assignments = unrestricted parcel/CLU assignments	
-b) parcel/CLU assignments are consistent with parcel/CLU concordance
-c) set of points is disjoint and exclusive
-}
 */
 
 *******************************************************************************
