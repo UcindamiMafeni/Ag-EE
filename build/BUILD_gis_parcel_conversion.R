@@ -179,7 +179,15 @@ los_angeles <-
 saveRDS(los_angeles, file = file.path(raw_spatial, "Parcels_R/Los Angeles/Los_Angeles.RDS"))
 
 
-# store each county from the Parcels .gdb separately
+# Riverside
+riverside <-
+  file.path(raw_spatial, "ParcelBasic0419/ParcelBasic.gdb") %>%
+  st_read(layer = "Parcels", stringsAsFactors = FALSE) %>%
+  st_transform(main_crs) 
+saveRDS(riverside, file = file.path(raw_spatial, "Parcels_R/Riverside/Riverside.RDS"))
+
+
+# store each county from the 2014 Parcels .gdb separately
 read14 <- function(layer){
 	temp <- 
 	  st_read(file.path(raw_spatial, "Parcels/2014/Parcels_CA_2014.gdb"), 
