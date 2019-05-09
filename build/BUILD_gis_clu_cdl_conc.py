@@ -1,7 +1,7 @@
 # Created by Yixin Sun in December 2019
 # overlays Crop Data Layer CLU polygons
 # note that the tabulate area function is tricky - it doesn't work if
-# the "zones" (in this case the di leases) are overlapping - have to iterate
+# the "zones" (in this case the clu polygons) are overlapping - have to iterate
 # through each row one by one
 # https://gis.stackexchange.com/questions/78448/tabulate-area-for-large-datasets?rq=1
 
@@ -9,11 +9,16 @@
 import arcpy
 import os
 import csv
+import getpass 
+
+
+user = getpass.getuser()
+if user == "Yixin Sun":
+        arcpy.env.workspace = "C:\\Users\\ysun9\\Dropbox\\Energy Water Project\\Data"
 
 arcpy.CheckOutExtension("Spatial")
-
 arcpy.env.overwriteOutput = True
-arcpy.env.workspace = "C:\\Users\\ysun9\\Dropbox\\Energy Water Project\\Data"
+
 
 # Local variables:
 stump = "C:\\Users\\Yixin Sun\\Documents\\Dropbox\\Energy Water Project\\Data"
@@ -51,4 +56,4 @@ for i in range(2007, 2018):
 
 arcpy.CheckInExtension("Spatial")
 
-arcpy.Delete_management("in_memory")
+arcpy.Delete_management(clu_proj)

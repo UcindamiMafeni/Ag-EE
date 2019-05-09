@@ -8,6 +8,7 @@ library(purrr)
 library(stringr)
 library(lwgeom)
 library(tigris)
+library(igraph)
 
 if(Sys.getenv("USERNAME") == "Yixin Sun"){
 	root_gh <- "C:/Users/Yixin Sun/Documents/Github/Ag-EE"
@@ -52,13 +53,21 @@ standardize_parcels <- function(df, countyname){
 	# want to melt down parcels with the same APN Numbers 
 	# create a MinAcre and MaxAcres variable as checks for whether polygons
 	# that are super different still get melted down 
-	apn_melt <-
-	  df %>% 
-	  filter(!is.na(APN)) %>% 
+	apn_melt_df <-
+	  df %>%
+	  st_set_geometry(NULL) %>%
 	  group_by(APN) %>%
 	  summarise(MinAcres = min(Acres), 
 	  			MaxAcres = max(Acres), 
 	   			N_Dissolve = n()) 
+
+	apn_melt <-
+	  df %>% 
+	  filter(!is.na(APN)) %>% 
+	  group_by(APN) %>%
+	  arrange(-Acres) %>%
+	  filter(row_number() == 1) %>%
+	  left_join(apn_melt_df)
 
 	# want to find polygons that are essentially the same -
 	  # round to third decimal in longitude/latitude and 
@@ -173,26 +182,67 @@ all_counties[-which(all_counties %in% to_ignore )] %>%
 # ============================================================================
 # Clean Kern
 # ============================================================================
-kc_crs <- 
-  file.path(raw_spatial, "Parcels_R", "Kern/kc_ag_preserve_included.RDS") %>%
-  readRDS() %>%
-  st_crs()
+# kern has a lot of parcels that seem to change shape over time - instead of
+# the usual method, we want to intersect all kern parcels with each other
+# and check that parcels that are wholly contained in another are melted down
+# Just use 2014 parcels - unsure what purchased parcels really represent
 
-kern_all <- 
-  list.files(file.path(raw_spatial, "Parcels_R", "Kern"), full.names = TRUE) %>%
-  map_df(readRDS) %>%
-  ungroup %>%
-  st_sf(crs = kc_crs) %>%
-  st_transform(main_crs) %>%
-  select(APN = APN_LABEL)
+# use graph theory magic - if a intersects b and b intersects c, we want
+# a, b, and c to all be in one group
+int_bundles <- function(x, y, name){
+  pairs <- 
+    map2(x, y, c) %>% 
+    map(as.character)
+
+  pairs_embed <- do.call("rbind", lapply(pairs, embed, 2))
+  pairs_vert <- graph.edgelist(pairs_embed, directed = F)
+  pairs_id <- split(V(pairs_vert)$name, clusters(pairs_vert)$membership)
+
+  # collapse list of ids in the same group to a dataframe 
+  pairs_id %>%
+    map_df(~ cbind(., paste(., collapse = "-")) %>% 
+             as_tibble() %>%
+             setNames(c(name, "sameid")))
+}
 
 kern14 <- 
   readRDS(file.path(raw_spatial, "Parcels_R/2014", "Kern.RDS")) %>%
-  select(APN, geometry = SHAPE) 
+  select(APN, geometry = SHAPE) %>%
+  st_make_valid() %>%
+  mutate(APN = str_replace_all(APN, "-", ""), 
+  	Acres =  as.numeric(st_area(.)) * m2_to_acre, 
+  	id = row_number())
+
+tic()
+kern_int <-
+  st_intersection(kern14, kern14) 
+toc()
+  
+  filter(id < id.1) %>%
+  mutate(int_area = as.numeric(st_area(.)) * m2_to_acre, 
+  	int_perc = int_area / pmin(Acres, Acres.1)) %>%
+  filter(int_perc > .5) %>%
+  st_set_geometry(NULL) %>%
+  as_tibble()
 
 kern <-
-  rbind(kern_all, kern14) %>%
-  standardize_parcels(., "Kern")
+  with(kern_int, int_bundles(id, id.1, "id")) %>%
+  left_join(mutate(kern14, id = as.character(id)), .) %>%
+  mutate(sameid = if_else(is.na(sameid), id, sameid)) %>%
+  group_by(sameid) %>%
+  summarise(County = "Kern", 
+  	APN = upaste(APN),
+  	MinAcres = min(Acres), 
+  	MaxAcres = max(Acres), 
+  	N_Dissolve = n()) %>%
+  mutate(ParcelAcres = as.numeric(st_area(.)) * m2_to_acre) %>%
+  cbind(st_coordinates(st_centroid(.)), .) %>%
+  mutate(ParcelID = paste(County, round(ParcelAcres, digits = 4), round(X, digits = 3), round(Y, digits = 3))) %>%
+  group_by(ParcelID) %>%
+  mutate(ParcelID1 = paste(ParcelID, row_number())) %>%
+  ungroup %>%
+  select(-X, -Y, -ParcelID) %>%
+  rename(ParcelID = ParcelID1) 
 
 saveRDS(kern, file = file.path(build_spatial, "Parcels", "parcels_counties", "Kern.RDS"))
 
@@ -326,8 +376,7 @@ riverside <-
   file.path(raw_spatial, "Parcels_R/Riverside/Riverside.RDS") %>%
   readRDS() %>%
   st_transform(main_crs) %>%
-  select(geometry) %>%
-  mutate(APN = NA)-
+  select(APN, geometry = SHAPE) 
 
 riverside14 <-
   readRDS(file.path(raw_spatial, "Parcels_R/2014", "Riverside.RDS")) %>%
@@ -335,7 +384,12 @@ riverside14 <-
 
 Riverside <-
   rbind(riverside, riverside14) %>%
+  #mutate(check = st_is_valid(geometry)) %>%
+  #filter(check) %>%
+  #st_buffer(0.00001) %>%
   standardize_parcels("Riverside")
+
+saveRDS(Riverside, file = file.path(build_spatial, "Parcels", "parcels_counties", "Riverside.RDS"))
 
 # ============================================================================
 # San Diego
@@ -356,6 +410,8 @@ San_Diego %>%
   rbind(sandiego, sandiego14) %>%
   standardize_parcels("San Diego")
 
+saveRDS(San_Diego, file = file.path(build_spatial, "Parcels", "parcels_counties", "San_Diego.RDS"))
+
 # ============================================================================
 # combine parcels into one file
 # ============================================================================
@@ -365,5 +421,6 @@ parcels <-
   map_dfr(readRDS) %>%
   st_sf(crs = main_crs)
 saveRDS(parcels, file.path(build_spatial, "Parcels/parcels.RDS"))
+
 
 

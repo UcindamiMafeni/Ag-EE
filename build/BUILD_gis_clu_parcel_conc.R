@@ -77,3 +77,4 @@ clu_parcel_conc <-
 saveRDS(clu_parcel_conc, file.path(build_spatial, "cross/clu_parcel_conc.RDS"))
 
 summary(clu_parcel_conc)
+
