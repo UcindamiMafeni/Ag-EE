@@ -106,11 +106,9 @@ do "$dirpath_code/build/BUILD_assign_gis_polygons.do"
 
 *** B25: PROCESS CLU-PARCEL CONCORDANCE, AND AGGREGATE UNITS UP TO FIELDS AND FARMS [B23 B24]
 do "$dirpath_code/build/BUILD_aggr_units_fields_farms.do"
-	// calls auxiliary scripts "BUILD_export_clu_parcel_conc.R"
 
-*** B26: CONSTRUCT ANNUAL PANEL OF CROPS AT THE FARM LEVEL [B23 B24 B25]
+*** B26: CONSTRUCT ANNUAL PANEL OF CROPS AT THE FIELD AND FARM LEVELS [B23 B25]
 do "$dirpath_code/build/BUILD_cdl_panel_crop_year.do"
-	// calls auxiliary scripts "BUILD_export_clu_cdl_conc.R"
 
 *** B27: ASSIGN DAILY MIN/MAX TEMPERATURE TO EACH SP AND APEP PUMP [B24]
 do "$dirpath_code/build/BUILD_daily_temperatures.do"
@@ -128,6 +126,8 @@ do "$dirpath_code/build/???"
 
 *** B??: CLEAN CA WELL COMPLETION REPORT DATA 
 do "$dirpath_code/build/BUILD_clean_well_completion.do"
+	
+	
 	
 
 ************ MERGE (M) ************ MERGE (M) ************ MERGE (M) ************ 
