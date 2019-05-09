@@ -6,7 +6,7 @@ set more off
 **** Script to create analysis datasets monthly water regressions ****
 **********************************************************************
 
-global dirpath "S:/Matt/ag_pump"
+global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 *******************************************************************************
@@ -17,6 +17,18 @@ if 1==1{
 
 ** Load monthly dataset for electricity regressions
 use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
+
+** Drop old versions of variables I want to overwrite here
+cap drop flag_bad_drwdwn
+cap drop flag_weird_pump
+cap drop flag_weird_cust
+cap drop months_until_test
+cap drop months_since_test
+cap drop months_to_nearest_test
+cap drop latlon_group
+cap drop latlon_miles_apart
+cap drop apep_proj_count
+cap drop merge_sp_water_panel
 
 ** Merge in SP-month panel of constructed KWHAF conversions
 merge 1:1 sp_uuid modate using "$dirpath_data/merged/sp_month_kwhaf_panel.dta"
@@ -60,6 +72,34 @@ foreach v of varlist af* {
 	replace `v2' = . if mnth_bill_kwh<0
 	local vlab: variable label `v'
 	local v2lab = subinstr("`vlab'","AF water","IHS 1e4*AF water",1)
+	la var `v2' "`v2lab'"
+}
+
+** Apply log, log+1 tranformations to AF_water 
+foreach v of varlist af_rast_dd_mth_2SP {
+	local vlab: variable label `v'
+
+	local v2 = subinstr("`v'","af_","log1_10000af_",1)
+	gen `v2' = ln(10000*`v'+1)
+	replace `v2' = . if `v'<0
+	local v2lab = subinstr("`vlab'","AF water","Log+1 10000*AF water",1)
+	la var `v2' "`v2lab'"
+
+	local v2 = subinstr("`v'","af_","log1_100af_",1)
+	gen `v2' = ln(100*`v'+1)
+	replace `v2' = . if `v'<0
+	local v2lab = subinstr("`vlab'","AF water","Log+1 100*AF water",1)
+	la var `v2' "`v2lab'"
+	
+	local v2 = subinstr("`v'","af_","log1_af_",1)
+	gen `v2' = ln(`v'+1)
+	replace `v2' = . if `v'<0
+	local v2lab = subinstr("`vlab'","AF water","Log+1 AF water",1)
+	la var `v2' "`v2lab'"
+
+	local v2 = subinstr("`v'","af_","log_af_",1)
+	gen `v2' = ln(`v')
+	local v2lab = subinstr("`vlab'","AF water","Log AF water",1)
 	la var `v2' "`v2lab'"
 }
 
@@ -125,11 +165,57 @@ assert kwhaf_apep_measured_init!=.
 la var kwhaf_apep_measured_init "KWH/AF as measued by initial APEP tests (constant within SP)"
 drop temp*
 
-** Prep for lagging instruments
-sort sp_uuid modate
-tsset sp_group modate
+** Construct distance between SP and APEP coordinates
+preserve 
+use "$dirpath_data/pge_cleaned/apep_pump_gis.dta", clear
+keep latlon_group pumplatnew pumplongnew
+duplicates drop
+unique latlon_group
+assert r(unique)==r(N)
+tempfile latlon_pump
+save `latlon_pump'
+restore
+merge m:1 latlon_group using `latlon_pump', keep(1 3) nogen
+geodist prem_lat prem_long pumplatnew pumplongnew, gen(latlon_miles_apart) miles
+la var pumplatnew "APEP pump latitude"
+la var pumplongnew "APEP pump longitude"
+la var latlon_miles_apart "Miles b/tw matched SP lat/lon and APEP lat/lon"
+
+** Lag depth instrument(s)
+preserve
+use "$dirpath_data/groundwater/groundwater_depth_sp_month_rast.dta", clear
+keep basin_id gw_mth_bsn_mean2 modate
+duplicates drop
+unique basin_id modate
+assert r(unique)==r(N)
+egen temp = group(basin_id)
+tsset temp modate
+gen L6_gw_mth_bsn_mean2 = L6.gw_mth_bsn_mean2
+gen L12_gw_mth_bsn_mean2 = L12.gw_mth_bsn_mean2
+drop temp
+tempfile basins
+save `basins'
+merge 1:m basin_id modate using "$dirpath_data/groundwater/groundwater_depth_sp_month_rast.dta" 
+keep sp_uuid modate L6 L12
+tempfile lagged_depth
+save `lagged_depth'
+restore
+merge 1:1 sp_uuid modate using `lagged_depth', nogen keep(1 3)
+rename L6_gw_mth_bsn_mean2 L6_gw_mean_depth_mth_2SP
+rename L12_gw_mth_bsn_mean2 L12_gw_mean_depth_mth_2SP
+gen L6_ln_gw_mean_depth_mth_2SP = ln(L6_gw_mean_depth_mth_2SP)
+gen L12_ln_gw_mean_depth_mth_2SP = ln(L12_gw_mean_depth_mth_2SP)
+la var L6_gw_mean_depth_mth_2SP "6-month lag of gw_mean_depth_mth_2SP"
+la var L12_gw_mean_depth_mth_2SP "12-month lag of gw_mean_depth_mth_2SP"
+la var L6_ln_gw_mean_depth_mth_2SP "6-month lag of ln_gw_mean_depth_mth_2SP"
+la var L12_ln_gw_mean_depth_mth_2SP "12-month lag of ln_gw_mean_depth_mth_2SP"
+
 
 ** Compress, and save
+unique sp_uuid modate
+assert r(unique)==r(N)
+sort sp_uuid modate
+tsset sp_group modate
 compress
 save "$dirpath_data/merged/sp_month_water_panel.dta", replace
 
@@ -140,11 +226,23 @@ save "$dirpath_data/merged/sp_month_water_panel.dta", replace
 *******************************************************************************
 
 ** 2. Merge a few things back into electricity panel 
-{
+if 1==1{
 use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
+cap drop flag_bad_drwdwn
+cap drop flag_weird_pump
+cap drop flag_weird_cust
+cap drop months_until_test
+cap drop months_since_test
+cap drop months_to_nearest_test
+cap drop latlon_group
+cap drop latlon_miles_apart
+cap drop apep_proj_count
+cap drop merge_sp_water_panel
 merge 1:1 sp_uuid modate using "$dirpath_data/merged/sp_month_water_panel.dta", ///
-	keepusing(flag_bad_drwdwn flag_weird_pump flag_weird_cust) keep(1 3) ///
-	gen(merge_sp_water_panel)
+	keepusing(flag_bad_drwdwn flag_weird_pump flag_weird_cust ///
+	months_until_test months_since_test months_to_nearest_test ///
+	latlon_group latlon_miles_apart apep_proj_count) ///
+	keep(1 3) gen(merge_sp_water_panel)
 la var merge_sp_water_panel "3 = merges into corresponding SP-month panel for water regressions"	
 compress
 save "$dirpath_data/merged/sp_month_elec_panel.dta", replace

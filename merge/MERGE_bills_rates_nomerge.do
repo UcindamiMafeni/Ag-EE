@@ -18,7 +18,7 @@ set more off
 ** bills that also have AMI data and bills that don't. A major shortcoming of this
 ** approach is taking unweighted averages across hours.
 
-global dirpath "S:/Matt/ag_pump"
+global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 **********************************************************************

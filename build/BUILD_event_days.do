@@ -6,7 +6,7 @@ set more off
 **** Script to build calendar of historic event days (2011-2017) *********
 **************************************************************************
 
-global dirpath "S:/Matt/ag_pump"
+global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 ** Smart Days for RESIDENTIAL

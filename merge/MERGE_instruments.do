@@ -7,7 +7,7 @@ set more off
 ************************************************************************
 
 
-global dirpath "S:/Matt/ag_pump"
+global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 
@@ -775,7 +775,157 @@ save "$dirpath_data/merged/ag_default_prices_monthly.dta", replace
 *******************************************************************************
 *******************************************************************************
 
-** 6. Construct "control function" variables (hourly)
+** 6. Prepare *modal* ag rates (monthly)
+if 1==1{
+
+** Start with list of ag rates
+use "$dirpath_data/merged/ag_rates_avg_by_day.dta", clear
+keep rt_sched_cd
+duplicates drop
+sort rt_sched_cd
+
+** Restriction on rate switches
+/*
+
+-- AG-1 customers are a distinct group
+
+-- AG-ICE customers are a distinct group
+
+-- AG-4/AG-5/AG-R/AG-V customers can switch between these 4 types of rates
+
+-- A/D customers are small, while B/C/E/F customers are large
+
+-- D/E/F customers are on dumb meters, while A/B/C customers are on smart meters,
+   and we can probably assume that PGE meter replacement timing is exogenous
+
+-- C & F are the PDP variants of B & E
+ 
+ 
+ 
+ tab rt_sched_cd  if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0 & merge_sp_water_panel==3
+
+       Rate |
+schedule at |
+     end of |
+    billing |
+      cycle |      Freq.     Percent        Cum.
+------------+-----------------------------------
+      AG-1A |     32,478        3.10        3.10
+      AG-1B |     88,905        8.47       11.57
+      AG-4A |     76,197        7.26       18.83
+      AG-4B |    211,887       20.20       39.03
+      AG-4C |     24,177        2.30       41.33
+      AG-4D |      2,412        0.23       41.56
+      AG-4E |      7,490        0.71       42.28
+      AG-4F |      1,169        0.11       42.39
+      AG-5A |     27,829        2.65       45.04
+      AG-5B |    381,933       36.41       81.45
+      AG-5C |     55,488        5.29       86.74
+      AG-5D |      1,424        0.14       86.87
+      AG-5E |     15,105        1.44       88.31
+      AG-5F |      1,702        0.16       88.48
+     AG-ICE |     75,324        7.18       95.65
+      AG-RA |     12,592        1.20       96.86
+      AG-RB |     15,826        1.51       98.36
+      AG-RD |         57        0.01       98.37
+      AG-RE |        563        0.05       98.42
+      AG-VA |      9,758        0.93       99.35
+      AG-VB |      5,925        0.56       99.92
+      AG-VD |        476        0.05       99.96
+      AG-VE |        387        0.04      100.00
+------------+-----------------------------------
+      Total |  1,049,104      100.00
+ 
+*/
+
+** Assign the modal rate for each rate (based on above tab from main estimation sample)
+gen rt_modal = ""
+
+replace rt_modal = "AG-1A" if rt_sched_cd=="AG-1A"
+
+replace rt_modal = "AG-1B" if rt_sched_cd=="AG-1B"
+
+replace rt_modal = "AG-ICE" if rt_sched_cd=="AG-ICE"
+
+replace rt_modal = "AG-4A" if rt_sched_cd=="AG-4A"
+replace rt_modal = "AG-4A" if rt_sched_cd=="AG-5A"
+replace rt_modal = "AG-4A" if rt_sched_cd=="AG-RA"
+replace rt_modal = "AG-4A" if rt_sched_cd=="AG-VA"
+
+replace rt_modal = "AG-4D" if rt_sched_cd=="AG-4D"
+replace rt_modal = "AG-4D" if rt_sched_cd=="AG-5D"
+replace rt_modal = "AG-4D" if rt_sched_cd=="AG-RD"
+replace rt_modal = "AG-4D" if rt_sched_cd=="AG-VD"
+
+replace rt_modal = "AG-5B" if rt_sched_cd=="AG-4B"
+replace rt_modal = "AG-5B" if rt_sched_cd=="AG-4C"
+replace rt_modal = "AG-5B" if rt_sched_cd=="AG-5B"
+replace rt_modal = "AG-5B" if rt_sched_cd=="AG-5C"
+replace rt_modal = "AG-5B" if rt_sched_cd=="AG-RB"
+replace rt_modal = "AG-5B" if rt_sched_cd=="AG-VB"
+
+replace rt_modal = "AG-5E" if rt_sched_cd=="AG-4E"
+replace rt_modal = "AG-5E" if rt_sched_cd=="AG-4F"
+replace rt_modal = "AG-5E" if rt_sched_cd=="AG-5E"
+replace rt_modal = "AG-5E" if rt_sched_cd=="AG-5F"
+replace rt_modal = "AG-5E" if rt_sched_cd=="AG-RE"
+replace rt_modal = "AG-5E" if rt_sched_cd=="AG-VE"
+
+** Save temp file
+tempfile rt_modal
+save `rt_modal'
+
+** Construct dataset of modal rates at the hourly level
+
+	// Isolate only the modal rates 
+use "$dirpath_data/merged/ag_rates_avg_by_day.dta", clear
+rename rt_sched_cd rt_modal
+joinby rt_modal using `rt_modal'
+drop rt_sched_cd
+duplicates drop
+unique rt_modal date
+assert r(unique)==r(N)
+
+	// Collapse to monthly level
+gen modate = ym(year(date),month(date))
+format %tm modate
+foreach v of varlist mean_p_kwh min_p_kwh max_p_kwh {
+	local fxn = subinstr(substr("`v'",1,4),"_","",.)
+	egen double temp = `fxn'(`v'), by(rt_modal modate)
+	replace `v' = temp
+	drop temp
+}
+keep rt_modal modate mean_p_kwh min_p_kwh max_p_kwh
+duplicates drop
+unique rt_modal modate
+assert r(unique)==r(N)
+
+	// Clean up and label
+rename *_p_kwh *_p_kwh_ag_modal
+la var rt_modal "Modal ag tariff for customer group"
+la var mean_p_kwh_ag_modal "Modal rate's avg hourly marg price ($/kWh)"
+la var min_p_kwh_ag_modal "Modal rate's min hourly marg price ($/kWh)"
+la var max_p_kwh_ag_modal "Modal rate's max hourly marg price ($/kWh)"
+
+	// Merge in rates
+joinby rt_modal using `rt_modal', unmatch(both)
+assert _merge==3	
+drop _merge
+
+	// Clean up and save
+order rt_sched_cd modate rt_modal
+sort rt_sched_cd modate
+unique rt_sched_cd modate
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/merged/ag_modal_prices_monthly.dta", replace
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 7. Construct "control function" variables (hourly)
 if 1==1{
 
 ** Merge ag rates with E-1 and E-20 hourly rates
@@ -845,7 +995,7 @@ save "$dirpath_data/merged/ag_rates_ctrl_fxn_hourly.dta", replace
 *******************************************************************************
 *******************************************************************************
 
-** 7. Construct "control function" variables (monthly)
+** 8. Construct "control function" variables (monthly)
 if 1==1{
 
 ** Collapse avg daily to avg monthly ag rates
@@ -915,7 +1065,7 @@ save "$dirpath_data/merged/ag_rates_ctrl_fxn_monthly.dta", replace
 *******************************************************************************
 *******************************************************************************
 
-** 8. Prepare monthly ag rates, to be merged in as initial-rate instrument
+** 9. Prepare monthly ag rates, to be merged in as initial-rate instrument
 if 1==1{
 
 ** Start with ag rages by day

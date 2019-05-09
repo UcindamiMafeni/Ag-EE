@@ -8,9 +8,9 @@ set more off, perm
 set excelxlsxlargefile on
 version 12
 
-global dirpath "S:/Matt/ag_pump"
+global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
-global dirpath_raw "S:/Raw Data/PumpData"
+global dirpath_raw "T:/Raw Data/PumpData"
 
 ** additional directory paths to make things easier
 

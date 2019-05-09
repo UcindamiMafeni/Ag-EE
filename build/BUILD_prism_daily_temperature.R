@@ -16,7 +16,7 @@ library(data.table)
 library(reshape2)
 library(lubridate)
 
-setwd("S:/Matt/ag_pump/data")
+setwd("T:/Projects/Pump Data/data")
 
 
 ############################################################################

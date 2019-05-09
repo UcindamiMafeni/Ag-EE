@@ -10,7 +10,7 @@ set more off
 ** 		1) Add hourly marginal prices to AMI data
 **		2) Add $/kW fixed charges to each bill
 
-global dirpath "S:/Matt/ag_pump"
+global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 	***** COME BACK AND FIX THIS STUFF LATER:

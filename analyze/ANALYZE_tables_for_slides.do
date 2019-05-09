@@ -6,14 +6,14 @@ set more off
 ** Script to make tables for slides  **
 ***************************************
 
-*global dirpath "S:/Matt/ag_pump"
-*global dirpath_data "$dirpath/data"
-*global dirpath_output "$dirpath/output"
+global dirpath "T:/Projects/Pump Data"
+global dirpath_data "$dirpath/data"
+global dirpath_output "$dirpath/output"
 
-global dirpath "/Users/louispreonas/Dropbox/Documents/Research/Energy Water Project"
-global dirpath "E:/Dropbox/Documents/Research/Energy Water Project"
-global dirpath_data "$dirpath"
-global dirpath_output "$dirpath/slides/tables"
+*global dirpath "/Users/louispreonas/Dropbox/Documents/Research/Energy Water Project"
+*global dirpath "E:/Dropbox/Documents/Research/Energy Water Project"
+*global dirpath_data "$dirpath"
+*global dirpath_output "$dirpath/slides/tables"
 
 ************************************************
 ************************************************
@@ -288,23 +288,21 @@ file close textab
 
 ** 3. Results: electricity, monthly
 {
-use "$dirpath_data/results/regs_Qelec_Pelec.dta" , clear
-
+use "$dirpath_data/results/regs_paper_elec_monthly.dta" , clear
+br
 keep if pull=="20180719"
 keep if panel=="monthly"
 keep if sample=="if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0 & merge_sp_water_panel==3"
 keep if inlist(rhs,"log_p_mean","(log_p_mean = log_mean_p_kwh_ag_default)","(log_p_mean = log_p_mean_deflag*)")
 keep if inlist(fes,"sp_group#month modate", ///
 					"sp_group#month sp_group#rt_large_ag modate")
-drop if rhs=="log_p_mean" & fes!="sp_group#month modate"										
-drop if rhs=="(log_p_mean = log_p_mean_deflag*)" & fes!="sp_group#month sp_group#rt_large_ag modate"
 assert _N==4
 
 gen col = .			
 replace col = 1 if fes=="sp_group#month modate" & rhs=="log_p_mean"
 replace col = 2 if fes=="sp_group#month modate" & rhs=="(log_p_mean = log_mean_p_kwh_ag_default)"
 replace col = 3 if fes=="sp_group#month sp_group#rt_large_ag modate" & rhs=="(log_p_mean = log_mean_p_kwh_ag_default)"
-replace col = 4 if fes=="sp_group#month sp_group#rt_large_ag modate" & rhs!="(log_p_mean = log_mean_p_kwh_ag_default)"
+replace col = 4 if fes=="sp_group#month sp_group#rt_large_ag modate" & rhs=="(log_p_mean = log_p_mean_deflag*)"
 
 assert col!=.
 sort col
@@ -339,7 +337,7 @@ forvalues c = 1/4 {
 file open textab using "$dirpath_output/table_regs_elec_main.tex", write text replace
 
 file write textab "\begin{table}\centering" _n
-file write textab "\caption{\normalsize Estimated Demand Elasticities -- Electricity}" _n
+file write textab "\caption{\normalsize Electricity Demand -- Monthly Elasticities}" _n
 file write textab "\footnotesize" _n
 file write textab "\vspace{-5mm}" _n
 file write textab "\begin{tabular}{lccccccc}" _n
@@ -368,7 +366,7 @@ file write textab "SP \$\times\$ month FEs  & Yes & Yes  & Yes & Yes \\" _n
 file write textab "[.25em]" _n
 file write textab "Month-of-sample FEs  &  Yes & Yes  & Yes  & Yes\\" _n
 file write textab "[.25em]" _n
-file write textab "SP \$\times\$ 1[\$\ge\$ 35] FEs & &  & Yes & Yes \\" _n
+file write textab "SP \$\times\$ 1[\$\ge\$ 35 hp] FEs & &  & Yes & Yes \\" _n
 file write textab "[.25em]" _n
 file write textab "IV: 6- \& 12-month lags & &  &  & Yes \\" _n
 *file write textab "[.25em]" _n
@@ -398,7 +396,240 @@ file close textab
 ************************************************
 ************************************************
 
-** 4. Results: groundwater, monthly, combined
+** 4. Results: electricity, hourly
+{
+use "$dirpath_data/results/regs_slides_elec_hourly.dta" , clear
+br
+keep if pull=="20180719"
+keep if panel=="hourly"
+keep if sample=="" //| regexm(sample,"summer")
+assert _N==4		
+
+gen col = .			
+replace col = 1 if fes=="sp_group#month sp_group#hour sp_group#rt_large_ag modate" & sample==""
+replace col = 2 if fes=="sp_group#month sp_group#hour sp_group#rt_large_ag modate#rt_group" & sample==""
+replace col = 3 if fes=="sp_group#month#hour sp_group#rt_large_ag modate" & sample==""
+replace col = 4 if fes=="sp_group#month#hour sp_group#rt_large_ag modate#rt_group" & sample==""
+assert col!=.
+sort col
+
+forvalues c = 1/4 {
+	local beta_`c' = string(beta_log_p[`c'],"%9.2f")
+	local se_`c' = string(se_log_p[`c'],"%9.2f")
+	local pval_`c' = 2*ttail(dof[`c'],abs(t_log_p[`c']))
+	if `pval_`c''<0.01 {
+		local stars_`c' = "$^{***}$"
+	}
+	else if `pval_`c''<0.05 {
+		local stars_`c' = "$^{**}$"
+	}
+	else if `pval_`c''<0.1 {
+		local stars_`c' = "$^{*}$"
+	}
+	else {
+		local stars_`c' = ""
+	}
+	local n_sp_`c' = string(n_SPs[`c'],"%9.0fc")
+	local n_obs_`c' = string(n_obs[`c']/1e6,"%9.0f")
+	local fstat_`c' = string(fstat_rk[`c'],"%9.0fc")
+}
+
+
+	// Build table
+file open textab using "$dirpath_output/table_regs_hourly_pooled.tex", write text replace
+
+file write textab "\begin{table}\centering" _n
+file write textab "\caption{\normalsize Electricity Demand -- Hourly Elasticities}" _n
+file write textab "\footnotesize" _n
+file write textab "\vspace{-2mm}" _n
+file write textab "\begin{tabular}{lccccccc}" _n
+file write textab "\hline" _n
+file write textab "\\ " _n
+file write textab "\vspace{-7mm}" _n
+file write textab "\\" _n
+file write textab "& ~~~~~(1)~~~~~ & ~~~~~(2)~~~~~ & ~~~~~(3)~~~~~ & ~~~~(4)~~~~  \\" _n
+file write textab "[.1em]" _n
+file write textab "\cline{2-5}" _n
+file write textab "\\" _n
+file write textab "\vspace{-7mm}" _n
+file write textab "\\" _n
+file write textab "\small \$\log(P_{\text{mean}})\$ & $`beta_1'$`stars_1'  & $`beta_2'$`stars_2' & $`beta_3'$`stars_3' & $`beta_4'$`stars_4'\\" _n
+file write textab "& $(`se_1')$ & $(`se_2')$ & $(`se_3')$ & $(`se_4')$\\" _n
+file write textab "[1.2em]" _n
+file write textab "SP \$\times\$ month FEs  & Yes & Yes   & Yes & Yes \\" _n
+file write textab "[.15em]" _n
+file write textab "SP \$\times\$ hour FEs  & Yes & Yes   & Yes & Yes \\" _n
+file write textab "[.15em]" _n
+file write textab "SP \$\times\$ 1[\$\ge\$ 35 hp] FEs & Yes & Yes & Yes & Yes \\" _n
+file write textab "[.15em]" _n
+file write textab "Month-of-sample FEs  &  Yes & Yes  & Yes  & Yes \\" _n
+file write textab "[1.2em]" _n
+file write textab "SP \$\times\$ month \$\times\$ hour FEs  &  &   & Yes & Yes \\" _n
+file write textab "[.15em]" _n
+file write textab "Month-of-sample \$\times\$ rate FEs & & Yes &  & Yes \\" _n
+file write textab "[1.2em]" _n
+file write textab "Unique SPs & `n_sp_1' & `n_sp_2' & `n_sp_3' & `n_sp_4' \\" _n
+file write textab "[.15em]" _n
+file write textab "SP-month-hour observations & `n_obs_1'M & `n_obs_2'M & `n_obs_3'M & `n_obs_4'M \\" _n
+file write textab "[.15em]" _n
+file write textab "First-stage \$F\$-stat (IV) & `fstat_1'& `fstat_2'& `fstat_3'& `fstat_4' \\" _n
+file write textab "\hline" _n
+file write textab "\vspace{-2mm}" _n
+file write textab "\\" _n
+file write textab "\multicolumn{5}{l}{Standard errors two-way clustered by SP and month-of-sample." _n
+file write textab "SP = service point.} \\" _n
+file write textab "\multicolumn{5}{l}{Dependent variable is \$\sinh^{-1}(Q^{\text{elec}}_{it})\$, from hourly interval data.} \\" _n
+file write textab "\multicolumn{5}{l}{IV: within-category default \$\log\big(P^{\text{elec}}_{it}\big)\$. Sig: *** \$p < 0.01\$, ** \$p < 0.05\$, * \$p < 0.10\$.}" _n
+file write textab "\end{tabular}" _n
+file write textab "\end{table}" _n
+
+file close textab
+}
+
+************************************************
+************************************************
+
+** 5. Results: groundwater, monthly, split
+{
+use "$dirpath_data/results/regs_Qwater_Pwater.dta" , clear
+
+keep if regexm(sample,"if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0")
+keep if regexm(fes,"sp_group#rt_large_ag")
+keep if regexm(rhs,"_dd_mth_2SP")
+drop if regexm(rhs,"deflag")
+keep if regexm(rhs,"default")
+
+gen col = .			
+
+replace col = 1 if fes=="sp_group#month sp_group#rt_large_ag modate" ///
+	& rhs=="(log_p_mean = log_mean_p_kwh_ag_default) ln_kwhaf_rast_dd_mth_2SP" ///
+	& sample=="if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0"
+	
+replace col = 2 if fes=="sp_group#month sp_group#rt_large_ag modate" ///
+	& rhs=="(log_p_mean ln_kwhaf_rast_dd_mth_2SP = log_mean_p_kwh_ag_default ln_gw_mean_depth_mth_2SP)" ///
+	& sample=="if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0"
+
+replace col = 3 if fes=="sp_group#month sp_group#rt_large_ag modate" ///
+	& rhs=="(log_p_mean ln_kwhaf_rast_dd_mth_2SP = log_mean_p_kwh_ag_default ln_gw_mean_depth_mth_2SP)" ///
+	& sample=="if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & inlist(basin_group,68,121,122)"
+
+
+drop if col==.
+assert _N==3
+sort col
+order col
+
+
+forvalues c = 1/3 {
+	local betaE_`c' = string(beta_log_p_kwh[`c'],"%9.2f")
+	local seE_`c' = string(se_log_p_kwh[`c'],"%9.2f")
+	local pvalE_`c' = 2*ttail(dof[`c'],abs(t_log_p_kwh[`c']))
+	if `pvalE_`c''<0.01 {
+		local starsE_`c' = "$^{***}$"
+	}
+	else if `pvalE_`c''<0.05 {
+		local starsE_`c' = "$^{**}$"
+	}
+	else if `pvalE_`c''<0.1 {
+		local starsE_`c' = "$^{*}$"
+	}
+	else {
+		local starsE_`c' = ""
+	}
+	
+	local betaW_`c' = string(beta_log_kwhaf[`c'],"%9.2f")
+	local seW_`c' = string(se_log_kwhaf[`c'],"%9.2f")
+	local pvalW_`c' = 2*ttail(dof[`c'],abs(t_log_kwhaf[`c']))
+	if `pvalW_`c''<0.01 {
+		local starsW_`c' = "$^{***}$"
+	}
+	else if `pvalW_`c''<0.05 {
+		local starsW_`c' = "$^{**}$"
+	}
+	else if `pvalW_`c''<0.1 {
+		local starsW_`c' = "$^{*}$"
+	}
+	else {
+		local starsW_`c' = ""
+	}
+
+	local n_sp_`c' = string(n_SPs[`c'],"%9.0fc")
+	local n_mth_`c' = string(n_modates[`c'],"%9.0fc")
+	local n_obs_`c' = string(n_obs[`c']/1e6,"%9.2f") + "M"
+	local fstat_`c' = string(fstat_rk[`c'],"%9.0f")
+	if "`fstat_`c''"=="." {
+		local fstat_`c' = ""
+	}
+}
+
+
+	// Build table
+file open textab using "$dirpath_output/table_regs_water_split.tex", write text replace
+
+file write textab "\begin{table}\centering" _n
+*file write textab "\caption{\normalsize Groundwater Demand -- Split Elasticities}" _n
+file write textab "\footnotesize" _n
+file write textab "\vspace{-1mm}" _n
+file write textab "\begin{tabular}{lccccccc}" _n
+file write textab "\hline" _n
+file write textab "\\ " _n
+file write textab "\vspace{-7mm}" _n
+file write textab "\\" _n
+file write textab "& ~~~~~~(1)~~~~~~ & ~~~~~~(2)~~~~~~ & ~~~~~~(3)~~~~~~ \\" _n
+file write textab "[.1em]" _n
+*file write textab "& IV & IV & IV  \\" _n
+*file write textab "[.1em]" _n
+file write textab "\cline{2-4}" _n
+file write textab "\\" _n
+file write textab "\vspace{-7mm}" _n
+file write textab "\\" _n
+file write textab " \small $\log\big(P^{\text{elec}}_{it}\big)$: \$\hat\beta^{\text{e}}\$ ~ & " _n
+file write textab " $`betaE_1'$`starsE_1'  & $`betaE_2'$`starsE_2' & $`betaE_3'$`starsE_3'  \\ " _n
+file write textab "& $(`seE_1')$ & $(`seE_2')$ & $(`seE_3')$ \\" _n
+file write textab "[0.75em] " _n
+file write textab " \small $\log\Big(\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}\Big)$: \$\hat\beta^{\text{w}}\$ ~ & " _n
+file write textab " $`betaW_1'$`starsW_1'  & $`betaW_2'$`starsW_2' & $`betaW_3'$`starsW_3'  \\ " _n
+file write textab "[-0.3em] " _n
+file write textab "& $(`seW_1')$ & $(`seW_2')$ & $(`seW_3')$   \\" _n
+file write textab "[1em] " _n
+file write textab "IV: Default $\log\big(P^{\text{elec}}_{it}\big)$  & Yes & Yes & Yes  \\" _n
+file write textab "[0.1em] " _n
+file write textab "IV: Default $\log\big(\text{Avg depth in basin}\big)$  & & Yes & Yes  \\" _n
+file write textab "[0.1em] " _n
+file write textab "Only basins with \$> 1,000\$ SPs  & &  & Yes  \\" _n
+file write textab "[1em]" _n
+file write textab "SP \$\times\$ month FEs  & Yes & Yes  & Yes  \\" _n
+*file write textab "[.25em]" _n
+file write textab "Month-of-sample FEs  &  Yes & Yes  & Yes  \\" _n
+*file write textab "[.25em]" _n
+file write textab "SP \$\times\$ 1[\$\ge\$ 35 hp] FEs & Yes & Yes & Yes  \\" _n
+*file write textab "[.25em]" _n
+*file write textab "SP \$\times\$ month \$\times\$ groundwater depth &  & & Yes & Yes  \\" _n
+*file write textab "[.25em]" _n
+*file write textab "Water district \$\times\$ year FEs  & & & & Yes  \\" _n
+*file write textab "[1.2em]" _n
+file write textab "Unique SPs & `n_sp_1' & `n_sp_2' & `n_sp_3'  \\" _n
+*file write textab "[.15em]" _n
+file write textab "SP-month observations & `n_obs_1'& `n_obs_2'& `n_obs_3'  \\" _n
+*file write textab "[0.15em] " _n
+file write textab "First stage \$F\$-statistic & `fstat_1' & `fstat_2' & `fstat_3'  \\ " _n
+file write textab "\hline" _n
+file write textab "\vspace{-3.5mm}" _n
+file write textab "\\" _n
+file write textab "\multicolumn{4}{l}{\scriptsize Standard errors two-way clustered by SP and month-of-sample." _n
+file write textab "SP = service point.} \\" _n
+file write textab "\multicolumn{4}{l}{\scriptsize Dependent variable is \$\sinh^{-1}(Q^{\text{elec}}_{it})\$, from \`\`monthified'' billing data. IVs: within-category} \\" _n
+file write textab "\multicolumn{4}{l}{\scriptsize  default \$\log\big(P^{\text{elec}}_{it}\big)\$ and avg depth across basin. Sig: *** \$p < 0.01\$, ** \$p < 0.05\$, * \$p < 0.10\$.}" _n
+file write textab "\end{tabular}" _n
+file write textab "\end{table}" _n
+
+file close textab
+}
+
+************************************************
+************************************************
+
+** 6. Results: groundwater, monthly, combined
 {
 use "$dirpath_data/results/regs_Qwater_Pwater_combined.dta" , clear
 

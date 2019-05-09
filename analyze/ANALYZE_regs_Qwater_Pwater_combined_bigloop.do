@@ -7,7 +7,7 @@ set more off
 **  of demand, using elec data & estimated KWH/AF converson rates **
 ********************************************************************
 
-global dirpath "S:/Matt/ag_pump"
+global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 ************************************************

@@ -6,13 +6,12 @@ set more off
 **** Script to create analysis datasets monthly/hourly electricity regressions ****
 ***********************************************************************************
 
-global dirpath "S:/Matt/ag_pump"
+global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 ** PENDING:
 
 ** Files for hourly regressions (at SA and SP levels)
-** Incorporate APEP variables?
 ** Add GIS variables
 
 *******************************************************************************
@@ -605,6 +604,19 @@ gen ihs_kwh =  ln(100*mnth_bill_kwh + sqrt((100*mnth_bill_kwh)^2+1))
 replace ihs_kwh = . if mnth_bill_kwh<0
 la var ihs_kwh "Inverse hyperbolic sine of 100*kWh avg elec consumption"
 
+** Log-transform marginal electricity quantity
+cap drop log_kwh log1_kwh 
+gen log_kwh = ln(mnth_bill_kwh)
+gen log1_kwh = ln(mnth_bill_kwh+1)
+replace log1_kwh = . if mnth_bill_kwh<0
+gen log_100kwh = ln(100*mnth_bill_kwh)
+gen log1_100kwh = ln(100*mnth_bill_kwh+1)
+replace log1_100kwh = . if mnth_bill_kwh<0
+la var log_kwh "Log of kWh avg elec consumption"
+la var log1_kwh "Log+1 of kWh avg elec consumption"
+la var log_100kwh "Log of 100*kWh avg elec consumption"
+la var log1_100kwh "Log+1 of 100*kWh avg elec consumption"
+
 ** Month and year varialbes
 cap drop year month
 gen year = real(substr(string(modate,"%tm"),1,4))
@@ -627,6 +639,11 @@ cap drop rt_default *_p_kwh_ag_default
 merge m:1 rt_sched_cd modate using "$dirpath_data/merged/ag_default_prices_monthly.dta", ///
 	nogen keep(1 3)
 
+** Merge in instrument: modal ag rates
+cap drop rt_modal *_p_kwh_ag_modal
+merge m:1 rt_sched_cd modate using "$dirpath_data/merged/ag_modal_prices_monthly.dta", ///
+	nogen keep(1 3)
+	
 ** Merge in GIS variables
 cap drop wdist_group
 cap drop county_group
@@ -682,12 +699,16 @@ la var flag_irregular_bill "Flag combining all weird bill indicators"
 drop temp
 
 ** Create summer dummy
+cap drop summer
 gen summer = inlist(month,5,6,7,8,9,10)
 la var summer "Summer dummy"
 
 ** Log-transform prices to be used as instruments
-cap drop ln*_p_*
-foreach v of varlist p_kwh_e1* *p_kwh_e20 *p_kwh_ag_default {
+cap drop log_p_kwh_e1*
+cap drop log_*p_kwh_e20
+cap drop log_*p_kwh_ag_default
+cap drop log_*p_kwh_ag_modal
+foreach v of varlist p_kwh_e1* *p_kwh_e20 *p_kwh_ag_default *p_kwh_ag_modal {
 	local lab: var label `v'
 	gen log_`v' = ln(`v')
 	la var log_`v' "Log `lab'"
@@ -724,6 +745,22 @@ la var log_p_max_deflag12 "Max SP-spec default marg elec price (log $/kWh), lagg
 la var log_p_mean_deflag6 "Avg SP-spec default marg elec price (log $/kWh), lagged 6 months"
 la var log_p_min_deflag6 "Min SP-spec default marg elec price (log $/kWh), lagged 6 months"
 la var log_p_max_deflag6 "Max SP-spec default marg elec price (log $/kWh), lagged 6 months"
+
+** Construct instruments of 6- and 12-month-lagged MODAL prices
+cap drop log_p_m*_modlag*
+tsset sp_group modate 
+gen log_p_mean_modlag12 = L12.log_mean_p_kwh_ag_modal
+gen log_p_min_modlag12 = L12.log_min_p_kwh_ag_modal
+gen log_p_max_modlag12 = L12.log_max_p_kwh_ag_modal
+gen log_p_mean_modlag6 = L6.log_mean_p_kwh_ag_modal
+gen log_p_min_modlag6 = L6.log_min_p_kwh_ag_modal
+gen log_p_max_modlag6 = L6.log_max_p_kwh_ag_modal
+la var log_p_mean_modlag12 "Avg SP-spec modal marg elec price (log $/kWh), lagged 12 months"
+la var log_p_min_modlag12 "Min SP-spec modal marg elec price (log $/kWh), lagged 12 months"
+la var log_p_max_modlag12 "Max SP-spec modal marg elec price (log $/kWh), lagged 12 months"
+la var log_p_mean_modlag6 "Avg SP-spec modal marg elec price (log $/kWh), lagged 6 months"
+la var log_p_min_modlag6 "Min SP-spec modal marg elec price (log $/kWh), lagged 6 months"
+la var log_p_max_modlag6 "Max SP-spec modal marg elec price (log $/kWh), lagged 6 months"
 
 ** Create instrument: initial price
 cap drop *_init

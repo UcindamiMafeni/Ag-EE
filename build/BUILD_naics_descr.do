@@ -8,7 +8,7 @@ set more off
 
 ** Downloaded at https://www.census.gov/eos/www/naics/downloadables/downloadables.html
 
-global dirpath "S:/Matt/ag_pump"
+global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 ** Import NAICS codes

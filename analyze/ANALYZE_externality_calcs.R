@@ -29,12 +29,13 @@ library(raster) #, lib.loc=libP)
 library(SDMTools) #, lib.loc=libP)
 library(tidyverse)
 
+path <- "T:/Projects/Pump Data/"
 
 ################################
 ### 1. Prep basin shapefiles ###
 ################################
 
-setwd("S:/Matt/ag_pump/data/spatial")
+setwd(paste0(path,"data/spatial"))
 
 #Load Water Basins shapefile
 wbasn <- readOGR(dsn = "CA_Bulletin_118_Groundwater_Basins", layer = "CA_Bulletin_118_Groundwater_Basins")
@@ -67,7 +68,7 @@ summary(data$area_km2)
 ##########################################################################
 
 #Read PGE coordinates
-setwd("S:/Matt/ag_pump/data/misc")
+setwd(paste0(path,"data/misc"))
 panel <- read.csv("panel_for_externality_calcs.csv",header=TRUE,sep=",",stringsAsFactors=FALSE)
 panel$longitude <- as.numeric(panel$prem_lon)
 panel$latitude <- as.numeric(panel$prem_lat)

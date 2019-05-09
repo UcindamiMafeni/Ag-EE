@@ -7,7 +7,7 @@ set more off
 **  of demand, using electricity data only (not APEP stuff yet)   **
 ********************************************************************
 
-global dirpath "S:/Matt/ag_pump"
+global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 ************************************************
@@ -17,7 +17,7 @@ global dirpath_data "$dirpath/data"
 { 
 
 // Outfile
-local outfile = "regs_Qelec_Pelec_hourly"
+local outfile = "regs_Qelec_Pelec_hourly_bigloop"
 
 // Loop over data pulls
 foreach pull in "20180719" /*"20180322" "20180827"*/ {

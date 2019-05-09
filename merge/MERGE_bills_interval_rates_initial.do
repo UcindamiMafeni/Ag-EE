@@ -9,7 +9,7 @@ set more off
 ** This script constructs COUNTERFACTUAL bills, based on each customer's 
 ** initial rate, to compare and see if farmers have optimized
 
-global dirpath "S:/Matt/ag_pump"
+global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 	***** COME BACK AND FIX THIS STUFF LATER:
