@@ -89,11 +89,12 @@ replace noncrop = 1 if landtype=="Open Water"
 replace noncrop = 1 if landtype=="Perennial Ice/Snow"
 replace noncrop = 1 if landtype=="Shrubland"
 replace noncrop = 1 if landtype=="Wetlands"
+replace noncrop = 1 if landtype=="Woody Wetlands"
 egen ever_crop = max(noncrop==0), by(clu_id)
 unique clu_id
 local uniq = r(unique)
 unique clu_id if ever_crop==1
-di r(unique)/`uniq' // 97% of CLUs
+di r(unique)/`uniq' // 96% of CLUs
 
 ** Strengthen this definition to remove the tiny slivers of CLUs of a given landtype
 gen noncrop_nontrivial = noncrop
@@ -102,7 +103,7 @@ egen ever_crop_nontrivial = max(noncrop_nontrivial==0), by(clu_id)
 unique clu_id
 local uniq = r(unique)
 unique clu_id if ever_crop_nontrivial==1
-di r(unique)/`uniq' // 96% of CLUs
+di r(unique)/`uniq' // 95% of CLUs
 
 ** Create continuous versions
 egen fraction_crop = sum((1-noncrop)*fraction), by(clu_id year)
@@ -115,9 +116,9 @@ sum acres_crop if temp_tag, detail
 unique clu_id
 local uniq = r(unique)
 unique clu_id if fraction_crop>0.2
-di r(unique)/`uniq' // 90% of CLUs
+di r(unique)/`uniq' // 89% of CLUs
 unique clu_id if fraction_crop>0.2 | acres_crop>1
-di r(unique)/`uniq' // 94% of CLUs
+di r(unique)/`uniq' // 93% of CLUs
 
 ** Flag CLUs that never meet either 20% or 1 acre crop thresholds
 egen ever_crop_pct = max((fraction_crop>0.2) | (acres_crop>1)), by(clu_id)
@@ -155,10 +156,10 @@ sort *
 unique clu_id year value
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/cleaned_spatial/cdl_panel_crop_year.dta", replace
+save "$dirpath_data/cleaned_spatial/cdl_panel_crop_year_full.dta", replace
 
 ** Export list of ever_crop_pct CLUs
-use "$dirpath_data/cleaned_spatial/cdl_panel_crop_year.dta", clear
+use "$dirpath_data/cleaned_spatial/cdl_panel_crop_year_full.dta", clear
 keep if ever_crop_pct==1
 keep clu_id
 duplicates drop
@@ -217,7 +218,7 @@ assert temp2>=1 // every CLUs has at least 1 largest parcel
 unique clu_id
 local uniq = r(unique)
 unique clu_id if temp2>1
-di r(unique)/`uniq' // <0.1% of CLUs have a tie for largest parcel
+di r(unique)/`uniq' // 0.1% of CLUs have a tie for largest parcel
 egen temp3 = max(intacres), by(parcelid)
 replace largest_clu = 0 if intacres<temp3 & temp1>1
 egen temp4 = max(largest_clu), by(parcelid)
@@ -263,9 +264,9 @@ collapse (sum) sum_pct_int_parcel=pct_int_parcel sum_intacres=intacres ///
 	(max) max_intacres=intacres max_largest_parcel=largest_parcel ///
 	(count) n_clus=largest_clu, by(county parcelid parcelacres ever_crop_clu) fast
 tab ever_crop_clu
-unique parcelid if ever_crop_clu==1 // 360661 parcels matched to an ever-crop CLU
+unique parcelid if ever_crop_clu==1 // 360660 parcels matched to an ever-crop CLU
 egen temp = max(ever_crop_clu), by(parcelid)
-unique parcelid if temp==0 // 38736 parcels never matched to an ever-crop CLU (10%)
+unique parcelid if temp==0 // 43980 parcels never matched to an ever-crop CLU (10%)
 drop temp
 keep if ever_crop_clu==1 // keep only parcels that match to an ever-crop CLU
 unique parcelid
@@ -304,7 +305,7 @@ gen drop_parcelid_total = !( ///
 unique parcelid
 local uniq = r(unique)
 unique parcelid if drop_parcelid_total==0
-di r(unique)/`uniq' // 77% of parcels will remain
+di r(unique)/`uniq' // 76% of parcels will remain
 unique clu_id if ever_crop_clu==1
 local uniq = r(unique)
 unique clu_id if ever_crop_clu==1 & drop_parcelid_total==0
@@ -346,11 +347,11 @@ gen temp_int_sliver = intacres<`sliver'
 unique parcelid 
 local uniq = r(unique)
 unique parcelid if temp_int_sliver==0
-di 1 - r(unique)/`uniq' // 0.5% of parcels never have more than a sliver in any sigle CLU
+di 1 - r(unique)/`uniq' // 8% of parcels never have more than a sliver in any sigle CLU
 unique clu_id 
 local uniq = r(unique)
 unique clu_id if temp_int_sliver==0
-di 1 - r(unique)/`uniq' // 0.02% of CLUs never have more than a sliver in any sigle parcel
+di 1 - r(unique)/`uniq' // 0.05% of CLUs never have more than a sliver in any sigle parcel
 
 ** Flag parcels that never merge more than a sliver
 egen temp_int_sliver_minp = min(temp_int_sliver), by(parcelid)
@@ -369,7 +370,7 @@ replace drop_slivers = 0 if largest_parcel==1 // and not if largest parcel match
 unique parcelid
 local uniq = r(unique)
 unique parcelid if drop_parcelid_total==0 & drop_slivers==0
-di r(unique)/`uniq' // 77% of parcels will remain
+di r(unique)/`uniq' // 76% of parcels will remain
 unique clu_id if ever_crop_clu==1
 local uniq = r(unique)
 unique clu_id if ever_crop_clu==1 & drop_parcelid_total==0 & drop_slivers==0
