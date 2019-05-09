@@ -123,6 +123,106 @@ save "$dirpath_data/cleaned_spatial/landtype_perennial.dta", replace
 *******************************************************************************
 *******************************************************************************
 
+** 2. Classify crops by fruit, vegetable, grain, feed, etc.
+{
+	// Collapse CDL acreage by land type
+use  "$dirpath_data/cleaned_spatial/cdl_panel_crop_year_full.dta", clear
+collapse (sum) landtype_acres, by(landtype noncrop) fast
+
+	// Drop noncrop land types
+drop if noncrop==1
+drop noncrop
+
+	// Define some broad categories
+gen landtype_cat = ""
+replace landtype_cat = "feed" if inlist(landtype,"Alfalfa","Other Hay/Non Alfalfa","Clover/Wildflowers", ///
+	"Camelina","Vetch","Triticale")
+replace landtype_cat = "nuts" if inlist(landtype,"Almonds","Walnuts","Pecans","Pistachios")
+replace landtype_cat = "fruit trees" if inlist(landtype,"Apples","Apricots","Cherries","Citrus","Nectarines")
+replace landtype_cat = "fruit trees" if inlist(landtype,"Peaches","Plums","Pomegranates","Pears","Prunes","Oranges", ///
+	"Olives","Other Tree Crops")
+replace landtype_cat = "grapes" if inlist(landtype,"Grapes")
+replace landtype_cat = "other fruit" if inlist(landtype,"Blueberries","Cantaloupes","Cranberries", ///
+	"Honeydew Melons", "Strawberries","Watermelons","Caneberries")
+replace landtype_cat = "vegetables" if inlist(landtype,"Asparagus","Broccoli","Cabbage","Carrots","Cauliflower")
+replace landtype_cat = "vegetables" if inlist(landtype,"Celery","Cucumbers","Eggplants","Greens","Peas","Pumpkins")
+replace landtype_cat = "vegetables" if inlist(landtype,"Potatoes","Onions","Garlic","Radishes","Lettuce","Squash")
+replace landtype_cat = "vegetables" if inlist(landtype,"Sweet Potatoes","Potatoes","Tomatoes","Turnips","Peppers")
+replace landtype_cat = "vegetables" if inlist(landtype,"Misc Vegs & Fruits","Dry Beans","Herbs","Mint","Lentils")
+replace landtype_cat = "cereal" if inlist(landtype,"Barley","Corn","Dbl Crop Barley/Corn","Dbl Crop Barley/Sorghum")
+replace landtype_cat = "cereal" if inlist(landtype,"Dbl Crop Durum Wht/Sorghum","Dbl Crop Oats/Corn","Rice","Rye")
+replace landtype_cat = "cereal" if inlist(landtype,"Dbl Crop WinWht/Corn","Dbl Crop WinWht/Sorghum","Durum Wheat")
+replace landtype_cat = "cereal" if inlist(landtype,"Millet","Oats","Sorghum","Spring Wheat","Winter Wheat", ///
+	"Sweet Corn","Other Small Grains","Pop or Orn Corn")
+replace landtype_cat = "fallow" if inlist(landtype,"Fallow/Idle Cropland")
+replace landtype_cat = "other" if inlist(landtype,"Canola","Mustard","Safflower","Sunflower","Sugarbeets","Sugarcane")
+replace landtype_cat = "other" if inlist(landtype,"Cotton","Other Crops","Sod/Grass Seed","Christmas Trees","Soybeans")
+replace landtype_cat = "vegetables" if regexm(landtype,"Dbl Crop Lettuce/") // assign based on first double crop
+replace landtype_cat = "cereal" if regexm(landtype,"Dbl Crop WinWht/") // assign based on first double crop
+assert landtype_cat!=""
+
+	// Acreage by category
+preserve
+collapse (sum) landtype_acres, by(landtype_cat)
+gsort -landtype_acres
+order landtype_cat
+egen sum = sum(landtype_acres)
+gen pct = landtype_acres/sum
+drop sum
+list
+restore
+
+	// Acreage by crop within category
+sum landtype_acres
+local sum1 = r(sum)
+levelsof landtype_cat, local(levs)
+foreach cat in `levs' {
+	preserve
+	keep if landtype_cat=="`cat'"
+	gsort -landtype_acres
+	order landtype_cat landtype
+	egen sum2 = sum(landtype_acres)
+	gen pct_cat = landtype_acres/sum2
+	gen pct_all = landtype_acres/`sum1'
+	drop sum2
+	list
+	restore
+}
+
+	// Make cotton its own category
+replace landtype_cat = "cotton" if landtype=="Cotton" // it's quite big!
+
+	// Combine two fruit categories, since "other fruit" is small
+replace landtype_cat = "fruit" if inlist(landtype_cat,"fruit trees","other fruit")	
+replace landtype_cat = proper(landtype_cat)
+
+	// Compare within and across category percentages
+preserve
+sum landtype_acres
+local sum1 = r(sum)
+gen pct_all = landtype_acres/`sum1'
+replace landtype = "<1% of total" if pct_all<0.01
+collapse (sum) landtype_acres pct_all, by(landtype_cat landtype) fast
+order landtype_cat landtype landtype_acres pct_all
+gen temp = word(landtype,1)=="<1%"
+gsort temp -landtype_acres
+drop temp landtype_acres
+list
+restore
+	
+	// Label and save categories
+la var landtype_acres "Total acreage of landtype, summed over all years"
+la var landtype_cat "Land type category (our own, not definitive)"
+order lantdtype_acres
+sort landtype_cat landtype_acres
+compress
+save "$dirpath_data/cleaned_spatial/landtype_categories.dta", replace
+	
+
+}
+
+*******************************************************************************
+*******************************************************************************
 
 	// Start with full (mostly raw) CLU-crop-year panel
 use  "$dirpath_data/cleaned_spatial/cdl_panel_crop_year_full.dta", clear
