@@ -29,7 +29,7 @@ tempfile usda_ap
 save `usda_ap'
 	
 	// Isolate CDL land types
-use  "$dirpath_data/cleaned_spatial/cdl_panel_crop_year_full.dta", clear
+use "$dirpath_data/cleaned_spatial/cdl_panel_crop_year_full.dta", clear
 keep landtype noncrop
 duplicates drop
 
@@ -126,7 +126,7 @@ save "$dirpath_data/cleaned_spatial/landtype_perennial.dta", replace
 ** 2. Classify crops by fruit, vegetable, grain, feed, etc.
 {
 	// Collapse CDL acreage by land type
-use  "$dirpath_data/cleaned_spatial/cdl_panel_crop_year_full.dta", clear
+use "$dirpath_data/cleaned_spatial/cdl_panel_crop_year_full.dta", clear
 collapse (sum) landtype_acres, by(landtype noncrop) fast
 
 	// Drop noncrop land types
@@ -210,10 +210,15 @@ drop temp landtype_acres
 list
 restore
 	
+	// Store percent of total crop acreage
+sum landtype_acres
+gen pct_total_crop_acres = landtype_acres/r(sum)
+	
 	// Label and save categories
 la var landtype_acres "Total acreage of landtype, summed over all years"
 la var landtype_cat "Land type category (our own, not definitive)"
-order lantdtype_acres
+la var pct_total_crop_acres "Total landtype acres / total crop acres (all years, all CLUs)"
+order landtype_acres
 sort landtype_cat landtype_acres
 compress
 save "$dirpath_data/cleaned_spatial/landtype_categories.dta", replace
@@ -224,120 +229,291 @@ save "$dirpath_data/cleaned_spatial/landtype_categories.dta", replace
 *******************************************************************************
 *******************************************************************************
 
-	// Start with full (mostly raw) CLU-crop-year panel
-use  "$dirpath_data/cleaned_spatial/cdl_panel_crop_year_full.dta", clear
+** 3. CLU-by-year panels (long)
+{
+	// Start with full panel
+use "$dirpath_data/cleaned_spatial/cdl_panel_crop_year_full.dta", clear
+keep county clu_id year landtype fraction landtype_acres cluacres acres_crop ///
+	fraction_crop noncrop ever_crop_pct
+	
+	// Drop non-crop land types
+drop if noncrop==1
+drop noncrop
+sum fraction_crop, detail
+sum fraction_crop if ever_crop_pct==1, detail
+sum fraction_crop if ever_crop_pct==0, detail
 
-	// Classify crop types: annual vs perennial
-	// soure: https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=11&ved=2ahUKEwiItqO0747iAhVAHzQIHbFjA1QQFjAKegQIABAC&url=https%3A%2F%2Fwww.nrcs.usda.gov%2Fwps%2FPA_NRCSConsumption%2Fdownload%3Fcid%3Dstelprdb1262734%26ext%3Dpdf&usg=AOvVaw3Iyv4darXgyq27B9Db0v99
-tab landtype if noncrop==0
+	// Deal with slivers?
+qui count
+local N = r(N)
+qui count if fraction<=0.01 & landtype_acres<0.5 // 15%
+di r(N)/`N'
+qui count if fraction<=0.01 & landtype_acres<0.3 // 12%
+di r(N)/`N'
+qui count if fraction<=0.01 & landtype_acres<0.2 // 0%
+di r(N)/`N'	
+qui count if fraction<=0.05 & landtype_acres<0.2 // 0%
+di r(N)/`N'	
+qui count if fraction<=0.10 & landtype_acres<0.2 // 0%
+di r(N)/`N'	
+qui count if fraction<=0.20 & landtype_acres<0.2 // 0.1%
+di r(N)/`N'	
+qui count if fraction<=0.20 & landtype_acres<0.4 // 22%
+di r(N)/`N'	
+qui count if fraction<=0.20 & landtype_acres<0.6 // 32%
+di r(N)/`N'	
+qui count if fraction<=0.20 & landtype_acres<0.8 // 40%
+di r(N)/`N'	
+qui count if fraction<=0.20 & landtype_acres<1.0 // 45%
+di r(N)/`N'	
+	// Keeping slivers for now, they're not that small and drop off precipitously
+	// (this is a sign that the CLU polygons align with discreet boundaries in the 
+	// Cropland Data Layer images, which is very good news)
+		
+	// Merge in perennial dummy
+merge m:1 landtype using "$dirpath_data/cleaned_spatial/landtype_perennial.dta"
+assert _merge==3
+drop _merge	
+	
+	// Merge in land type categories
+merge m:1 landtype using "$dirpath_data/cleaned_spatial/landtype_categories.dta"
+assert _merge==3
+drop _merge	
 
+	// Save panel: CLU*year, long, by crop
+sort county clu_id year landtype landtype_cat
+order county clu_id year landtype landtype_cat 	
+unique clu_id year landtype
+assert r(unique)==r(N)
+duplicates r clu_id year
+compress
+save "$dirpath_data/cleaned_spatial/CDL_panel_clu_crop_year_long.dta", replace
 
+	// Collapse to categories and perennial
+use "$dirpath_data/cleaned_spatial/CDL_panel_clu_crop_year_long.dta", clear
+tab landtype_cat perennial
+foreach v of varlist fraction landtype_acres {
+	egen double temp = sum(`v'), by(county clu_id year landtype_cat perennial)
+	replace `v' = temp
+	drop temp
+}
+drop landtype pct_total_crop_acres
+duplicates drop	
+la var fraction "Fraction of CLU area of given category/perennial"
+la var landtype_acres "Acres within CLU of given category/perennial"
+rename landtype_acres cat_peren_acres
+	
+	// Save panel: CLU*year, long, by category/perennal
+sort county clu_id year landtype_cat perennial
+order county clu_id year landtype_cat perennial
+unique clu_id year landtype_cat perennial
+assert r(unique)==r(N)
+duplicates r clu_id year
+compress
+save "$dirpath_data/cleaned_spatial/CDL_panel_clu_cat_year_long.dta", replace
 
-
-                    Alfalfa |    932,140       10.45       10.45
-                    Almonds |    926,268       10.39       20.84
-                     Apples |      9,677        0.11       20.95
-                   Apricots |      4,590        0.05       21.00
-                  Asparagus |      5,085        0.06       21.06
-                     Barley |    100,105        1.12       22.18
-                Blueberries |      3,908        0.04       22.23
-                   Broccoli |      6,755        0.08       22.30
-                    Cabbage |      2,271        0.03       22.33
-                   Camelina |        209        0.00       22.33
-                Caneberries |        473        0.01       22.34
-                     Canola |        970        0.01       22.35
-                Cantaloupes |     29,929        0.34       22.68
-                    Carrots |     26,783        0.30       22.98
-                Cauliflower |      1,125        0.01       22.99
-                     Celery |        578        0.01       23.00
-                   Cherries |     91,180        1.02       24.02
-            Christmas Trees |        271        0.00       24.03
-                     Citrus |     67,376        0.76       24.78
-         Clover/Wildflowers |     68,524        0.77       25.55
-                       Corn |    244,471        2.74       28.29
-                     Cotton |    151,592        1.70       29.99
-                Cranberries |         24        0.00       29.99
-                  Cucumbers |     10,634        0.12       30.11
-       Dbl Crop Barley/Corn |      2,803        0.03       30.14
-    Dbl Crop Barley/Sorghum |      1,303        0.01       30.16
- Dbl Crop Durum Wht/Sorghum |        109        0.00       30.16
-    Dbl Crop Lettuce/Barley |         59        0.00       30.16
-Dbl Crop Lettuce/Cantaloupe |      1,007        0.01       30.17
-    Dbl Crop Lettuce/Cotton |        346        0.00       30.18
- Dbl Crop Lettuce/Durum Wht |      1,959        0.02       30.20
-         Dbl Crop Oats/Corn |    111,014        1.25       31.44
-       Dbl Crop WinWht/Corn |    157,452        1.77       33.21
-     Dbl Crop WinWht/Cotton |      1,596        0.02       33.23
-    Dbl Crop WinWht/Sorghum |     37,187        0.42       33.64
-   Dbl Crop WinWht/Soybeans |          5        0.00       33.64
-                  Dry Beans |     41,937        0.47       34.11
-                Durum Wheat |     54,283        0.61       34.72
-                  Eggplants |        117        0.00       34.72
-       Fallow/Idle Cropland |  1,083,389       12.15       46.87
-                     Forest |        551        0.01       46.88
-                     Garlic |     14,462        0.16       47.04
-                     Grapes |    756,278        8.48       55.53
-                     Greens |     11,242        0.13       55.65
-                      Herbs |     10,049        0.11       55.76
-            Honeydew Melons |     10,061        0.11       55.88
-                    Lentils |         54        0.00       55.88
-                    Lettuce |     26,538        0.30       56.17
-                     Millet |        170        0.00       56.18
-                       Mint |      3,058        0.03       56.21
-         Misc Vegs & Fruits |     24,509        0.27       56.49
-                    Mustard |          3        0.00       56.49
-                 Nectarines |     20,281        0.23       56.71
-                       Oats |    299,423        3.36       60.07
-                     Olives |    139,508        1.56       61.64
-                     Onions |     46,776        0.52       62.16
-                    Oranges |    260,978        2.93       65.09
-                Other Crops |     20,758        0.23       65.32
-      Other Hay/Non Alfalfa |    380,006        4.26       69.58
-         Other Small Grains |      1,527        0.02       69.60
-           Other Tree Crops |     45,481        0.51       70.11
-                    Peaches |     57,426        0.64       70.75
-                      Pears |     11,991        0.13       70.89
-                       Peas |     15,680        0.18       71.06
-                     Pecans |      5,526        0.06       71.13
-                    Peppers |      9,180        0.10       71.23
-                 Pistachios |    330,484        3.71       74.94
-                      Plums |    144,321        1.62       76.55
-               Pomegranates |     69,017        0.77       77.33
-            Pop or Orn Corn |        443        0.00       77.33
-                   Potatoes |     17,085        0.19       77.52
-                     Prunes |     25,584        0.29       77.81
-                   Pumpkins |      3,954        0.04       77.86
-                   Radishes |        303        0.00       77.86
-                       Rice |    182,520        2.05       79.91
-                        Rye |     27,349        0.31       80.21
-                  Safflower |     89,943        1.01       81.22
-             Sod/Grass Seed |     18,255        0.20       81.43
-                    Sorghum |     24,081        0.27       81.70
-                   Soybeans |         24        0.00       81.70
-               Spring Wheat |     17,678        0.20       81.90
-                     Squash |      5,439        0.06       81.96
-               Strawberries |     25,273        0.28       82.24
-                 Sugarbeets |     13,901        0.16       82.40
-                  Sugarcane |        379        0.00       82.40
-                  Sunflower |     40,671        0.46       82.86
-                 Sweet Corn |     12,766        0.14       83.00
-             Sweet Potatoes |      8,270        0.09       83.09
-                   Tomatoes |    216,423        2.43       85.52
-                  Triticale |     65,069        0.73       86.25
-                    Turnips |        175        0.00       86.25
-                      Vetch |      5,993        0.07       86.32
-                    Walnuts |    530,629        5.95       92.27
-                Watermelons |     21,527        0.24       92.51
-               Winter Wheat |    530,593        5.95       98.46
-             Woody Wetlands |    137,154        1.54      100.00
-
-
-
+}
 
 *******************************************************************************
 *******************************************************************************
 
-** 3. Merge into parcels and units
+** 4. CLU-by-year panels (wide)
+{
+	// Load panel: CLU*year, long, by category/perennial
+use "$dirpath_data/cleaned_spatial/CDL_panel_clu_cat_year_long.dta", clear
+
+	// Reshape wide: categories
+tab landtype_cat
+rename fraction frac_
+rename cat_peren_acres acres_
+rename acres_crop crop_acres
+reshape wide frac_ acres_, i(county clu_id year perennial cluacres crop_acres ///
+	fraction_crop ever_crop_pct) j(landtype_cat) string
+
+	// Reshape wide: perennial
+tostring perennial, replace
+replace perennial = "_A" if perennial=="0"	
+replace perennial = "_P" if perennial=="1"
+reshape wide frac_* acres_*, i(county clu_id year cluacres crop_acres ///
+	fraction_crop ever_crop_pct) j(perennial) string
+	
+	// Drop always-zeros
+foreach v of varlist frac_* acres_* {
+	replace `v' = 0 if `v'==.
+	qui sum `v'
+	if r(max)==0 {
+		di "`v'"
+		drop `v'
+	}
+}	
+	
+	// Confirm acres and fractions add up
+egen temp_f = rowtotal(frac_*)
+egen temp_a = rowtotal(acres_*)	
+assert round(abs(temp_f-fraction_crop),0.000001)==0
+assert round(abs(temp_a-crop_acres),0.001)==0
+drop temp*
+	
+	// Fix labels
+foreach v of varlist frac_* {
+	local v2 = subinstr("`v'","_"," ",.)
+	local vcat = word("`v2'",2)
+	local vap = word("`v2'",3)
+	if "`vap'"=="A" {
+		local vap2 = "Annual"
+	}
+	else {
+		local vap2 = "Perennial"
+	}
+	la var `v' "Fraction of CLU area: `vcat', `vap2'"
+}
+foreach v of varlist acres_* {
+	local v2 = subinstr("`v'","_"," ",.)
+	local vcat = word("`v2'",2)
+	local vap = word("`v2'",3)
+	if "`vap'"=="A" {
+		local vap2 = "Annual"
+	}
+	else {
+		local vap2 = "Perennial"
+	}
+	la var `v' "Acres of CLU: `vcat', `vap2'"
+}
+
+	// Save panel: CLU*year, wide, by category/perennal
+sort county clu_id year
+order frac_Cereal_* frac_Cotton_* frac_Fallow_* frac_Feed_* frac_Fruit_* ///
+	frac_Grapes_* frac_Nuts_* frac_Vegetables_* frac_Other_* ///
+	acres_Cereal_* acres_Cotton_* acres_Fallow_* acres_Feed_* acres_Fruit_* ///
+	acres_Grapes_* acres_Nuts_* acres_Vegetables_* acres_Other_*, after(ever_crop_pct)
+unique clu_id year
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/cleaned_spatial/CDL_panel_clu_cat_year_wide.dta", replace
+
+
+	// Load panel: CLU*year, long, by crop
+use "$dirpath_data/cleaned_spatial/CDL_panel_clu_crop_year_long.dta", clear
+
+	// Aggregate small crops up to category/perennial
+egen temp_tag = tag(landtype)
+tab pct_total_crop_acres if temp_tag	
+egen temp_denom_year = sum(landtype_acres), by(year)
+egen temp_num_year = sum(landtype_acres), by(landtype year)
+gen temp_share_year = temp_num_year/temp_denom_year
+egen temp_share_max = max(temp_share_year), by(landtype)
+tab landtype if pct_total_crop_acres>=0.01 
+tab landtype if pct_total_crop_acres<0.01 & temp_share_max>=0.01
+tab temp_share_year year if landtype=="Plums" // max was in 2008
+tab temp_share_year year if landtype=="Safflower" // max was in 2008
+	// Using the ever >1% criterion isn't obscuring any crops that peaked late
+drop temp*
+tostring perennial, replace
+replace perennial = "A" if perennial=="0"
+replace perennial = "P" if perennial=="1"
+replace landtype = "Other " + landtype_cat + " " + perennial if pct_total_crop_acres<0.01
+
+	// Shorten strings pre-reshape
+tab landtype
+replace landtype = subinstr(landtype,"Dbl Crop ","",1)
+replace landtype = subinstr(landtype,"/Non Alfalfa","",1)
+replace landtype = subinstr(landtype,"/Idle Cropland","",1)
+replace landtype = subinstr(landtype,"Vegetables","Veg",1)
+replace landtype = subinstr(landtype,"Other Other","Other",1)
+replace landtype = subinstr(landtype," ","_",.) if word(landtype,1)=="Other" & landtype!="Other Hay"
+replace landtype = subinstr(landtype," ","",.)
+replace landtype = subinstr(landtype,"/","",.)
+compress
+tab landtype
+
+	// Collapse by new landtypes
+foreach v of varlist fraction landtype_acres {
+	egen double temp = sum(`v'), by(county clu_id year landtype)
+	replace `v' = temp
+	drop temp
+}
+drop pct_total_crop_acres
+duplicates drop
+unique clu_id year landtype
+assert r(unique)==r(N)
+drop landtype_cat perennial
+
+	// Reshape wide: landtype
+rename fraction frac_
+rename landtype_acres acres_
+rename acres_crop crop_acres
+reshape wide frac_ acres_, i(county clu_id year cluacres crop_acres fraction_crop ///
+	ever_crop_pct) j(landtype) string
+	
+	// Switch missings to zeros
+foreach v of varlist frac_* acres_* {
+	replace `v' = 0 if `v'==.
+	qui sum `v'
+	if r(max)==0 {
+		di "`v'"
+		assert 2+2==5
+	}
+}	
+	
+	// Confirm acres and fractions add up
+egen temp_f = rowtotal(frac_*)
+egen temp_a = rowtotal(acres_*)	
+assert round(abs(temp_f-fraction_crop),0.000001)==0
+assert round(abs(temp_a-crop_acres),0.01)==0
+drop temp*
+	
+	// Fix labels
+foreach v of varlist frac_* {
+	local v2 = subinstr("`v'","_"," ",.)
+	local vcat = word("`v2'",2)
+	if word("`v2'",2)=="Other" {
+		local vcat = trim(subinstr(subinstr("`v2'",word("`v2'",1),"",1),word("`v2'",wordcount("`v2'")),"",1))
+	}
+	local vap = word("`v2'",wordcount("`v2'"))
+	if "`vap'"=="A" {
+		local vap2 = ", Annual"
+	}
+	else if "`vap'"=="P" {
+		local vap2 = ", Perennial"
+	}
+	else {
+		local vap2 = ""
+	}
+	la var `v' "Fraction of CLU area: `vcat'`vap2'"
+}
+foreach v of varlist acres_* {
+	local v2 = subinstr("`v'","_"," ",.)
+	local vcat = word("`v2'",2)
+	if word("`v2'",2)=="Other" {
+		local vcat = trim(subinstr(subinstr("`v2'",word("`v2'",1),"",1),word("`v2'",wordcount("`v2'")),"",1))
+	}
+	local vap = word("`v2'",wordcount("`v2'"))
+	if "`vap'"=="A" {
+		local vap2 = ", Annual"
+	}
+	else if "`vap'"=="P" {
+		local vap2 = ", Perennial"
+	}
+	else {
+		local vap2 = ""
+	}
+	la var `v' "Acres of CLU: `vcat'`vap2'"
+}
+
+	// Save panel: CLU*year, wide, by crop (>1% only)
+sort county clu_id year
+order frac_*, after(ever_crop_pct)
+order frac_Other_*, after(frac_WinterWheat)
+order acres_Other_*, after(acres_WinterWheat)
+order frac_Other_A frac_Other_P, after(frac_Other_Veg_P)
+order acres_Other_A acres_Other_P, after(acres_Other_Veg_P)
+unique clu_id year
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/cleaned_spatial/CDL_panel_clu_crop_year_wide.dta", replace
+
+}
 
 *******************************************************************************
 *******************************************************************************
+
