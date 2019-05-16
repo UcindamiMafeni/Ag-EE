@@ -17,7 +17,7 @@ global dirpath_data "$dirpath/data"
 *******************************************************************************
 
 ** 1. Merge together customer, meter, and APEP datasets
-if 1==0{
+if 1==1{
 
 ** Load cleaned PGE customer data
 use "$dirpath_data/pge_cleaned/pge_cust_detail_20180719.dta", clear
@@ -835,7 +835,7 @@ save "$dirpath_data/merged/sp_apep_proj_merged.dta", replace
 *******************************************************************************
 
 ** 2. Create anonymized APEP test/project dataset for determining APEP eligibility/subsidies
-if 1==0{
+if 1==1{
 
 ** Start with harmonized pump test and project dataset
 use "$dirpath_data/merged/sp_apep_proj_merged.dta", clear
@@ -957,7 +957,7 @@ save "$dirpath_data/merged/data.dta", replace
 *******************************************************************************
 
 ** 3. Compare SP vs APEP coordinates, and groundwater levels, and figure out missing drawdown
-if 1==0{
+if 1==1{
 
 ** Start with SP-APEP merge
 use "$dirpath_data/merged/sp_apep_proj_merged.dta", clear
