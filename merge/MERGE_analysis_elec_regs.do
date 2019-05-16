@@ -644,17 +644,38 @@ cap drop rt_modal *_p_kwh_ag_modal
 merge m:1 rt_sched_cd modate using "$dirpath_data/merged/ag_modal_prices_monthly.dta", ///
 	nogen keep(1 3)
 	
-** Merge in GIS variables
+** Merge in assigned GIS variables
 cap drop wdist_group
 cap drop county_group
 cap drop basin_group
+	cap drop clu_id_ec_group
+	cap drop clu_group*
 merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/sp_premise_gis.dta", ///
-	nogen keep(1 3) keepusing(wdist_group county_fips basin_id)
+	nogen keep(1 3) keepusing(wdist_group county_fips basin_id clu_id_ec ///
+	clu_group*_ec polygon_check* parcelid_conc)
 encode county_fips, gen(county_group)
 la var county_group "County FIPS (numeric)"
+drop county_fips
 egen basin_group = group(basin_id)
 la var basin_group "Groundwater basin (numeric)"
-		
+	// Make CLU and parcel identifiers numeric, to save memory
+foreach v of varlist parcelid_conc clu_id_ec {
+	rename `v' temp
+	encode temp, gen(`v')
+	drop temp
+}
+	// Make CLU gorup identifiers numeric too, with a common encoding
+foreach v of varlist clu_group*_ec {
+	rename `v' temp
+	encode temp, gen(`v') label(clu_group0_ec)
+	drop temp
+}
+	// Make flag combining CLU-related polygon checks
+egen temp = rowmin(poly*A poly*C* poly*D* poly*E* poly*F poly*G)
+gen flag_clu_inconsistency = 1-temp
+la var flag_clu_inconsistency "Dummy=1 if CLU doesn't match county, unrestricted, concordance, etc."
+drop temp polygon_check*
+
 ** Merge in switchers indicators
 cap drop sp_same_rate_*
 merge m:1 sp_uuid using "$dirpath_data/merged/sp_rate_switchers.dta", nogen ///
@@ -834,6 +855,12 @@ replace rt_large_ag = 2 if inlist(rt_category,3) // ICE
 assert rt_category!=. & rt_large_ag!=.
 la var rt_category "PGE ag rate category (1 of 5 w/in which choosing is possible)"
 la var rt_large_ag "PGE ag rate groups based on motor size/type (0=small, 1=large, 2=ICE)"
+
+** Drop a few long strings, to save memory
+cap drop dr_program
+cap drop climate_zone_cd
+cap drop climate_zone_cd_gis
+cap drop pou_name
 	
 ** Save
 order sp_uuid modate
