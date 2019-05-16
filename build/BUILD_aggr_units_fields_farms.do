@@ -16,7 +16,7 @@ global dirpath_code "T:/Home/Louis/backup/AgEE/AgEE_code/build"
 *******************************************************************************
 
 ** 1. Compare assigned parcels, all vs. CLU-matched
-{
+if 1==0{
 
 ** SP premise lat/lons
 use "$dirpath_data/pge_cleaned/sp_premise_gis.dta", clear
@@ -149,7 +149,7 @@ di r(N)/`rN' // 68.7%
 *******************************************************************************
 
 ** 2. Compare assigned CLUs, all vs. ever-crop
-{
+if 1==0{
 
 ** SP premise lat/lons
 use "$dirpath_data/pge_cleaned/sp_premise_gis.dta", clear
@@ -303,7 +303,7 @@ di r(N)/`rN' // 52.1%
 *******************************************************************************
 
 ** 3. Compare parcel-CLU concordance vs. parcel-CLU assignments
-{
+if 1==0{
 
 ** SP premise lat/lons, assigned parcels (all)
 use "$dirpath_data/pge_cleaned/sp_premise_gis.dta", clear
