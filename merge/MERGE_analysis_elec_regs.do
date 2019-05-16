@@ -605,16 +605,14 @@ replace ihs_kwh = . if mnth_bill_kwh<0
 la var ihs_kwh "Inverse hyperbolic sine of 100*kWh avg elec consumption"
 
 ** Log-transform marginal electricity quantity
-cap drop log_kwh log1_kwh 
+cap drop log*_*kwh
 gen log_kwh = ln(mnth_bill_kwh)
 gen log1_kwh = ln(mnth_bill_kwh+1)
 replace log1_kwh = . if mnth_bill_kwh<0
-gen log_100kwh = ln(100*mnth_bill_kwh)
 gen log1_100kwh = ln(100*mnth_bill_kwh+1)
 replace log1_100kwh = . if mnth_bill_kwh<0
 la var log_kwh "Log of kWh avg elec consumption"
 la var log1_kwh "Log+1 of kWh avg elec consumption"
-la var log_100kwh "Log of 100*kWh avg elec consumption"
 la var log1_100kwh "Log+1 of 100*kWh avg elec consumption"
 
 ** Month and year varialbes
@@ -648,11 +646,13 @@ merge m:1 rt_sched_cd modate using "$dirpath_data/merged/ag_modal_prices_monthly
 cap drop wdist_group
 cap drop county_group
 cap drop basin_group
-	cap drop clu_id_ec_group
-	cap drop clu_group*
+cap drop parcelid_conc
+cap drop clu_id_ec
+cap drop clu_group*_ec
+cap drop flag_clu_inconsistency
 merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/sp_premise_gis.dta", ///
-	nogen keep(1 3) keepusing(wdist_group county_fips basin_id clu_id_ec ///
-	clu_group*_ec polygon_check* parcelid_conc)
+	nogen keep(1 3) keepusing(wdist_group county_fips basin_id parcelid_conc ///
+	clu_id_ec clu_group*_ec polygon_check*)
 encode county_fips, gen(county_group)
 la var county_group "County FIPS (numeric)"
 drop county_fips
@@ -695,14 +695,17 @@ drop quarter basin_id
 	
 ** Create numeric versions of SP, climate zone, and rate
 cap drop sp_group
-cap drop cz_group
 cap drop rt_group
 egen sp_group = group(sp_uuid)
 la var sp_group "SP identifier (not global; numeric)"
 encode rt_sched_cd, gen(rt_group)
 la var rt_group "Ag tariff group (numeric)"
-encode climate_zone_cd, gen(cz_group)
-la var cz_group "Climate zone (numeric)"
+cap confirm variable cz_group
+if _rc {
+	encode climate_zone_cd, gen(cz_group)
+	la var cz_group "Climate zone (numeric)"
+	drop climate_zone_cd
+}
 
 ** Combine bad/missing geocode flags
 cap drop flag_geocode_badmiss
@@ -858,7 +861,6 @@ la var rt_large_ag "PGE ag rate groups based on motor size/type (0=small, 1=larg
 
 ** Drop a few long strings, to save memory
 cap drop dr_program
-cap drop climate_zone_cd
 cap drop climate_zone_cd_gis
 cap drop pou_name
 	
