@@ -16,8 +16,7 @@ global dirpath_data "$dirpath/data"
 *******************************************************************************
 *******************************************************************************
 
-** 1. Construct SP-by-month panel of kwh/af conversion rates!
-{
+** Construct SP-by-month panel of kwh/af conversion rates!
 
 ** Start with SP-APEP merge
 use "$dirpath_data/merged/sp_apep_proj_merged.dta", clear
@@ -28,9 +27,9 @@ keep sp_uuid customertype farmtype waterenduse apeptestid test_date_stata apepte
 
 ** Merge in SP-level GIS data
 merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/sp_premise_gis.dta", keep(1 3) nogen ///
-	keepusing(prem_lat prem_long bad_geocode_flag missing_geocode_flag wdist_id county_fips ///
+	keepusing(prem_lat prem_long bad_geocode_flag missing_geocode_flag wdist_id ///
 	basin_id basin_sub_id)
-foreach v of varlist bad_geocode_flag missing_geocode_flag wdist_id county_fips basin_id basin_sub_id {
+foreach v of varlist bad_geocode_flag missing_geocode_flag wdist_id basin_id basin_sub_id {
 	rename `v' `v'SP
 }
 
@@ -40,7 +39,7 @@ merge 1:1 apeptestid customertype farmtyp waterenduse test_date_stata using ///
 
 ** Merge in pump-level GIS data
 merge m:1 apeptestid crop using "$dirpath_data/pge_cleaned/apep_pump_gis.dta", keep(1 3) nogen ///
-	keepusing(pumplatnew pumplongnew latlon_group bad_geocode_flag wdist_id county_fips basin_id basin_sub_id)
+	keepusing(pumplatnew pumplongnew latlon_group bad_geocode_flag wdist_id basin_id basin_sub_id)
 
 ** Create numeric groups	
 egen basin_id_group = group(basin_id)
@@ -1810,8 +1809,6 @@ assert r(unique)==r(N)
 compress
 save "$dirpath_data/merged/sp_month_kwhaf_panel.dta", replace
 
-	
-}
 
 *******************************************************************************
 *******************************************************************************
