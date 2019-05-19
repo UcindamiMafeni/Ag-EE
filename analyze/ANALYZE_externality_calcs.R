@@ -102,14 +102,31 @@ for (i in 1:r){
   assign(paste0("circles",i), st_buffer(panel_sf_june, dist=radii[i]))
 }  
 
-# Step 4: Intersect circles with basin polygons (COME BACK TO THIS)
-# wbasn_by_sp merge
-# circles1 <- st_intersection(wbasn_by_sp, circles1)
-
+# Step 4: Intersect circles with basin polygons 
+wbasn_sf_by_spX <- panel_sf_june[,names(panel_sf_june) %in% c("sp_uuid","basin_name")]
+wbasn_sf_by_spY <- wbasn_sf[,names(wbasn_sf) %in% c("Basin_Name")]
+wbasn_sf_by_spX <- st_set_geometry(wbasn_sf_by_spX,NULL)
+wbasn_sf_by_spY2 <- wbasn_sf_by_spY %>% group_by(Basin_Name) %>% summarize()
+wbasn_sf_by_sp <- left_join(wbasn_sf_by_spX, wbasn_sf_by_spY2, by=c("basin_name" = "Basin_Name"))
+wbasn_sf_by_sp <- st_as_sf(wbasn_sf_by_sp)
+for (i in 1:r){
+  temp_circ <- get(paste0("circles",i))
+  stopifnot(wbasn_sf_by_sp$sp_uuid==temp_circ$sp_uuid)
+  temp <- lapply(c(1:nrow(wbasn_sf_by_sp)), function(x) st_intersection(wbasn_sf_by_sp[x,],temp_circ[x,]))
+  temp <- do.call(rbind, temp)
+  stopifnot(temp$sp_uuid==temp$sp_uuid.1)
+  stopifnot(temp$basin_name==temp$basin_name.1)
+  temp <- select(temp,-ends_with(".1"))
+  assign(paste0("circlesI",i), temp)
+  rm(temp_circ,temp)
+}
+  
 # Step 5: Calculate area of each circle (sq meters)
 for (i in 1:r){
   assign(paste0("areas",i), st_area(get(paste0("circles",i))))
+  assign(paste0("areasI",i), st_area(get(paste0("circlesI",i))))
 }  
+
 
 # Step 6: define groundwater variables and size of decrease in pumping for each unit i
 stub      <- "rast_dd_mth_2SP"
@@ -127,7 +144,7 @@ dCS_i          <- panel_sf_june[[P_var]]
 dCS_i          <- as.data.frame(dCS_i)
 names(dCS_i)   <- "P_old"
 dCS_i$Q_old    <- panel_sf_june[[Q_var]]
-dCS_i$delta_Q  <- ifelse(dCS_i$Q_old>1,1,NaN) #start with 1 AF, and see what happens\
+dCS_i$delta_Q  <- ifelse(dCS_i$Q_old>1,1,NaN) #start with 1 AF, and see what happens
 dCS_i$eps      <- panel_sf_june[[eps_var]]
 dCS_i$Q_new    <- dCS_i$Q_old - dCS_i$delta_Q
 dCS_i$P_new    <- (dCS_i$Q_new/dCS_i$Q_old)^(1/(dCS_i$eps))*dCS_i$P_old
