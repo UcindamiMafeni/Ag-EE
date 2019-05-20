@@ -29,6 +29,7 @@ replace geo_matched=0 if missing(geo_matched)
 
 gen both_valid= geo_matched*string_matched
 
+save "$path_master/Geo_and_string_matches.dta", replace
 //now see if the matches are atleast nearest
 keep if string_matched==1 & geo_matched==0
 

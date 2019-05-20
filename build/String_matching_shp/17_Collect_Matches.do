@@ -42,14 +42,15 @@ save "$path_out/Matched.dta", replace
 use "$path_names/First_Cut_PO.dta", clear
 rename name dup_name
 save "$path_temp/Merge_PO_step0.dta", replace
-use "$path_names/Primary_Owner_names_CleanedFile_NDD.dta", clear
+use "$path_names/Primary_Owner_names_CleanedFile_NDD.dta", clear //this is the file which still has duplicate names among primary owners
 keep name dup_name
-merge m:1 dup_name using "$path_temp/Merge_PO_step0.dta"
+merge m:1 dup_name using "$path_temp/Merge_PO_step0.dta" //merge on the non-caps version of names
 assert _merge!=2
-keep if _merge==3 //only those WRIMS we have used for first cut
+keep if _merge==3 //keep only those which have been used in the first cut, not all primary owners are in there
 drop _merge
 save "$path_temp/Merge_PO_step1.dta", replace
 
+//Now, we are ready to joinby and have the names of the WRIMS (PO) entitites as they were in the original data
 use "$path_out/Matched.dta", clear
 joinby id_PO using "$path_temp/Merge_PO_step1.dta", unmatched(master)
 rename name name_PO
