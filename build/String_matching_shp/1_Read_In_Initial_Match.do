@@ -1,3 +1,14 @@
+*** READ IN FILES AND CREATE MASTERS ***
+/*
+Aim:
+Take in files, find if they have certain phrases, create master with 
+and without duplicates.
+
+Inputs: Database of water districts, input of WRIMS file.
+Outputs: Cleaned name masters with dummies for farm related phrases.
+
+*/
+
 do 0_Set_Path.do
 
 global path_in= "$path_master"

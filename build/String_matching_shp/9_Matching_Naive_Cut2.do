@@ -1,3 +1,15 @@
+*** USE TRIMMED LIST OF SHAPEFILES TO MATCH TO THE CONTRACTS ***
+/*
+	Input:
+	Trimmed list of shapefiles, list of contracts.
+		$path_in/Master_DBF_after_Cut1.dta
+		$path_in/Primary_Owner_Post1Cut.dta
+		
+	Output:
+	Matched list of names, using matchit.
+		$path_out/Matchit_Post1Cut.dta
+*/
+
 //now we use the remaining unmatched DBF files to find their matches
 
 do 0_Set_Path.do

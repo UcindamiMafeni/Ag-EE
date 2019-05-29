@@ -1,3 +1,16 @@
+*** Match within subgroups that have certain phrases ***
+/*
+
+Input: 
+Master files created in previous go-
+	$path_in/First_Cut_PO.dta
+	$path_in/Entity_Names_DBF.dta
+
+Output:
+Files that have fungible matches for outlined phrases
+	$path_temp/Match_`key'.dta
+*/
+
 do 0_Set_Path.do
 
 global path_in= "$path_master/Names"

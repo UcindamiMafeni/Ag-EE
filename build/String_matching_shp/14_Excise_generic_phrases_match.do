@@ -1,3 +1,14 @@
+*** TRIM AWAY COMMON WORDS AND THEN MATCH ON REMAINING ***
+/*
+	Input:
+	List of shapefiles after containment in cut2.
+		$path_in/Intmdt_Master_DBF_post_containment.dta
+		
+	Output:
+	Matched list of names, using only non-common phrases.
+		$path_in/Match_phrases_Cut2.dta
+*/
+
 do 0_Set_Path.do
 
 global path_in= "$path_master/Cut_2"

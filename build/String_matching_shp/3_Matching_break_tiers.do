@@ -1,3 +1,16 @@
+*** BREAK MATCHES INTO VARIOUS TIERS ***
+/*
+
+Input:
+Phrase-wise matches from the temp folder.
+	$path_master/Temp
+
+Output:
+Matches that have been split into various tiers, depending on how good they seem.
+	$path_out/Tier_1.dta
+
+*/
+
 do 0_Set_Path.do
 
 global path_in= "$path_master/Temp"

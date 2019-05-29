@@ -19,6 +19,8 @@ drop if _merge==3
 drop _merge
 save "$path_in/Intmdt_Master_DBF_post_containment.dta", replace
 
+
+//these are the ones that were not marked as contained
 use "$path_in/Matchit_Post1Cut.dta", clear
 merge m:1 id_DBF using "$path_temp/Cut2_DBF_matches.dta"
 assert _merge!=2
@@ -26,6 +28,7 @@ drop if _merge==3
 drop _merge
 save "$path_in/Matchit_leftover_post_containment.dta", replace
 
+//list of best five matches among the remaining shapefiles, for each shapefile
 use "$path_in/Matchit_leftover_post_containment.dta", clear
 gsort id_DBF -similscore
 by id_DBF: keep if _n<=5

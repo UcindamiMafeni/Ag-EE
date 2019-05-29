@@ -1,3 +1,14 @@
+*** MARK NAMES WHICH ARE CONTAINED IN OTHER ***
+/*
+	Input:
+	Tier 3 matches from the above matching.
+		$path_in/Matchit_Post1Cut.dta
+		
+	Output:
+	List of names from either of the lists which are contained in the other list.
+		$path_out/Containment_match_T3.dta
+*/
+
 //marking matches that have full containment one way or the other
 //we split on spaces, for both name_DBF and name_PO
 

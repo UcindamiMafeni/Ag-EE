@@ -47,6 +47,7 @@ foreach stub of local stubs {
 	}
 	*/
 	
+	//remove the part inside brackets if its more than length 20 chars
 	split name_dup, p(( ))
 	local vars `r(varlist)'
 	local index=1

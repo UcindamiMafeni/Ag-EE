@@ -1,3 +1,13 @@
+*** COLLECT ALL STRING MATCHES OBTAINED SO FAR ***
+/*
+	Input:
+	All outputs that have some matches so far.
+		
+	Output:
+	Consolidated list of string matches.
+		$path_out/Matched.dta
+*/
+
 do 0_Set_Path.do
 
 global path_in= "$path_master/Cut_1"

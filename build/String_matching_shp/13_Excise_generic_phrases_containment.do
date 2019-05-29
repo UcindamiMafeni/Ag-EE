@@ -14,6 +14,8 @@ gen name_ex=name
 gen excised=0
 cap drop has*
 //set trace on 
+
+//mark of one of the phrases exists in the name
 foreach phrase of local phrases {
 	gen has_`phrase'=0
 	replace has_`phrase'=1 if strpos(name,"`phrase'")>0
@@ -28,6 +30,7 @@ save "$path_temp/Containment_with_DBF_only.dta", replace
 
 matchit id_DBF name_ex using "$path_names/Primary_Owner_Post1Cut.dta", idusing(id_PO) txtusing(name_PO) override  threshold(0.33)
 
+//generate a list of matches to see containment with
 local names name_DBF name_PO
 
 local master_n name_PO
@@ -65,11 +68,13 @@ save "$path_in/Containment_phrases_Cut2.dta", replace
 keep if name_PO_contains==1
 save "$path_in/Containment_phrases_Cut2_rest.dta", replace
 
+//match back the original shapefile names from the master
 use "$path_in/Containment_phrases_Cut2_rest.dta", clear
 merge m:1 id_DBF using "$path_in/Intmdt_Master_DBF_post_containment.dta"
 keep if _merge==3
 drop _merge
 
+//match back the contract names from file
 merge m:1 id_PO using "$path_names/Primary_Owner_Post1Cut.dta"
 keep if _merge==3
 drop _merge

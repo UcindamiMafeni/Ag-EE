@@ -1,3 +1,16 @@
+*** DENOTE IF MATCHES ARE BAD ***
+/*
+
+Input:
+Tier-splitted matches from previous code.
+	$path_out/Tier_1.dta
+
+Output:
+Tier splitted matches, with indicator for whether match is good or not.
+	$path_out/Tier_1.dta
+
+*/
+
 // list of good matches for Tier_3
 do 0_Set_Path.do
 
