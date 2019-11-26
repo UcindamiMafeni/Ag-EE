@@ -1,5 +1,6 @@
 # Created by Chinmay Lohani in November 2019
 # Find the intersections between water districts and CLUs
+# Additional notes exist on the task, to be dropped in Dbox
 
 rm(list = ls())
 
