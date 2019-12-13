@@ -32,17 +32,20 @@ path_output <- "C:/Users/clohani/Dropbox/Water_Districts"
 clu <- st_read(file.path(path_clu, "clu_poly.shp"))
 wdist <- st_read(file.path(path_wdis, "Water_Districts.shp"))
 
+wdist <- wdist %>% 
+  mutate(totAcres = as.numeric(st_area(.)) * m2_to_acre)
+
 #check why geometries are invalid
 if (1==1) {
   invalid_clu <- clu %>% 
     mutate(is_valid= st_is_valid(.)) %>%
     filter(is_valid!="TRUE")
-  valid_clu <- lwgeom::st_make_valid(invalid_clu)
+  valid_clu <- lwgeom::st_make_valid(clu)
   
   invalid_wdist <- wdist %>% 
     mutate(is_valid= st_is_valid(.)) %>%
     filter(is_valid!="TRUE")
-  valid_wdist <- lwgeom::st_make_valid(invalid_wdist)
+  valid_wdist <- lwgeom::st_make_valid(wdist)
 }
 
 #use st_intersect to get dataframe with x*p_x number of observations
@@ -55,7 +58,7 @@ inter <- inter %>%
   mutate(IntAcres = as.numeric(st_area(.)) * m2_to_acre) %>%
   st_set_geometry(NULL) %>%
   group_by(CLU_ID) %>%
-  mutate(tot_area= sum(IntAcres)) %>%
+  mutate(tot_int_area= sum(IntAcres)) %>%
   ungroup
   
 #save outputs
@@ -68,7 +71,20 @@ inter %>%
 #create cutoffs and be done
 cutoff <- 0.05
 filtered <- inter %>%
-  mutate(frac_area=IntAcres/tot_area) %>%
+  mutate(frac_area=IntAcres/totAcres) %>%
   filter(frac_area>=0.05)
 
-saveRDS(inter, file.path(path_output, "Intersected_data_filtered"))
+# define a variable that tells whether intersected or not, take union with original, select largest intersected
+
+union_clus <- inter %>%
+  mutate(has_intersection=1) %>%
+  bind_rows(valid_clu,.)
+
+union_clus <- union_clus %>%
+  group_by(CLU_ID) %>%
+  arrange(desc(IntAcres), .by_group = TRUE) %>%
+  slice(1)%>%
+  ungroup()
+
+
+saveRDS(union_clus, file.path(path_output, "Intersected_data_filtered"))
