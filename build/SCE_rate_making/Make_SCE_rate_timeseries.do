@@ -13091,3 +13091,30 @@ replace voltage_dis_energy = 0.0 if `cond2' & voltage_cat==3
 
 replace old= 0 if missing(old)
 
+*********************************
+*** 8. Schedule- TOU-PA-3-SOP ***
+*********************************
+
+** Nov 22 2013
+
+local N= `N' + `cats'
+set obs `N'
+
+replace rateschedule = "TOU-PA-5" if missing(old)
+replace rate_start_date = mdy(11,22,2013) if missing(old)
+replace voltage_cat= mod(_n,4) if missing(old)
+replace bundled= mod(_n,2) if missing(old)
+
+//bundled
+replace energycharge_sum_on_pk = 0.07962 if `cond1'
+replace energycharge_sum_off_pk = 0.04597 if `cond1'
+replace energycharge_sum_sup_off_pk = 0.02033 if `cond1'
+replace energycharge_win_off_pk = 0.05137 if `cond1'
+replace energycharge_win_sup_off_pk= 0.02147 if `cond1'
+replace energycharge_dwr_sum_on_pk = 0.00095 if `cond1'
+replace energycharge_dwr_sum_off_pk = 0.00095 if `cond1'
+replace energycharge_dwr_sum_sup_off_pk = 0.00095 if `cond1'
+replace energycharge_dwr_win_off_pk = 0.00095 if `cond1'
+replace energycharge_dwr_win_sup_off_pk= 0.00095 if `cond1'
+replace demandcharge = 0.0 if `cond1'
+replace demand
