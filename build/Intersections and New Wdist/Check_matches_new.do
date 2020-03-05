@@ -1,17 +1,30 @@
 global path_in= "C:\Users\clohani\OneDrive\Desktop\Check_WRIMS_Matches"
 global path_new= "C:\Users\clohani\Dropbox\New_Water_Districts"
 
-
+/*
 use "$path_in/Final_matches.dta", clear
 duplicates drop name_PO latitude longitude, force
 save "$path_in/Unique_final_matches.dta", replace
 import delimited using  "$path_in/haggerty_wr70_cleaned.csv", clear varnames(1)
+*/
 
+import delimited "$path_new/New_Wdist_WRIMS_2.csv", clear varnames(1)
+/**/
+drop latitude longitude
+rename (primary_owner copy_lat copy_lon) (name_PO latitude longitude)
 
+keep name_PO latitude longitude name
+drop if missing(latitude) | missing(longitude)
+destring latitude longitude, replace
+duplicates drop latitude longitude name_PO, force 
+save "$path_in/New_WDIST_unique_matches.dta", replace
+
+import delimited using  "$path_in/haggerty_wr70_cleaned.csv", clear varnames(1)
 duplicates drop primary_owner latitude longitude, force
-rename primary_owner name_PO
-merge m:1 name_PO latitude longitude using "$path_in/Unique_final_matches.dta"
-//merge m:1 name_PO 
+rename primary_owner name_PO 
+//merge m:1 name_PO latitude longitude using "$path_in/Unique_final_matches.dta"
+merge m:1 name_PO latitude longitude using "$path_in/New_WDIST_unique_matches.dta"  //
+rename name name_DBF
 keep name_PO latitude longitude reported_diversion_total* reported_use_total* reported_diversion_year _merge name_DBF
 drop if missing(reported_diversion_year)
 
@@ -27,9 +40,10 @@ preserve
 keep name_2 
 duplicates drop
 sort name_2
-save "$path_in/Old_WRIMS_matches_new_PO_names", replace
+save "$path_in/NWD_WRIMS_matches_new_PO_names", replace
 
 restore
+
 
 gen avg_alloc=0
 forvalues i=2010(1)2013 {
@@ -55,16 +69,17 @@ sort pt
 by pt: tab _merge
 
 
-
 *** This piece of code generates datasets of names of contracts with large allocation percentiles
 
 /*
+
 gsort -_merge -avg_alloc
 keep if pt>=90
 export delimited "$path_in/Names_contracts_90pt.csv", replace
 
 keep if pt>=95
 export delimited "$path_in/Names_contracts_95pt.csv", replace
+
 */
 
 
@@ -86,29 +101,9 @@ forvalues i=1(1)3 {
 
 gsort -has_phrases -avg_alloc
 
-*** This piece of code generates share of avg allocation by whether or not relevant phrases are present
-/*
-preserve
-replace has_phrases=1 if has_phrases>=1
-sort has_phrases
-
-by has_phrases: egen share_type= total(avg_alloc)
-egen share_total= total(avg_alloc)
-gen share_percentage= share_type/share_total
-
-
-keep has_phrases share*
-duplicates drop
-log using "$path_in/Allocation_share_type.log", replace
-tab has_phrases share_percentage
-log close
-restore
-drop share*
-*/
-
 sort pt
 
-log using "$path_in/WRIMS_Matches_logs_matchRate_wPhrases.log", replace
+log using "$path_in/NWD_WRIMS_Matches_logs_matchRate_wPhrases.log", replace
 dis "Matches, all"
 tab _merge
 dis "***"
@@ -150,7 +145,7 @@ drop temp
 
 sort pt
 
-log using "$path_in/WRIMS_2nd_Matches_logs_matchRate_wPhrases.log", replace
+log using "$path_in/NWD_WRIMS_2nd_Matches_logs_matchRate_wPhrases.log", replace
 
 dis "Matches, all"
 tab secondary_match
@@ -170,13 +165,7 @@ foreach i of local vals {
 log close
 
 preserve
-//keep if pt>=95
-gsort -secondary_match -avg_alloc
-//export delimited "$path_in/Secondary_matches_contracts_95pt.csv", replace
+keep if pt>=95
+export delimited "$path_in/NWD_Secondary_matches_contracts_95pt.csv", replace
 
-keep if secondary_match==0
-export delimited "$path_in/Old_unmatched_post_2ndary_matches_contracts.csv", replace
-
-keep if secondary_match==0 & has_phrases>0
-export delimited "$path_in/Unmatched_after_Secondary_matches_contracts_95pt.csv", replace
 restore
