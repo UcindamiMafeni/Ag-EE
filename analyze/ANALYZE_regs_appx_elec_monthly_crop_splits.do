@@ -2,9 +2,10 @@ clear all
 version 13
 set more off
 
-**************************************************************************************
-** Script to run monthly water regressions (combined) -- sensitivities to main spec **
-**************************************************************************************
+*********************************************************************************
+** Script to run monthly electricity regressions -- sensitivities to main spec **
+** using CDL crop assignments as sample splitters **
+*********************************************************************************
 
 global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
@@ -12,15 +13,15 @@ global dirpath_data "$dirpath/data"
 ************************************************
 ************************************************
 
-** 1. Monthly regressions with decomposed P^groundwater
+** 1. Monthly regressions
 { 
 
 // Load monthly panel
-use "$dirpath_data/merged/sp_month_water_panel.dta", clear
+use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
 local panel = "monthly"
 
 // Keep APEP data pull only
-cap drop if pull!="20180719" 
+drop if pull!="20180719" 
 local pull = "20180719" 
 
 // Drop solar NEM customers
@@ -32,46 +33,58 @@ keep if flag_geocode_badmiss==0
 // Drop irregular bills (first bill, last bill, long bill, short bill, etc.)
 keep if flag_irregular_bill==0 
 
-// Drop weird pumps (implausible technical specs)
-keep if flag_weird_pump==0 
-
 // Drop weird customers (non-ag rates, irrigation districts, etc.)
 keep if flag_weird_cust==0 
+
+// Drop SPs that don't merge into APEP dataset (for consistency with water regressiosn)
+keep if merge_sp_water_panel==3
 	
 // Create empty variables to populate for storign results
 gen panel = ""
-cap drop pull
+drop pull
 gen pull = ""
 gen sens = ""
 gen sample = ""
 gen depvar = ""
 gen fes = ""
 gen rhs = ""
-gen if_sample = ""
-gen beta_log_p_water = .
-gen se_log_p_water = .
-gen t_log_p_water = .
+gen beta_log_p_mean = .
+gen se_log_p_mean = .
+gen t_log_p_mean = .
 gen vce = ""
 gen n_obs = .
 gen n_SPs = .
 gen n_modates = .
 gen dof = .
 gen fstat_rk = .
-forvalues v = 1/4 {
-	gen fs_beta_var`v' = .
-	gen fs_se_var`v' = .
-	gen fs_t_var`v' = .
-}
+gen fs_beta_default = .
+gen fs_se_default = .
+gen fs_t_default = .
+gen fs_beta_modal = .
+gen fs_se_modal = .
+gen fs_t_modal = .
+gen fs_beta_deflag12 = .
+gen fs_se_deflag12 = .
+gen fs_t_deflag12 = .
+gen fs_beta_deflag6 = .
+gen fs_se_deflag6 = .
+gen fs_t_deflag6 = .
+gen fs_beta_modlag12 = .
+gen fs_se_modlag12 = .
+gen fs_t_modlag12 = .
+gen fs_beta_modlag6 = .
+gen fs_se_modlag6 = .
+gen fs_t_modlag6 = .
 
 // Define default global: sample
-global if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0"
+global if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0 & merge_sp_water_panel==3"
 	
 // Define default global: dependent variable
-global DEPVAR = "ihs_af_rast_dd_mth_2SP"
+global DEPVAR = "ihs_kwh"
 	
 // Define default global: RHS	
-global RHS = "(ln_mean_p_af_rast_dd_mth_2SP = log_mean_p_kwh_ag_default)" 
-
+global RHS = "(log_p_mean = log_mean_p_kwh_ag_default)"
+	
 // Define default global: FEs
 global FEs = "sp_group#month sp_group#rt_large_ag modate"
 	
@@ -81,7 +94,7 @@ global VCE = "sp_group modate"
 	
 	
 // Loop over sensitivities
-forvalues c = 1/62 {
+forvalues c = 1/43 {
 
 	// Reset default locals
 	local if_sample = "${if_sample}"
@@ -89,276 +102,187 @@ forvalues c = 1/62 {
 	local RHS = "${RHS}"
 	local FEs = "${FEs}"
 	local VCE = "${VCE}"
-	local sens = ""
 
 	if `c'==1 {
-		local sens = "OLS, no unit*capital FEs"
-		local RHS = "ln_mean_p_af_rast_dd_mth_2SP"
-		local FEs = "sp_group#month modate"
-	}
-	if `c'==2 {
-		local sens = "IV, no unit*capital FEs"
-		local FEs = "sp_group#month modate"
-	}
-	if `c'==3 {
-		local sens = "IV with modal tariff, not default tariff"
-		local RHS = "(ln_mean_p_af_rast_dd_mth_2SP = log_mean_p_kwh_ag_modal)"
-	}
-	if `c'==4 {
-		local sens = "IV with lagged modal tariff, not default tariff"
-		local RHS = "(ln_mean_p_af_rast_dd_mth_2SP = log_p_mean_modlag*)"
-	}
-	if `c'==5 {
-		local sens = "IV with average depth, not default tariff"
-		local RHS = "(ln_mean_p_af_rast_dd_mth_2SP = ln_gw_mean_depth_mth_2SP)"
-	}
-	if `c'==6 {
-		local sens = "IV with lagged average depth, not default tariff"
-		local RHS = "(ln_mean_p_af_rast_dd_mth_2SP = L6_ln_gw_mean_depth_mth_2SP L12_ln_gw_mean_depth_mth_2SP)"
-	}
-	if `c'==7 {
 		local sens = "Basin by month-of-sample FEs"
 		local FEs = "sp_group#month sp_group#rt_large_ag modate#basin_group" 
 	}
-	if `c'==8 {
+	if `c'==2 {
 		local sens = "Water district by month-of-sample FEs"
 		local FEs = "sp_group#month sp_group#rt_large_ag modate#wdist_group" 
 	}
-	if `c'==9 {
+	if `c'==3 {
 		local sens = "SP-by-year FEs"
 		local FEs = "sp_group#month sp_group#rt_large_ag sp_group#year modate" 
 	}
-	if `c'==10 {
+	if `c'==4 {
 		local sens = "SP-by-year FEs, but not SP-by-month FEs"
 		local FEs = "sp_group#rt_large_ag sp_group#year modate" 
 	}
-	if `c'==11 {
+	if `c'==5 {
+		local sens = "IV with modal tariff, not default tariff"
+		local RHS = "(log_p_mean = log_mean_p_kwh_ag_modal)"
+	}
+	if `c'==6 {
+		local sens = "IV with lagged modal tariff, not default tariff"
+		local RHS = "(log_p_mean = log_p_mean_modlag*)"
+	}
+	if `c'==7 {
 		local sens = "Depvar: log(Q)"
-		local DEPVAR = "log_af_rast_dd_mth_2SP"
+		local DEPVAR = "log_kwh"
 	}
-	if `c'==12 {
+	if `c'==8 {
 		local sens = "Depvar: log(1+Q)"
-		local DEPVAR = "log1_af_rast_dd_mth_2SP"
+		local DEPVAR = "log1_kwh"
 	}
-	if `c'==13 {
+	if `c'==9 {
 		local sens = "Depvar: log(1+100*Q)"
-		local DEPVAR = "log1_100af_rast_dd_mth_2SP"
+		local DEPVAR = "log1_100kwh"
 	}
-	if `c'==14 {
-		local sens = "Depvar: log(1+10000*Q)"
-		local DEPVAR = "log1_10000af_rast_dd_mth_2SP"
-	}
-	if `c'==15 {
+	if `c'==10 {
 		local sens = "Depvar: Q in levels"
-		local DEPVAR = "af_rast_dd_mth_2SP"
-		local if_sample = "${if_sample} & af_rast_dd_mth_2SP>=0"
+		local DEPVAR = "mnth_bill_kwh"
 	}
-	if `c'==16 {
+	if `c'==11 {
 		local sens = "Depvar: Q in levels, dropping high outliers"
-		local DEPVAR = "af_rast_dd_mth_2SP"
-		local if_sample = "${if_sample} & af_rast_dd_mth_2SP>=0 & af_rast_dd_mth_2SP<600" // close to 99th pctile
+		local DEPVAR = "mnth_bill_kwh"
+		local if_sample = "${if_sample} & mnth_bill_kwh<100000" // close to 99th pctile
  	}
-	if `c'==17 {
-		local sens = "Depvar: log(Q); IV with average depth"
-		local DEPVAR = "log_af_rast_dd_mth_2SP"
-		local RHS = "(ln_mean_p_af_rast_dd_mth_2SP = ln_gw_mean_depth_mth_2SP)"
-	}
-	if `c'==18 {
-		local sens = "Depvar: log(1+Q); IV with average depth"
-		local DEPVAR = "log1_af_rast_dd_mth_2SP"
-		local RHS = "(ln_mean_p_af_rast_dd_mth_2SP = ln_gw_mean_depth_mth_2SP)"
-	}
-	if `c'==19 {
-		local sens = "Depvar: log(1+100*Q); IV with average depth"
-		local DEPVAR = "log1_100af_rast_dd_mth_2SP"
-		local RHS = "(ln_mean_p_af_rast_dd_mth_2SP = ln_gw_mean_depth_mth_2SP)"
-	}	
-	if `c'==20 {
-		local sens = "Depvar: log(1+10000*Q); IV with average depth"
-		local DEPVAR = "log1_10000af_rast_dd_mth_2SP"
-		local RHS = "(ln_mean_p_af_rast_dd_mth_2SP = ln_gw_mean_depth_mth_2SP)"
-	}	
-	if `c'==21 {
+	if `c'==12 {
 		local sens = "Within-category switchers only"
 		local if_sample = "${if_sample} & sp_same_rate_in_cat==0"
 	}
-	if `c'==22 {
+	if `c'==13 {
 		local sens = "Within-category non-switchers only"
 		local if_sample = "${if_sample} & sp_same_rate_in_cat==1"
 	}
-	if `c'==23 {
+	if `c'==14 {
 		local sens = "Within 60 months of pump test"
 		local if_sample = "${if_sample} & months_to_nearest_test<=60"
 	}
-	if `c'==24 {
+	if `c'==15 {
 		local sens = "Within 48 months of pump test"
 		local if_sample = "${if_sample} & months_to_nearest_test<=48"
 	}
-	if `c'==25 {
+	if `c'==16 {
 		local sens = "Within 36 months of pump test"
 		local if_sample = "${if_sample} & months_to_nearest_test<=36"
 	}
-	if `c'==26 {
+	if `c'==17 {
 		local sens = "Within 24 months of pump test"
 		local if_sample = "${if_sample} & months_to_nearest_test<=24"
 	}
-	if `c'==27 {
+	if `c'==18 {
 		local sens = "Within 12 months of pump test"
 		local if_sample = "${if_sample} & months_to_nearest_test<=12"
 	}
-	if `c'==28 {
+	if `c'==19 {
 		local sens = "Dropping APEP-subsidized projects"
 		local if_sample = "${if_sample} & apep_proj_count==0"
 	}
-	if `c'==29 {
+	if `c'==20 {
 		local sens = "Latlons within 100 miles"
 		local if_sample = "${if_sample} & latlon_miles_apart<=100"
 	}
-	if `c'==30 {
+	if `c'==21 {
 		local sens = "Latlons within 50 miles"
 		local if_sample = "${if_sample} & latlon_miles_apart<=50"
 	}
-	if `c'==31 {
+	if `c'==22 {
 		local sens = "Latlons within 25 miles"
 		local if_sample = "${if_sample} & latlon_miles_apart<=25"
 	}
-	if `c'==32 {
+	if `c'==23 {
 		local sens = "Latlons within 10 miles"
 		local if_sample = "${if_sample} & latlon_miles_apart<=10"
 	}
-	if `c'==33 {
+	if `c'==24 {
 		local sens = "Latlons within 5 miles"
 		local if_sample = "${if_sample} & latlon_miles_apart<=5"
 	}
-	if `c'==34 {
+	if `c'==25 {
 		local sens = "Latlons within 1 miles"
 		local if_sample = "${if_sample} & latlon_miles_apart<=1"
 	}
-	if `c'==35 {
+	if `c'==26 {
 		local sens = "Summer months only"
 		local if_sample = "${if_sample} & summer==1"
 	}
-	if `c'==36 {
+	if `c'==27 {
 		local sens = "Winter months only"
 		local if_sample = "${if_sample} & summer==0"
 	}
-	if `c'==37 {
+	if `c'==28 {
 		local sens = "San Joaquin basin only"
 		local if_sample = "${if_sample} & basin_group==122"
 	}
-	if `c'==38 {
+	if `c'==29 {
 		local sens = "Sacramento basin only"
 		local if_sample = "${if_sample} & basin_group==121"
 	}
-	if `c'==39 {
+	if `c'==30 {
 		local sens = "Salinas basin only"
 		local if_sample = "${if_sample} & basin_group==68"
 	}
-	if `c'==40 {
+	if `c'==31 {
 		local sens = "Salinas, Sacramento, and San Joaquin basins"
 		local if_sample = "${if_sample} & inlist(basin_group,68,121,122)"
 	}
-	if `c'==41 {
-		local sens = "Removing SPs with exactly 1 pump test"
-		local if_sample = "${if_sample} & apep_interp_case!=1"
+	if `c'==32 {
+		local sens = "Control for basin-wide average depth (all)"
+		local RHS = "${RHS} gw_qtr_bsn_mean1"
 	}
-	if `c'==42 {
-		local sens = "Removing SPs with >1 pump tests"
-		local if_sample = "${if_sample} & apep_interp_case==1"
+	if `c'==33 {
+		local sens = "Control for basin-wide average depth (non-questionable)"
+		local RHS = "${RHS} gw_qtr_bsn_mean2"
 	}
-	if `c'==43 {
-		local sens = "Removing SPs with multiple pumps"
-		local if_sample = "${if_sample} & inlist(apep_interp_case,1,2) "
-	}
-	if `c'==44 {
-		local sens = "Removing SPs with a bad drawdown flag"
-		local if_sample = "${if_sample} & flag_bad_drwdwn==1 "
-	}
-	if `c'==45 {
-		local sens = "Removing SPs without high-confidence drawdown predictions"
-		local if_sample = "${if_sample} & drwdwn_predict_step<=2 "
-	}
-	if `c'==46 {
-		local sens = "Removing SPs without medium-to-high-confidence drawdown predictions"
-		local if_sample = "${if_sample} & drwdwn_predict_step<=4 "
-	}
-	if `c'==47 {
-		local sens = "APEP-measured KWHAF (independent of depth), with avg depth IV"
-		local DEPVAR = "ihs_af_apep_measured"
-		local RHS = "(ln_mean_p_af_apep_measured = log_mean_p_kwh_ag_default)" 
-	}
-	if `c'==48 {
-		local sens = "Using pump latlon instead of SP latlon"
-		local DEPVAR = "ihs_af_rast_dd_mth_2"
-		local RHS = "(ln_mean_p_af_rast_dd_mth_2 = log_mean_p_kwh_ag_default)" 
-	}
-	if `c'==49 {
-		local sens = "Calculating KWHAF using predicted drawdown instead of fixed drawdown"
-		local DEPVAR = "ihs_af_rast_ddhat_mth_2SP"
-		local RHS = "(ln_mean_p_af_rast_ddhat_mth_2SP = log_mean_p_kwh_ag_default)" 
-	}
-	if `c'==50 {
-		local sens = "Calculating KWHAF using mean depth instead of rasterized depth"
-		local DEPVAR = "ihs_af_mean_dd_mth_2SP"
-		local RHS = "(ln_mean_p_af_mean_dd_mth_2SP = log_mean_p_kwh_ag_default)" 
-	}
-	if `c'==51 {
-		local sens = "Calculating KWHAF using mean depth AND predicted drawdown"
-		local DEPVAR = "ihs_af_mean_ddhat_mth_2SP"
-		local RHS = "(ln_mean_p_af_mean_ddhat_mth_2SP = log_mean_p_kwh_ag_default)" 
-	}
-	if `c'==52 {
-		local sens = "Unit-specific linear time trends"
-		local FEs = "sp_group#month sp_group#rt_large_ag modate sp_group#c.modate"
-	}
-	if `c'==53 {
+	if `c'==34 {
 		local sens = "Cluster by CLU and month-of-sample"
 		local VCE = "clu_id_ec modate"
 	}
-	if `c'==54 {
+	if `c'==35 {
 		local sens = "Cluster by CLU_group0 and month-of-sample"
 		local VCE = "clu_group0_ec modate"
 	}
-	if `c'==55 {
+	if `c'==36 {
 		local sens = "CLU matches (SP-APEP) only"
 		local if_sample = "${if_sample} & flag_clu_match==1"
 	}
-	if `c'==56 {
+	if `c'==37 {
 		local sens = "CLU_group75 matches (SP-APEP) only"
 		local if_sample = "${if_sample} & flag_clu_group75_match==1"
 	}
-	if `c'==57 {
+	if `c'==38 {
 		local sens = "CLU_group0 matches (SP-APEP) only"
 		local if_sample = "${if_sample} & flag_clu_group0_match==1"
 	}
-	if `c'==58 {
+	if `c'==39 {
 		local sens = "Dropping CLU inconsistencies"
 		local if_sample = "${if_sample} & flag_clu_inconsistency==0"
 	}
-	if `c'==59 {
+	if `c'==40 {
 		local sens = "Single-SP CLUs"
 		local if_sample = "${if_sample} & spcount_clu_id_ec==1"
 	}
-	if `c'==60 {
+	if `c'==41 {
 		local sens = "Multi-SP CLUs"
 		local if_sample = "${if_sample} & spcount_clu_id_ec>1 & spcount_clu_id_ec!=."
 	}
-	if `c'==61 {
+	if `c'==42 {
 		local sens = "Single-SP CLU_group0s"
 		local if_sample = "${if_sample} & spcount_clu_group0_ec==1"
 	}
-	if `c'==62 {
+	if `c'==43 {
 		local sens = "Multi-SP CLU_group0s"
 		local if_sample = "${if_sample} & spcount_clu_group0_ec>1 & spcount_clu_group0_ec!=."
 	}
-	
+
 	
 	// Run non-IV specification	
-	if substr("`RHS'",1,1)!="(" {
+	if regexm("`RHS'","=")==0 {
 					
 		// Run OLS regression
-		reghdfe `DEPVAR' `RHS' `if_sample', absorb(`FEs') vce(cluster `VCE')
-		local p_water_var = subinstr(word("`RHS'",1),"(","",1)
+		reghdfe `DEPVAR' `RHS' `if_sample' , absorb(`FEs') vce(cluster `VCE')
 		
 		// Store results
 		replace panel = "`panel'" in `c'
@@ -368,10 +292,9 @@ forvalues c = 1/62 {
 		replace depvar = "`DEPVAR'" in `c'
 		replace fes = "`FEs'" in `c'
 		replace rhs = "`RHS'" in `c'
-		replace if_sample = "`if_sample'" in `c'
-		replace beta_log_p_water = _b[`p_water_var'] in `c'
-		replace se_log_p_water = _se[`p_water_var'] in `c'
-		replace t_log_p_water =  _b[`p_water_var']/_se[`p_water_var'] in `c'
+		replace beta_log_p_mean = _b[log_p_mean] in `c'
+		replace se_log_p_mean = _se[log_p_mean] in `c'
+		replace t_log_p_mean =  _b[log_p_mean]/_se[log_p_mean] in `c'
 		replace vce = "cluster `VCE'" in `c'
 		replace n_obs = e(N) in `c'
 		replace n_SPs = e(N_clust1) in `c'
@@ -379,12 +302,12 @@ forvalues c = 1/62 {
 		replace dof = e(df_r) in `c'
 				
 	}
-
+	
+	// Run IV specifications
 	else {
-		
+					
 		// Run 2SLS regression
 		ivreghdfe `DEPVAR' `RHS' `if_sample', absorb(`FEs') cluster(`VCE')
-		local p_water_var = subinstr(word("`RHS'",1),"(","",1)
 		
 		// Store results
 		replace panel = "`panel'" in `c'
@@ -394,9 +317,9 @@ forvalues c = 1/62 {
 		replace depvar = "`DEPVAR'" in `c'
 		replace fes = "`FEs'" in `c'
 		replace rhs = "`RHS'" in `c'
-		replace beta_log_p_water = _b[`p_water_var'] in `c'
-		replace se_log_p_water = _se[`p_water_var'] in `c'
-		replace t_log_p_water =  _b[`p_water_var']/_se[`p_water_var'] in `c'
+		replace beta_log_p_mean = _b[log_p_mean] in `c'
+		replace se_log_p_mean = _se[log_p_mean] in `c'
+		replace t_log_p_mean =  _b[log_p_mean]/_se[log_p_mean] in `c'
 		replace vce = "cluster `VCE'" in `c'
 		replace n_obs = e(N) in `c'
 		replace n_SPs = e(N_clust1) in `c'
@@ -404,18 +327,36 @@ forvalues c = 1/62 {
 		replace dof = e(df_r) in `c'
 		replace fstat_rk = e(rkf) in `c'
 				
-		// Run first stage regression (electricity price)
+		// Run first stage regression
 		local RHSfs = subinstr(subinstr(subinstr("`RHS'","(","",.),")","",.),"=","",.)
 		reghdfe `RHSfs' `if_sample', absorb(`FEs') vce(cluster `VCE')
 		
-		forvalues v = 1/4 {
-			local var = word(e(indepvars),`v')
-			if "`var'"!="_cons" {
-				cap replace fs_beta_var`v' = _b[`var'] in `c'
-				cap replace fs_se_var`v' = _se[`var'] in `c'
-				cap replace fs_t_var`v' =  _b[`var']/_se[`var'] in `c'
-			}	
+		if regexm("`RHSfs'","log_mean_p_kwh_ag_default") {
+			replace fs_beta_default = _b[log_mean_p_kwh_ag_default] in `c'
+			replace fs_se_default = _se[log_mean_p_kwh_ag_default] in `c'
+			replace fs_t_default =  _b[log_mean_p_kwh_ag_default]/_se[log_mean_p_kwh_ag_default] in `c'
 		}
+		else if regexm("`RHSfs'","log_mean_p_kwh_ag_modal") {
+			replace fs_beta_modal = _b[log_mean_p_kwh_ag_modal] in `c'
+			replace fs_se_modal = _se[log_mean_p_kwh_ag_modal] in `c'
+			replace fs_t_modal =  _b[log_mean_p_kwh_ag_modal]/_se[log_mean_p_kwh_ag_modal] in `c'
+		}
+		else if regexm("`RHSfs'","log_p_mean_deflag*") {
+			replace fs_beta_deflag12 = _b[log_p_mean_deflag12] in `c'
+			replace fs_se_deflag12 = _se[log_p_mean_deflag12] in `c'
+			replace fs_t_deflag12 =  _b[log_p_mean_deflag12]/_se[log_p_mean_deflag12] in `c'
+			replace fs_beta_deflag6 = _b[log_p_mean_deflag6] in `c'
+			replace fs_se_deflag6 = _se[log_p_mean_deflag6] in `c'
+			replace fs_t_deflag6 =  _b[log_p_mean_deflag6]/_se[log_p_mean_deflag6] in `c'
+		}				
+		else if regexm("`RHSfs'","log_p_mean_modlag*") {
+			replace fs_beta_modlag12 = _b[log_p_mean_modlag12] in `c'
+			replace fs_se_modlag12 = _se[log_p_mean_modlag12] in `c'
+			replace fs_t_modlag12 =  _b[log_p_mean_modlag12]/_se[log_p_mean_modlag12] in `c'
+			replace fs_beta_modlag6 = _b[log_p_mean_modlag6] in `c'
+			replace fs_se_modlag6 = _se[log_p_mean_modlag6] in `c'
+			replace fs_t_modlag6 =  _b[log_p_mean_modlag6]/_se[log_p_mean_modlag6] in `c'
+		}				
 	}
 
 	// Intermediate output
@@ -423,11 +364,11 @@ forvalues c = 1/62 {
 }
 
 // Save output
-keep panel-fs_t_var4
+keep panel-fs_t_modlag6
 dropmiss, obs force
 dropmiss, force
 compress
-save "$dirpath_data/results/regs_appx_water_combined.dta", replace
+save "$dirpath_data/results/regs_appx_elec_monthly.dta", replace
 
 }
 

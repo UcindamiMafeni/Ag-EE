@@ -353,3 +353,80 @@ sum total_bill_mwh_top50, detail
 
 ************************************************
 ************************************************
+
+** 8. Time series of acreage
+{
+use "$dirpath_data/cleaned_spatial/cdl_panel_crop_year_full.dta", clear
+collapse (sum) landtype_acres, by(year landtype noncrop) fast
+drop if noncrop==1
+drop noncrop
+drop if landtype=="Fallow/Idle Cropland"
+egen sum_year = sum(landtype_acres), by(year)
+tab year sum_year
+sort landtype year
+rename landtype_acres acres
+tabstat acres if year==2010 & acres>3e5, by(landtype)
+tabstat acres if year==2017 & acres>3e5, by(landtype)
+gen in_bars10 = inlist(landtype,"Alfalfa","Almonds","Corn","Cotton","Grapes","Rice","Winter Wheat")
+gen in_bars17 = inlist(landtype,"Alfalfa","Almonds","Grapes","Pistachios","Rice","Walnuts","Winter Wheat")
+gen xbar10 = .
+replace xbar10 = 1 if landtype=="Alfalfa"
+replace xbar10 = 2 if landtype=="Almonds"
+replace xbar10 = 3 if landtype=="Winter Wheat"
+replace xbar10 = 4 if landtype=="Rice"
+replace xbar10 = 5 if landtype=="Cotton"
+replace xbar10 = 6 if landtype=="Corn"
+replace xbar10 = 7 if landtype=="Grapes"
+replace xbar10 = 8 if landtype=="Walnuts"
+replace xbar10 = 9 if landtype=="Pistachios"
+gen xbar17 = xbar10+0.4
+gen cali_crop = inlist(landtype,"Almonds","Grapes","Pistachios","Walnuts")
+
+gen acresM = acres/1e6
+gen acresK = acres/1e3
+twoway ///
+	(bar acresK xbar10 if (in_bars10 | in_bars17) & year==2010 & cali_crop==1, color(midgreen) barw(0.4)) ///
+	(bar acresK xbar10 if (in_bars10 | in_bars17) & year==2010 & cali_crop==0, color(maroon) barw(0.4)) ///	
+	, ylab(0 500 1000 1500, nogrid angle(0) labsize(medlarge)) ///
+	ytitle("Thousand acres planted", size(medlarge)) ///
+	xlab("") xtitle("") xscale(r(1 10)) graphr(color(white) lc(white)) ///
+	legend(off) title("California Acreage by Crop, 2010", size(medlarge) color(black)) ///
+	text(1310 1.2 "Alfalfa", place(n) angle(45) size(medlarge) color(maroon)) ///
+	text(810 2.0 "Almonds", place(n) size(medlarge) color(midgreen)) ///
+	text(645 3.0 "Winter" "Wheat", place(n) size(medlarge) color(maroon)) ///
+	text(565 4.1 "Rice", place(n) size(medlarge) color(maroon)) ///
+	text(390 4.9 "Cotton", place(n) size(medlarge) color(maroon)) ///
+	text(390 6 "Corn", place(n) size(medlarge) color(maroon)) ///
+	text(335 7.0 "Grapes", place(n) size(medlarge) color(midgreen)) ///
+	text(300 8.4 "Walnuts", place(n) size(medlarge) color(midgreen)) ///
+	text(150 9.3 "Pistachios", place(n) size(medlarge) color(midgreen)) 
+graph export "$dirpath/output/acreage_bars2010.eps", replace
+
+
+twoway ///
+	(bar acresK xbar10 if (in_bars10 | in_bars17) & year==2010 & cali_crop==1, fi(inten20) color(midgreen) barw(0.4)) ///
+	(bar acresK xbar10 if (in_bars10 | in_bars17) & year==2010 & cali_crop==0, fi(inten20) color(maroon) barw(0.4)) ///	
+	(bar acresK xbar17 if (in_bars10 | in_bars17) & year==2017 & cali_crop==1, color(midgreen) barw(0.4)) ///
+	(bar acresK xbar17 if (in_bars10 | in_bars17) & year==2017 & cali_crop==0, color(maroon) barw(0.4)) ///	
+	, ylab(0 500 1000 1500, nogrid angle(0) labsize(medlarge)) ///
+	ytitle("Thousand acres planted", size(medlarge)) ///
+	xlab("") xtitle("") xscale(r(1 10)) graphr(color(white) lc(white)) ///
+	legend(off) title("California Acreage by Crop, 2017", size(medlarge) color(black)) ///
+	text(1310 1.2 "Alfalfa", place(n) angle(45) size(medlarge) color(maroon)) ///
+	text(1237 2.4 "Almonds", place(n) size(medlarge) color(midgreen)) ///
+	text(645 3.3 "Winter" "Wheat", place(n) size(medlarge) color(maroon)) ///
+	text(565 4.3 "Rice", place(n) size(medlarge) color(maroon)) ///
+	text(390 5.3 "Cotton", place(n) size(medlarge) color(maroon)) ///
+	text(390 6.4 "Corn", place(n) size(medlarge) color(maroon)) ///
+	text(705 7.0 "Grapes", place(n) size(medlarge) color(midgreen)) ///
+	text(385 8.4 "Walnuts", place(n) size(medlarge) color(midgreen)) ///
+	text(505 9.3 "Pistachios", place(n) size(medlarge) color(midgreen)) 
+graph export "$dirpath/output/acreage_bars2017.eps", replace
+
+	
+
+
+}
+
+************************************************
+************************************************
