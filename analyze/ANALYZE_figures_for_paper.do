@@ -113,7 +113,75 @@ graph export "$dirpath/output/ext_dw_scaled.eps", replace
 ************************************************
 ************************************************
 
+** 3. Davis Cost studies lines crossing figure
+{
+use "$dirpath_data/Davis cost studies/Davis_cost_studies_processed_all.dta", clear
 
+gen profits_less_water = PROFITS + vc_Irrigation
+gen oper_profits_less_water = TOTAL_GROSS_RETURNS - TOTAL_OPERATING_COSTS + vc_Irrigation
+
+gen water_share_costs = q_water*p_water / TOTAL_OPERATING_COSTS
+gen p_water_af = p_water*12
+
+sum water_share_costs, detail
+sum p_water_af, detail
+
+forvalues p = 10(10)300 {
+	gen oper_prof_water`p' = TOTAL_GROSS_RETURNS - TOTAL_OPERATING_COSTS + q_water*p_water - q_water*`p'/12
+	gen prof_water`p' = PROFITS + q_water*p_water - q_water*(`p'/12)
+}
+
+reshape long prof_water oper_prof_water, i(Number Name_of_crop) j(water_price)
+/*
+tab location if strpos(upper(location),"JOAQUIN") & strpos(upper(location),"SOUTH")
+tab Name_of_crop if strpos(upper(location),"JOAQUIN") & strpos(upper(location),"SOUTH")
+br if strpos(upper(location),"JOAQUIN") & strpos(upper(location),"SOUTH")
+twoway ///
+	(line oper_prof_water water_price if Number==0 & water_price<200) ///
+	(line oper_prof_water water_price if Number==10 & water_price<200) ///
+	(line oper_prof_water water_price if Number==38 & water_price<200) ///
+	(line oper_prof_water water_price if Number==74 & water_price<200) ///
+	(line oper_prof_water water_price if Number==86 & water_price<200) ///
+	(line oper_prof_water water_price if Number==93 & water_price<200) ///
+	, legend(order(1 "Alfalfa" 2 "Almonds" 3 "Corn" ///
+	4 "Plums" 5 "Tomatoes" 6 "Wheat") c(3)) ///
+	title("Operating profits, South San Joaquin")
+
+twoway ///
+	(line prof_water water_price if Number==0 & water_price<200) ///
+	(line prof_water water_price if Number==10 & water_price<200) ///
+	(line prof_water water_price if Number==38 & water_price<200) ///
+	(line prof_water water_price if Number==74 & water_price<200) ///
+	(line prof_water water_price if Number==86 & water_price<200) ///
+	(line prof_water water_price if Number==93 & water_price<200) ///
+	, legend(order(1 "Alfalfa" 2 "Almonds" 3 "Corn" ///
+	4 "Plums" 5 "Tomatoes" 6 "Wheat") c(3)) ///
+	title("Total profits, South San Joaquin")
+*/
+
+twoway	 ///
+	(line prof_water water_price if Number==0 & water_price<=150, color(eltblue)) ///
+	(line prof_water water_price if Number==10 & water_price<=150, color(navy)) ///
+	(line prof_water water_price if Number==38 & water_price<=150, color(maroon) lp(shortdash)) ///
+	(line prof_water water_price if Number==74 & water_price<=150, color(cranberry) lp(shortdash)) ///
+	///(line prof_water water_price if Number==86 & water_price<=150) ///
+	(line prof_water water_price if Number==93 & water_price<=150, color(midblue) lp(longdash)) ///
+	, ///
+	/*xscale(r(`xmin',`xmax'))*/ xlab(/*`xmin'(36)`xlabmax'*/, labsize(medlarge)) ///
+	xtitle("Hypothetical water price ($/AF)", size(medlarge)) ///
+	ylab(/*0(0.05)0.25*/,nogrid angle(0) labsize(medlarge)) ///
+	ytitle("Predicted annual profit per acre ($)", size(medlarge)) ///
+	graphr(color(white) lc(white)) ///
+	title("Crop budgets for varying water prices", size(large) color(black)) ///
+	text(290 75 "Alfalfa", place(n) size(medium) color(eltblue)) ///
+	text(1665 55 "Almonds", place(n) size(medium) color(navy)) ///
+	text(1425 25 "Plums", place(n) size(medium) color(cranberry)) ///
+	text(-330 140 "Corn", place(n) size(medium) color(maroon)) ///
+	text(0 25 "Wheat", place(n) size(medium) color(midblue)) ///
+	legend(off)	
+graph export "$dirpath/output/davis_lines_crossing.eps", replace
+	
+}
 
 
 ************************************************

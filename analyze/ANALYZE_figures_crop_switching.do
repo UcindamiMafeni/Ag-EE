@@ -37,6 +37,96 @@ twoway line OP_PROF* water_price, legend(off)
 drop PROF1-PROF93 OP_PROF1-OP_PROF93
 
 
+tab location if strpos(upper(location),"JOAQUIN") & strpos(upper(location),"SOUTH")
+tab Name_of_crop if strpos(upper(location),"JOAQUIN") & strpos(upper(location),"SOUTH")
+br if strpos(upper(location),"JOAQUIN") & strpos(upper(location),"SOUTH")
+twoway ///
+	(line oper_prof_water water_price if Number==0 & water_price<200) ///
+	(line oper_prof_water water_price if Number==10 & water_price<200) ///
+	(line oper_prof_water water_price if Number==38 & water_price<200) ///
+	(line oper_prof_water water_price if Number==74 & water_price<200) ///
+	(line oper_prof_water water_price if Number==86 & water_price<200) ///
+	(line oper_prof_water water_price if Number==93 & water_price<200) ///
+	, legend(order(1 "Alfalfa" 2 "Almonds" 3 "Corn" ///
+	4 "Plums" 5 "Tomatoes" 6 "Wheat") c(3)) ///
+	title("Operating profits, South San Joaquin")
+
+twoway ///
+	(line prof_water water_price if Number==0 & water_price<200) ///
+	(line prof_water water_price if Number==10 & water_price<200) ///
+	(line prof_water water_price if Number==38 & water_price<200) ///
+	(line prof_water water_price if Number==74 & water_price<200) ///
+	(line prof_water water_price if Number==86 & water_price<200) ///
+	(line prof_water water_price if Number==93 & water_price<200) ///
+	, legend(order(1 "Alfalfa" 2 "Almonds" 3 "Corn" ///
+	4 "Plums" 5 "Tomatoes" 6 "Wheat") c(3)) ///
+	title("Total profits, South San Joaquin")
+
+
+
+tab location if strpos(upper(location),"JOAQUIN") & strpos(upper(location),"NORTH")
+tab Name_of_crop if strpos(upper(location),"JOAQUIN") & strpos(upper(location),"NORTH")
+br if strpos(upper(location),"JOAQUIN") & strpos(upper(location),"NORTH")
+twoway ///
+	(line oper_prof_water water_price if Number==2 & water_price<200) ///
+	(line oper_prof_water water_price if Number==9 & water_price<200) ///
+	(line oper_prof_water water_price if Number==14 & water_price<200) ///
+	(line oper_prof_water water_price if Number==16 & water_price<200) ///
+	(line oper_prof_water water_price if Number==36 & water_price<200) ///
+	(line oper_prof_water water_price if Number==51 & water_price<200) ///
+	, legend(order(1 "Alfalfa" 2 "Almonds" ///
+	3 "Garbanzos" 4 "Lima Beans" ///
+	5 "Corn" 6 "Winegrapes") c(3)) ///
+	title("Operating profits, North San Joaquin")
+
+twoway ///
+	(line prof_water water_price if Number==2 & water_price<200) ///
+	(line prof_water water_price if Number==9 & water_price<200) ///
+	(line prof_water water_price if Number==14 & water_price<200) ///
+	(line prof_water water_price if Number==16 & water_price<200) ///
+	(line prof_water water_price if Number==36 & water_price<200) ///
+	(line prof_water water_price if Number==51 & water_price<200) ///
+	, legend(order(1 "Alfalfa" 2 "Almonds" ///
+	3 "Garbanzos" 4 "Lima Beans" ///
+	5 "Corn" 6 "Winegrapes" ) c(3)) ///
+	title("Total profits, North San Joaquin")
+
+
+tab location if strpos(upper(location),"JOAQUIN") & !strpos(upper(location),"NORTH")
+tab Name_of_crop if strpos(upper(location),"JOAQUIN") & !strpos(upper(location),"NORTH")
+tab location if strpos(upper(location),"JOAQUIN") & !strpos(upper(location),"SOUTH")
+tab Name_of_crop if strpos(upper(location),"JOAQUIN") & !strpos(upper(location),"SOUTH")
+
+
+tab location if strpos(upper(location),"SACRAMENTO")
+tab Name_of_crop if strpos(upper(location),"SACRAMENTO")
+br if strpos(upper(location),"SACRAMENTO")
+twoway ///
+	(line oper_prof_water water_price if Number==2 & water_price<200) ///
+	(line oper_prof_water water_price if Number==8 & water_price<200) ///
+	(line oper_prof_water water_price if Number==68 & water_price<200) ///
+	(line oper_prof_water water_price if Number==77 & water_price<200) ///
+	(line oper_prof_water water_price if Number==87 & water_price<200) ///
+	(line oper_prof_water water_price if Number==92 & water_price<200) ///
+	, legend(order(1 "Alfalfa" 2 "Almonds"  ///
+	3 "Pear" 4 "Prunes" 5 "Tomato" 6 "Wheat") c(3)) ///
+	title("Operating profits, Sacramento")
+
+twoway ///
+	(line prof_water water_price if Number==2 & water_price<200) ///
+	(line prof_water water_price if Number==8 & water_price<200) ///
+	(line prof_water water_price if Number==68 & water_price<200) ///
+	(line prof_water water_price if Number==77 & water_price<200) ///
+	(line prof_water water_price if Number==87 & water_price<200) ///
+	(line prof_water water_price if Number==92 & water_price<200) ///
+	, legend(order(1 "Alfalfa" 2 "Almonds"  ///
+	3 "Pear" 4 "Prunes" 5 "Tomato" 6 "Wheat") c(3)) ///
+	title("Total profits, Sacramento")
+
+
+
+
+tab Name_of_crop location if inlist(Number,0,10,15,62,73,55,93)
 twoway ///
 	(line prof_water water_price if Number==0) ///
 	(line prof_water water_price if Number==10) ///
