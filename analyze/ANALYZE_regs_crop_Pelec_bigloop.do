@@ -3,7 +3,7 @@ version 13
 set more off
 
 ********************************************************************
-** Script to run a ton of regressions estimating price elasticity **
+** Script to run a ton of regressions estimating semi-elasticity  **
 **  of demand, using electricity data only (not APEP stuff yet)   **
 ********************************************************************
 
@@ -28,7 +28,7 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 	}
 	
 	// Loop through sample restrictions
-	foreach ifs in 28 /*19 20 5 1 7 10 11 12 15 16*/ {
+	foreach ifs in 19 /*5 1 7 10 11 12 15 16*/ {
 	
 		if `ifs'==1 {
 			local if_sample = ""
@@ -88,36 +88,26 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 			local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0 & merge_sp_water_panel==3"
 		}
 		if `ifs'==20 {
-			local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0 & merge_sp_water_panel==3 & mnth_bill_kwh > 0"
-		}
-		if `ifs'==21 {
-			local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0 & merge_sp_water_panel==3 & elec_binary_frac == 1"
-		}
-		if `ifs'==22 {
 			local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0 & merge_sp_water_panel==3 & elec_binary_frac > 0.95"
 		}
-		if `ifs'==23 {
+		if `ifs'==21 {
 			local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0 & merge_sp_water_panel==3 & elec_binary_frac > 0.9"
 		}
-		if `ifs'==24 {
+		if `ifs'==22 {
 			local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0 & merge_sp_water_panel==3 & annual_always == 1"
 		}
-		if `ifs'==25 {
+		if `ifs'==23 {
 			local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0 & merge_sp_water_panel==3 & perennial_always == 1"
 		}
-		if `ifs'==26 {
+		if `ifs'==24 {
 			local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0 & merge_sp_water_panel==3 & perennial_ever == 0"
 		}
-		if `ifs'==27 {
+		if `ifs'==25 {
 			local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0 & merge_sp_water_panel==3 & annual_ever == 0"
 		}
-		if `ifs'==28 {
-			local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0 & merge_sp_water_panel==3 & ann_per_switcher == 1"
-		}
-		
 		
 		// Loop over different combinations of fixed effects and interactions thereof
-		foreach fe in 2 30 32 34 /*39 40 41 42 43 44 31 38 33 11 19 28 35 36 37 22 23 24 25 29*/ {
+		foreach fe in 2 30 32 34 /*31 38 33 11 19 28 35 36 37 22 23 24 25 29*/ {
 		
 			if `fe'==1 {
 				local FEs = "sp_group modate"
@@ -233,29 +223,10 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 			if `fe'==38 {
 				local FEs = "sp_group#rt_large_ag sp_group#month basin_group#year wdist_group#year modate sp_group#c.modate"
 			}
-			if `fe'==39 {
-				local FEs = "sp_group#month hp_bin_dec#modate"
-			}
-			if `fe'==40 {
-				local FEs = "sp_group#month kw_bin_dec#modate"
-			}
-			if `fe'==41 {
-				local FEs = "sp_group#month ope_bin_dec#modate"
-			}
-			if `fe'==42 {
-				local FEs = "sp_group#month sp_group#rt_large_ag hp_bin_dec#modate"
-			}
-			if `fe'==43 {
-				local FEs = "sp_group#month sp_group#rt_large_ag kw_bin_dec#modate"
-			}
-			if `fe'==44 {
-				local FEs = "sp_group#month sp_group#rt_large_ag ope_bin_dec#modate"
-			}
-
 
 
 			// Loop over alternative RHS specifications, including IVs
-			foreach rhs in 1 7 19 /*8 18 15 16 17*/ {
+			foreach rhs in 1 7 19 /*8 18 */ /*15 16 17*/ {
 			
 				if `rhs'==1 {
 					local RHS = "log_p_mean"
@@ -314,125 +285,156 @@ foreach pull in "20180719" /*"20180322" "20180827" "combined"*/ {
 				if `rhs'==19 {
 					local RHS = "(log_p_mean = log_p_mean_deflag*)"
 				}
-
-				// Skip combinations of IV and switchers/rate FE interactions
-				local skip = ""
-				*if regexm("`if_sample'","sp_same")==1 & regexm("`RHS'"," = ") {
-				*	local skip = "skip"
-				*}
-				if regexm("`if_sample'","sp_same")==1 & regexm("`RHS'","sp_same") {
-					local skip = "skip"
-				}
-				if regexm("`if_sample'","summer")==1 & regexm("`RHS'","summer") {
-					local skip = "skip"
-				}
-				*if regexm("`FEs'","rt_group")==1 & regexm("`RHS'"," = ") {
-				*	local skip = "skip"
-				*}
 				
-				// Skip regressions that are already stored in output file
-				preserve
-				cap {
-					use "$dirpath_data/results/regs_Qelec_Pelec_bigloop.dta", clear
-					count if panel=="monthly" & pull=="`pull'" & sample=="`if_sample'" & fes=="`FEs'" & rhs=="`RHS'"
-					if r(N)==1 {
+				// Loop over alternative dependent crop variables
+				foreach depvar in 1 2 3 4 5 6 7 8 {
+				
+					if `depvar'==1 {
+						local DEP = "alfalfa"
+					}
+					if `depvar'==2 {
+						local DEP = "almonds"
+					}
+					if `depvar'==3 {
+						local DEP = "fallow"
+					}
+					if `depvar'==4 {
+						local DEP = "grapes"
+					}
+					if `depvar'==5 {
+						local DEP = "grass"
+					}
+					if `depvar'==6 {
+						local DEP = "no_crop"
+					}
+					if `depvar'==7 {
+						local DEP = "annual"
+					}
+					if `depvar'==8 {
+						local DEP = "perennial"
+					}
+
+					// Skip combinations of IV and switchers/rate FE interactions
+					local skip = ""
+					*if regexm("`if_sample'","sp_same")==1 & regexm("`RHS'"," = ") {
+					*	local skip = "skip"
+					*}
+					if regexm("`if_sample'","sp_same")==1 & regexm("`RHS'","sp_same") {
 						local skip = "skip"
 					}
-				}	
-				restore
-				
-				// Flag IV specificaitons, which require different syntax
-				local iv = ""
-				if regexm("`RHS'"," = ") {
-					local iv = "iv"
-				}
-
-				// Run non-IV specificaitons	
-				if "`skip'"=="" & "`iv'"=="" {
-				
-					// Run regression
-					reghdfe ihs_kwh `RHS' `if_sample', absorb(`FEs') vce(cluster sp_group modate)
+					if regexm("`if_sample'","summer")==1 & regexm("`RHS'","summer") {
+						local skip = "skip"
+					}
+					*if regexm("`FEs'","rt_group")==1 & regexm("`RHS'"," = ") {
+					*	local skip = "skip"
+					*}
 					
-					// Store output
+					// Skip regressions that are already stored in output file
 					preserve
-					clear
-					set obs 1
-					gen panel = "monthly"
-					gen pull = "`pull'"
-					gen sample = "`if_sample'"
-					gen fes = "`FEs'"
-					gen rhs = "`RHS'"
-					if regexm("`RHS'","log_p_mean") & "`RHS'"!="c.log_p_mean#i.summer" & "`RHS'"!="c.log_p_mean#i.sp_same_rate_dumbsmart" {
+					cap {
+						use "$dirpath_data/results/regs_crop_Pelec_bigloop.dta", clear
+						count if panel=="monthly" & pull=="`pull'" & sample=="`if_sample'" & fes=="`FEs'" & rhs=="`RHS'" & depvar=="`DEP'"
+						if r(N)==1 {
+							local skip = "skip"
+						}
+					}	
+					restore
+					
+					// Flag IV specificaitons, which require different syntax
+					local iv = ""
+					if regexm("`RHS'"," = ") {
+						local iv = "iv"
+					}
+
+					// Run non-IV specificaitons	
+					if "`skip'"=="" & "`iv'"=="" {
+					
+						// Run regression
+						reghdfe `DEP' `RHS' `if_sample', absorb(`FEs') vce(cluster sp_group modate)
+						
+						// Store output
+						preserve
+						clear
+						set obs 1
+						gen panel = "monthly"
+						gen pull = "`pull'"
+						gen sample = "`if_sample'"
+						gen fes = "`FEs'"
+						gen rhs = "`RHS'"
+						gen depvar = "`DEP'"
+						if regexm("`RHS'","log_p_mean") & "`RHS'"!="c.log_p_mean#i.summer" & "`RHS'"!="c.log_p_mean#i.sp_same_rate_dumbsmart" {
+							gen beta_log_p_mean = _b[log_p_mean]
+							gen se_log_p_mean = _se[log_p_mean]
+							gen t_log_p_mean =  _b[log_p_mean]/_se[log_p_mean]
+						}
+						if regexm("`RHS'","log_p_min") {
+							gen beta_log_p_min = _b[log_p_min]
+							gen se_log_p_min = _se[log_p_min]
+							gen t_log_p_min =  _b[log_p_min]/_se[log_p_min]
+						}
+						if regexm("`RHS'","log_p_max") {
+							gen beta_log_p_max = _b[log_p_max]
+							gen se_log_p_max = _se[log_p_max]
+							gen t_log_p_max =  _b[log_p_max]/_se[log_p_max]
+						}
+						if "`RHS'"=="c.log_p_mean#i.summer" {
+							gen beta_log_p_mean_summer = _b[1.summer#c.log_p_mean]
+							gen se_log_p_mean_summer = _se[1.summer#c.log_p_mean]
+							gen t_log_p_mean_summer =  _b[1.summer#c.log_p_mean]/_se[1.summer#c.log_p_mean]
+							gen beta_log_p_mean_winter = _b[0.summer#c.log_p_mean]
+							gen se_log_p_mean_winter = _se[0.summer#c.log_p_mean]
+							gen t_log_p_mean_winter =  _b[0.summer#c.log_p_mean]/_se[0.summer#c.log_p_mean]
+						}
+						if "`RHS'"=="c.log_p_mean#i.sp_same_rate_dumbsmart" {
+							gen beta_log_p_mean_stayer = _b[1.sp_same_rate_dumbsmart#c.log_p_mean]
+							gen se_log_p_mean_stayer = _se[1.sp_same_rate_dumbsmart#c.log_p_mean]
+							gen t_log_p_mean_stayer =  _b[1.sp_same_rate_dumbsmart#c.log_p_mean]/_se[1.sp_same_rate_dumbsmart#c.log_p_mean]
+							gen beta_log_p_mean_switcher = _b[0.sp_same_rate_dumbsmart#c.log_p_mean]
+							gen se_log_p_mean_switcher = _se[0.sp_same_rate_dumbsmart#c.log_p_mean]
+							gen t_log_p_mean_switcher =  _b[0.sp_same_rate_dumbsmart#c.log_p_mean]/_se[0.sp_same_rate_dumbsmart#c.log_p_mean]
+						}
+						gen n_obs = e(N)
+						gen n_SPs = e(N_clust1)
+						gen n_modates = e(N_clust2)
+						gen dof = e(df_r)
+						cap append using "$dirpath_data/results/regs_crop_Pelec_bigloop.dta"
+						duplicates drop 
+						compress
+						save "$dirpath_data/results/regs_crop_Pelec_bigloop.dta", replace
+						restore
+					}
+					
+					// Run IV specificaitons	
+					if "`skip'"=="" & "`iv'"=="iv" {
+					
+						// Run regression
+						ivreghdfe `DEP' `RHS' `if_sample', absorb(`FEs') cluster(sp_group modate) 
+
+						// Store output
+						preserve
+						clear
+						set obs 1
+						gen panel = "monthly"
+						gen pull = "`pull'"
+						gen sample = "`if_sample'"
+						gen fes = "`FEs'"
+						gen rhs = "`RHS'"
+						gen depvar = "`DEP'"
 						gen beta_log_p_mean = _b[log_p_mean]
 						gen se_log_p_mean = _se[log_p_mean]
 						gen t_log_p_mean =  _b[log_p_mean]/_se[log_p_mean]
+						gen n_obs = e(N)
+						gen n_SPs = e(N_clust1)
+						gen n_modates = e(N_clust2)
+						gen dof = e(df_r)
+						gen fstat_rk = e(rkf)
+						gen fstat_cd = e(cdf)
+						cap append using "$dirpath_data/results/regs_crop_Pelec_bigloop.dta"
+						duplicates drop 
+						compress
+						save "$dirpath_data/results/regs_crop_Pelec_bigloop.dta", replace
+						restore
 					}
-					if regexm("`RHS'","log_p_min") {
-						gen beta_log_p_min = _b[log_p_min]
-						gen se_log_p_min = _se[log_p_min]
-						gen t_log_p_min =  _b[log_p_min]/_se[log_p_min]
-					}
-					if regexm("`RHS'","log_p_max") {
-						gen beta_log_p_max = _b[log_p_max]
-						gen se_log_p_max = _se[log_p_max]
-						gen t_log_p_max =  _b[log_p_max]/_se[log_p_max]
-					}
-					if "`RHS'"=="c.log_p_mean#i.summer" {
-						gen beta_log_p_mean_summer = _b[1.summer#c.log_p_mean]
-						gen se_log_p_mean_summer = _se[1.summer#c.log_p_mean]
-						gen t_log_p_mean_summer =  _b[1.summer#c.log_p_mean]/_se[1.summer#c.log_p_mean]
-						gen beta_log_p_mean_winter = _b[0.summer#c.log_p_mean]
-						gen se_log_p_mean_winter = _se[0.summer#c.log_p_mean]
-						gen t_log_p_mean_winter =  _b[0.summer#c.log_p_mean]/_se[0.summer#c.log_p_mean]
-					}
-					if "`RHS'"=="c.log_p_mean#i.sp_same_rate_dumbsmart" {
-						gen beta_log_p_mean_stayer = _b[1.sp_same_rate_dumbsmart#c.log_p_mean]
-						gen se_log_p_mean_stayer = _se[1.sp_same_rate_dumbsmart#c.log_p_mean]
-						gen t_log_p_mean_stayer =  _b[1.sp_same_rate_dumbsmart#c.log_p_mean]/_se[1.sp_same_rate_dumbsmart#c.log_p_mean]
-						gen beta_log_p_mean_switcher = _b[0.sp_same_rate_dumbsmart#c.log_p_mean]
-						gen se_log_p_mean_switcher = _se[0.sp_same_rate_dumbsmart#c.log_p_mean]
-						gen t_log_p_mean_switcher =  _b[0.sp_same_rate_dumbsmart#c.log_p_mean]/_se[0.sp_same_rate_dumbsmart#c.log_p_mean]
-					}
-					gen n_obs = e(N)
-					gen n_SPs = e(N_clust1)
-					gen n_modates = e(N_clust2)
-					gen dof = e(df_r)
-					cap append using "$dirpath_data/results/regs_Qelec_Pelec_bigloop.dta"
-					duplicates drop 
-					compress
-					save "$dirpath_data/results/regs_Qelec_Pelec_bigloop.dta", replace
-					restore
-				}
-				
-				// Run IV specificaitons	
-				if "`skip'"=="" & "`iv'"=="iv" {
-				
-					// Run regression
-					ivreghdfe ihs_kwh `RHS' `if_sample', absorb(`FEs') cluster(sp_group modate) 
-
-					// Store output
-					preserve
-					clear
-					set obs 1
-					gen panel = "monthly"
-					gen pull = "`pull'"
-					gen sample = "`if_sample'"
-					gen fes = "`FEs'"
-					gen rhs = "`RHS'"
-					gen beta_log_p_mean = _b[log_p_mean]
-					gen se_log_p_mean = _se[log_p_mean]
-					gen t_log_p_mean =  _b[log_p_mean]/_se[log_p_mean]
-					gen n_obs = e(N)
-					gen n_SPs = e(N_clust1)
-					gen n_modates = e(N_clust2)
-					gen dof = e(df_r)
-					gen fstat_rk = e(rkf)
-					gen fstat_cd = e(cdf)
-					cap append using "$dirpath_data/results/regs_Qelec_Pelec_bigloop.dta"
-					duplicates drop 
-					compress
-					save "$dirpath_data/results/regs_Qelec_Pelec_bigloop.dta", replace
-					restore
 				}		
 			}
 		}

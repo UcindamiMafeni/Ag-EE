@@ -20,7 +20,7 @@ global dirpath_data "$dirpath/data"
 use "$dirpath_data/merged/sp_month_water_panel.dta", clear
 
 // Loop through sample restrictions
-foreach ifs in 21 /*9 10 11 12 13 8 7 1 2 3 4 5 6*/ {
+foreach ifs in 18 /*9 10 11 8 7 1 2 3 4 5 6*/ {
 
 	if `ifs'==1 {
 		local if_sample = "if sp_same_rate_dumbsmart==1"
@@ -56,38 +56,29 @@ foreach ifs in 21 /*9 10 11 12 13 8 7 1 2 3 4 5 6*/ {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & apep_proj_count==0"
 	}
 	if `ifs'==12 {
-		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & mnth_bill_kwh > 0"
-	}
-	if `ifs'==13 {
-		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & inlist(basin_group,68,121,122) & mnth_bill_kwh > 0"
-	}
-	if `ifs'==14 {
-		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & elec_binary_frac == 1"
-	}
-	if `ifs'==15 {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & elec_binary_frac > 0.95"
 	}
-	if `ifs'==16 {
+	if `ifs'==13 {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & elec_binary_frac > 0.9"
 	}
-	if `ifs'==17 {
+	if `ifs'==14 {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & annual_always == 1"
 	}
-	if `ifs'==18 {
+	if `ifs'==15 {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & perennial_always == 1"
 	}
-	if `ifs'==19 {
+	if `ifs'==16 {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & perennial_ever == 0"
 	}
-	if `ifs'==20 {
+	if `ifs'==17 {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & annual_ever == 0"
 	}
-	if `ifs'==21 {
+	if `ifs'==18 {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & ann_per_switcher == 1"
 	}
 	
 	// Loop over different combinations of fixed effects and interactions thereof
-	foreach fe in 4 6 /*12 3 5 7 8 9 10 11 12*/ {
+	foreach fe in 4 6 /* 1 2 3 5 7 8 9 10 11 12*/ {
 	
 		if `fe'==1 {
 			local FEs = "sp_group#month modate"
@@ -124,15 +115,6 @@ foreach ifs in 21 /*9 10 11 12 13 8 7 1 2 3 4 5 6*/ {
 		}
 		if `fe'==12 {
 			local FEs = "sp_group#month sp_group#rt_large_ag wdist_group#year basin_group#year modate sp_group#c.modate"
-		}
-		if `fe'==13 {
-			local FEs = "sp_group#month sp_group#rt_large_ag hp_bin_dec#modate"
-		}
-		if `fe'==14 {
-			local FEs = "sp_group#month sp_group#rt_large_ag kw_bin_dec#modate"
-		}
-		if `fe'==15 {
-			local FEs = "sp_group#month sp_group#rt_large_ag ope_bin_dec#modate"
 		}
 
 
@@ -188,7 +170,7 @@ foreach ifs in 21 /*9 10 11 12 13 8 7 1 2 3 4 5 6*/ {
 				local P_AF = "ln_mean_p_af_rast_ddhat_qtr_2"
 			}			
 	
-			local depvar = subinstr("`P_AF'","ln_mean_p_af","ihs_af",1)
+			local depvar = "elec_binary"
 			
 			// Loop over alternative RHS specifications
 			foreach rhs in 1 2 3 {
@@ -207,7 +189,7 @@ foreach ifs in 21 /*9 10 11 12 13 8 7 1 2 3 4 5 6*/ {
 				local skip = ""
 				preserve
 				cap {
-					use "$dirpath_data/results/regs_Qwater_Pwater_combined_bigloop.dta", clear
+					use "$dirpath_data/results/regs_Qwater_binary_Pwater_combined_bigloop.dta", clear
 					noi noi count if sample=="`if_sample'" & fes=="`FEs'" & rhs=="`RHS'" & depvar=="`depvar'"
 					if r(N)==1 {
 						local skip = "skip"
@@ -242,10 +224,10 @@ foreach ifs in 21 /*9 10 11 12 13 8 7 1 2 3 4 5 6*/ {
 					gen n_SPs = e(N_clust1)
 					gen n_modates = e(N_clust2)
 					gen dof = e(df_r)
-					cap append using "$dirpath_data/results/regs_Qwater_Pwater_combined_bigloop.dta"
+					cap append using "$dirpath_data/results/regs_Qwater_binary_Pwater_combined_bigloop.dta"
 					duplicates drop 
 					compress
-					save "$dirpath_data/results/regs_Qwater_Pwater_combined_bigloop.dta", replace
+					save "$dirpath_data/results/regs_Qwater_binary_Pwater_combined_bigloop.dta", replace
 					restore
 				}
 					
@@ -272,10 +254,10 @@ foreach ifs in 21 /*9 10 11 12 13 8 7 1 2 3 4 5 6*/ {
 					gen dof = e(df_r)
 					gen fstat_rk = e(rkf)
 					gen fstat_cd = e(cdf)
-					cap append using "$dirpath_data/results/regs_Qwater_Pwater_combined_bigloop.dta"
+					cap append using "$dirpath_data/results/regs_Qwater_binary_Pwater_combined_bigloop.dta"
 					duplicates drop 
 					compress
-					save "$dirpath_data/results/regs_Qwater_Pwater_combined_bigloop.dta", replace
+					save "$dirpath_data/results/regs_Qwater_binary_Pwater_combined_bigloop.dta", replace
 					restore
 				}	
 			}		

@@ -20,7 +20,7 @@ global dirpath_data "$dirpath/data"
 use "$dirpath_data/merged/sp_month_water_panel.dta", clear
 
 // Loop through sample restrictions
-foreach ifs in 21 /*1 2 3 4 5 6 7 8 9 10 11 12 13*/ {
+foreach ifs in 18 /*1 2 3 4 5 6 7 8 9 10 11*/ {
 
 	if `ifs'==1 {
 		local if_sample = "if sp_same_rate_dumbsmart==1"
@@ -56,39 +56,29 @@ foreach ifs in 21 /*1 2 3 4 5 6 7 8 9 10 11 12 13*/ {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & apep_proj_count==0"
 	}
 	if `ifs'==12 {
-		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & ihs_kwh > 0"
-	}
-	if `ifs'==13 {
-		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & inlist(basin_group,68,121,122) & ihs_kwh > 0"
-	}
-	if `ifs'==14 {
-		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & elec_binary_frac == 1"
-	}
-	if `ifs'==15 {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & elec_binary_frac > 0.95"
 	}
-	if `ifs'==16 {
+	if `ifs'==13 {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & elec_binary_frac > 0.9"
 	}
-	if `ifs'==17 {
+	if `ifs'==14 {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & annual_always == 1"
 	}
-	if `ifs'==18 {
+	if `ifs'==15 {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & perennial_always == 1"
 	}
-	if `ifs'==19 {
+	if `ifs'==16 {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & perennial_ever == 0"
 	}
-	if `ifs'==20 {
+	if `ifs'==17 {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & annual_ever == 0"
 	}
-	if `ifs'==21 {
+	if `ifs'==18 {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & ann_per_switcher == 1"
 	}
 	
-	
 	// Loop over different combinations of fixed effects and interactions thereof
-	foreach fe in 4 6 /*1 2 3 5 7 8 9 10 11 12 13 14 15*/ {
+	foreach fe in 4 6 /* 1 2 3 5 7 8 9 10 11 12*/ {
 	
 		if `fe'==1 {
 			local FEs = "sp_group#month modate"
@@ -125,15 +115,6 @@ foreach ifs in 21 /*1 2 3 4 5 6 7 8 9 10 11 12 13*/ {
 		}
 		if `fe'==12 {
 			local FEs = "sp_group#month sp_group#rt_large_ag wdist_group#year basin_group#year modate sp_group#c.modate"
-		}
-		if `fe'==13 {
-			local FEs = "sp_group#month sp_group#rt_large_ag hp_bin_dec#modate"
-		}
-		if `fe'==14 {
-			local FEs = "sp_group#month sp_group#rt_large_ag kw_bin_dec#modate"
-		}
-		if `fe'==15 {
-			local FEs = "sp_group#month sp_group#rt_large_ag ope_bin_dec#modate"
 		}
 
 
@@ -191,7 +172,7 @@ foreach ifs in 21 /*1 2 3 4 5 6 7 8 9 10 11 12 13*/ {
 	
 			// Loop over kwhaf instruments
 			local KWHAF_stub = subinstr(subinstr(subinstr("`KWHAF'","ln_kwhaf_rast_","",1),"ddhat_","",1),"dd_","",1)
-			foreach kwhaf_iv in 1 /*7 2 3 4 5 6*/ {
+			foreach kwhaf_iv in 1 /*2 3 4 5 6 7*/ {
 			
 				if `kwhaf_iv'==1 {
 					local KWHAF_IV = "ln_gw_mean_depth_`KWHAF_stub'" 
@@ -241,8 +222,8 @@ foreach ifs in 21 /*1 2 3 4 5 6 7 8 9 10 11 12 13*/ {
 					local skip = ""
 					preserve
 					cap {
-						use "$dirpath_data/results/regs_Qwater_Pwater_bigloop.dta", clear
-						noi noi count if sample=="`if_sample'" & fes=="`FEs'" & rhs=="`RHS'" & depvar=="ihs_kwh"
+						use "$dirpath_data/results/regs_Qwater_binary_Pwater_bigloop.dta", clear
+						noi noi count if sample=="`if_sample'" & fes=="`FEs'" & rhs=="`RHS'" & depvar=="elec_binary"
 						if r(N)==1 {
 							local skip = "skip"
 						}
@@ -259,7 +240,7 @@ foreach ifs in 21 /*1 2 3 4 5 6 7 8 9 10 11 12 13*/ {
 					if "`skip'"=="" & "`iv'"=="" {
 
 						// Run regression
-						reghdfe ihs_kwh `RHS' `if_sample', absorb(`FEs') vce(cluster sp_group modate)
+						reghdfe elec_binary `RHS' `if_sample', absorb(`FEs') vce(cluster sp_group modate)
 
 						// Store output
 						preserve
@@ -268,7 +249,7 @@ foreach ifs in 21 /*1 2 3 4 5 6 7 8 9 10 11 12 13*/ {
 						gen sample = "`if_sample'"
 						gen fes = "`FEs'"
 						gen rhs = "`RHS'"
-						gen depvar = "ihs_kwh"
+						gen depvar = "elec_binary"
 						if regexm("`RHS'","log_p_mean") {
 							gen beta_log_p_kwh = _b[log_p_mean]
 							gen se_log_p_kwh = _se[log_p_mean]
@@ -283,10 +264,10 @@ foreach ifs in 21 /*1 2 3 4 5 6 7 8 9 10 11 12 13*/ {
 						gen n_SPs = e(N_clust1)
 						gen n_modates = e(N_clust2)
 						gen dof = e(df_r)
-						cap append using "$dirpath_data/results/regs_Qwater_Pwater_bigloop.dta"
+						cap append using "$dirpath_data/results/regs_Qwater_binary_Pwater_bigloop.dta"
 						duplicates drop 
 						compress
-						save "$dirpath_data/results/regs_Qwater_Pwater_bigloop.dta", replace
+						save "$dirpath_data/results/regs_Qwater_binary_Pwater_bigloop.dta", replace
 						restore
 					}
 					
@@ -294,7 +275,7 @@ foreach ifs in 21 /*1 2 3 4 5 6 7 8 9 10 11 12 13*/ {
 					if "`skip'"=="" & "`iv'"=="iv" {
 					
 						// Run regression
-						ivreghdfe ihs_kwh `RHS' `if_sample', absorb(`FEs') cluster(sp_group modate) 
+						ivreghdfe elec_binary `RHS' `if_sample', absorb(`FEs') cluster(sp_group modate) 
 
 						// Store output
 						preserve
@@ -303,16 +284,16 @@ foreach ifs in 21 /*1 2 3 4 5 6 7 8 9 10 11 12 13*/ {
 						gen sample = "`if_sample'"
 						gen fes = "`FEs'"
 						gen rhs = "`RHS'"
-						gen depvar = "ihs_kwh"
+						gen depvar = "elec_binary"
 						if regexm("`RHS'","log_p_mean") {
 							gen beta_log_p_kwh = _b[log_p_mean]
 							gen se_log_p_kwh = _se[log_p_mean]
 							gen t_log_p_kwh =  _b[log_p_mean]/_se[log_p_mean]
 						}
 						if regexm("`RHS'","`KWHAF'") {
-							gen beta_log_kwhaf = _b[`KWHAF']-1
+							gen beta_log_kwhaf = _b[`KWHAF']
 							gen se_log_kwhaf = _se[`KWHAF']
-							gen t_log_kwhaf =  (_b[`KWHAF']-1)/_se[`KWHAF']
+							gen t_log_kwhaf =  (_b[`KWHAF'])/_se[`KWHAF']
 						}
 						gen n_obs = e(N)
 						gen n_SPs = e(N_clust1)
@@ -320,10 +301,10 @@ foreach ifs in 21 /*1 2 3 4 5 6 7 8 9 10 11 12 13*/ {
 						gen dof = e(df_r)
 						gen fstat_rk = e(rkf)
 						gen fstat_cd = e(cdf)
-						cap append using "$dirpath_data/results/regs_Qwater_Pwater_bigloop.dta"
+						cap append using "$dirpath_data/results/regs_Qwater_binary_Pwater_bigloop.dta"
 						duplicates drop 
 						compress
-						save "$dirpath_data/results/regs_Qwater_Pwater_bigloop.dta", replace
+						save "$dirpath_data/results/regs_Qwater_binary_Pwater_bigloop.dta", replace
 						restore
 					}	
 				}		

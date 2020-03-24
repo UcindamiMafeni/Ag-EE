@@ -20,7 +20,7 @@ global dirpath_data "$dirpath/data"
 use "$dirpath_data/merged/sp_month_water_panel.dta", clear
 
 // Loop through sample restrictions
-foreach ifs in 21 /*9 10 11 12 13 8 7 1 2 3 4 5 6*/ {
+foreach ifs in 9 /*10 11 8 7 1 2 3 4 5 6*/ {
 
 	if `ifs'==1 {
 		local if_sample = "if sp_same_rate_dumbsmart==1"
@@ -56,38 +56,26 @@ foreach ifs in 21 /*9 10 11 12 13 8 7 1 2 3 4 5 6*/ {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & apep_proj_count==0"
 	}
 	if `ifs'==12 {
-		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & mnth_bill_kwh > 0"
-	}
-	if `ifs'==13 {
-		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & inlist(basin_group,68,121,122) & mnth_bill_kwh > 0"
-	}
-	if `ifs'==14 {
-		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & elec_binary_frac == 1"
-	}
-	if `ifs'==15 {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & elec_binary_frac > 0.95"
 	}
-	if `ifs'==16 {
+	if `ifs'==13 {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & elec_binary_frac > 0.9"
 	}
-	if `ifs'==17 {
+	if `ifs'==14 {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & annual_always == 1"
 	}
-	if `ifs'==18 {
+	if `ifs'==15 {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & perennial_always == 1"
 	}
-	if `ifs'==19 {
+	if `ifs'==16 {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & perennial_ever == 0"
 	}
-	if `ifs'==20 {
+	if `ifs'==17 {
 		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & annual_ever == 0"
-	}
-	if `ifs'==21 {
-		local if_sample = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & ann_per_switcher == 1"
 	}
 	
 	// Loop over different combinations of fixed effects and interactions thereof
-	foreach fe in 4 6 /*12 3 5 7 8 9 10 11 12*/ {
+	foreach fe in 4 6 /* 1 2 3 5 7 8 9 10 11 12*/ {
 	
 		if `fe'==1 {
 			local FEs = "sp_group#month modate"
@@ -124,15 +112,6 @@ foreach ifs in 21 /*9 10 11 12 13 8 7 1 2 3 4 5 6*/ {
 		}
 		if `fe'==12 {
 			local FEs = "sp_group#month sp_group#rt_large_ag wdist_group#year basin_group#year modate sp_group#c.modate"
-		}
-		if `fe'==13 {
-			local FEs = "sp_group#month sp_group#rt_large_ag hp_bin_dec#modate"
-		}
-		if `fe'==14 {
-			local FEs = "sp_group#month sp_group#rt_large_ag kw_bin_dec#modate"
-		}
-		if `fe'==15 {
-			local FEs = "sp_group#month sp_group#rt_large_ag ope_bin_dec#modate"
 		}
 
 
@@ -186,9 +165,7 @@ foreach ifs in 21 /*9 10 11 12 13 8 7 1 2 3 4 5 6*/ {
 			}			
 			if `p_af_var'==16 {
 				local P_AF = "ln_mean_p_af_rast_ddhat_qtr_2"
-			}			
-	
-			local depvar = subinstr("`P_AF'","ln_mean_p_af","ihs_af",1)
+			}
 			
 			// Loop over alternative RHS specifications
 			foreach rhs in 1 2 3 {
@@ -203,80 +180,109 @@ foreach ifs in 21 /*9 10 11 12 13 8 7 1 2 3 4 5 6*/ {
 					local RHS = "(`P_AF' = log_p_mean_deflag*)"
 				}
 				
-				// Skip regressions that are already stored in output file
-				local skip = ""
-				preserve
-				cap {
-					use "$dirpath_data/results/regs_Qwater_Pwater_combined_bigloop.dta", clear
-					noi noi count if sample=="`if_sample'" & fes=="`FEs'" & rhs=="`RHS'" & depvar=="`depvar'"
-					if r(N)==1 {
-						local skip = "skip"
-					}
-				}	
-				restore
-
-				// Flag IV specificaitons, which require different syntax
-				local iv = ""
-				if regexm("`RHS'"," = ") {
-					local iv = "iv"
-				}
-
-				// Run non-IV specificaitons	
-				if "`skip'"=="" & "`iv'"=="" {
-
-					// Run regression
-					reghdfe `depvar' `RHS' `if_sample', absorb(`FEs') vce(cluster sp_group modate)
-
-					// Store output
-					preserve
-					clear
-					set obs 1
-					gen sample = "`if_sample'"
-					gen fes = "`FEs'"
-					gen rhs = "`RHS'"
-					gen depvar = "`depvar'"
-					gen beta_log_p_af = _b[`P_AF']
-					gen se_log_p_af = _se[`P_AF']
-					gen t_log_p_af =  _b[`P_AF']/_se[`P_AF']
-					gen n_obs = e(N)
-					gen n_SPs = e(N_clust1)
-					gen n_modates = e(N_clust2)
-					gen dof = e(df_r)
-					cap append using "$dirpath_data/results/regs_Qwater_Pwater_combined_bigloop.dta"
-					duplicates drop 
-					compress
-					save "$dirpath_data/results/regs_Qwater_Pwater_combined_bigloop.dta", replace
-					restore
-				}
-					
-				// Run IV specificaitons	
-				if "`skip'"=="" & "`iv'"=="iv" {
+				// Loop over alternative dependent crop variables
+				foreach depvar in 1 2 3 4 5 6 7 8 {
 				
-					// Run regression
-					ivreghdfe `depvar' `RHS' `if_sample', absorb(`FEs') cluster(sp_group modate) 
-
-					// Store output
+					if `depvar'==1 {
+						local DEP = "alfalfa"
+					}
+					if `depvar'==2 {
+						local DEP = "almonds"
+					}
+					if `depvar'==3 {
+						local DEP = "fallow"
+					}
+					if `depvar'==4 {
+						local DEP = "grapes"
+					}
+					if `depvar'==5 {
+						local DEP = "grass"
+					}
+					if `depvar'==6 {
+						local DEP = "no_crop"
+					}
+					if `depvar'==7 {
+						local DEP = "annual"
+					}
+					if `depvar'==8 {
+						local DEP = "perennial"
+					}
+				
+					// Skip regressions that are already stored in output file
+					local skip = ""
 					preserve
-					clear
-					set obs 1
-					gen sample = "`if_sample'"
-					gen fes = "`FEs'"
-					gen rhs = "`RHS'"
-					gen depvar = "`depvar'"
-					gen beta_log_p_af = _b[`P_AF']
-					gen se_log_p_af = _se[`P_AF']
-					gen t_log_p_af =  _b[`P_AF']/_se[`P_AF']
-					gen n_obs = e(N)
-					gen n_SPs = e(N_clust1)
-					gen n_modates = e(N_clust2)
-					gen dof = e(df_r)
-					gen fstat_rk = e(rkf)
-					gen fstat_cd = e(cdf)
-					cap append using "$dirpath_data/results/regs_Qwater_Pwater_combined_bigloop.dta"
-					duplicates drop 
-					compress
-					save "$dirpath_data/results/regs_Qwater_Pwater_combined_bigloop.dta", replace
+					cap {
+						use "$dirpath_data/results/regs_crop_Pwater_combined_bigloop.dta", clear
+						noi noi count if sample=="`if_sample'" & fes=="`FEs'" & rhs=="`RHS'" & depvar=="`DEP'"
+						if r(N)==1 {
+							local skip = "skip"
+						}
+					}	
 					restore
+
+					// Flag IV specificaitons, which require different syntax
+					local iv = ""
+					if regexm("`RHS'"," = ") {
+						local iv = "iv"
+					}
+
+					// Run non-IV specificaitons	
+					if "`skip'"=="" & "`iv'"=="" {
+
+						// Run regression
+						reghdfe `DEP' `RHS' `if_sample', absorb(`FEs') vce(cluster sp_group modate)
+
+						// Store output
+						preserve
+						clear
+						set obs 1
+						gen sample = "`if_sample'"
+						gen fes = "`FEs'"
+						gen rhs = "`RHS'"
+						gen depvar = "`DEP'"
+						gen beta_log_p_af = _b[`P_AF']
+						gen se_log_p_af = _se[`P_AF']
+						gen t_log_p_af =  _b[`P_AF']/_se[`P_AF']
+						gen n_obs = e(N)
+						gen n_SPs = e(N_clust1)
+						gen n_modates = e(N_clust2)
+						gen dof = e(df_r)
+						cap append using "$dirpath_data/results/regs_crop_Pwater_combined_bigloop.dta"
+						duplicates drop 
+						compress
+						save "$dirpath_data/results/regs_crop_Pwater_combined_bigloop.dta", replace
+						restore
+					}
+						
+					// Run IV specificaitons	
+					if "`skip'"=="" & "`iv'"=="iv" {
+					
+						// Run regression
+						ivreghdfe `DEP' `RHS' `if_sample', absorb(`FEs') cluster(sp_group modate) 
+
+						// Store output
+						preserve
+						clear
+						set obs 1
+						gen sample = "`if_sample'"
+						gen fes = "`FEs'"
+						gen rhs = "`RHS'"
+						gen depvar = "`DEP'"
+						gen beta_log_p_af = _b[`P_AF']
+						gen se_log_p_af = _se[`P_AF']
+						gen t_log_p_af =  _b[`P_AF']/_se[`P_AF']
+						gen n_obs = e(N)
+						gen n_SPs = e(N_clust1)
+						gen n_modates = e(N_clust2)
+						gen dof = e(df_r)
+						gen fstat_rk = e(rkf)
+						gen fstat_cd = e(cdf)
+						cap append using "$dirpath_data/results/regs_crop_Pwater_combined_bigloop.dta"
+						duplicates drop 
+						compress
+						save "$dirpath_data/results/regs_crop_Pwater_combined_bigloop.dta", replace
+						restore
+					}
 				}	
 			}		
 		}

@@ -1433,10 +1433,10 @@ gen tdh_adder = dchlvl_ft + gaugecor_ft + gaugeheight_ft + otherlosses_ft + totl
 rename gw_*_DRWDWNhat_* DD_*_DRWDWNhat_*
 keep sp_uuid customertype farmtype waterenduse apeptestid test_date_stata ///
 	apeptestid_uniq date_proj_finish apep_proj_count watersource drvtype pumptype ///
-	kwhaf flow_gpm tdh_adder ope af24hrs drwdwn DD_* KWHAF_* latlon_group ///
-	test_modate sp_pump_id sp_pump_id3 case apep_post test_modate_before ///
-	test_modate_after modate interp_wgt months_until_test months_since_test ///
-	post_apep_proj_finish extrap_post_to_pre extrap_pre_to_post qtr ///
+	hp_nameplate hp kw_input kwhaf flow_gpm tdh_adder ope af24hrs drwdwn ///
+	DD_* KWHAF_* latlon_group test_modate sp_pump_id sp_pump_id3 case apep_post ///
+	test_modate_before test_modate_after modate interp_wgt months_until_test ///
+	months_since_test post_apep_proj_finish extrap_post_to_pre extrap_pre_to_post qtr ///
 	gw_????_depth_???_* ///
 	gw_rast_dist_mth_1SP gw_rast_dist_mth_2SP gw_rast_dist_mth_3SP ///
 	gw_mth_bsn_cnt1SP gw_mth_bsn_cnt2SP gw_mth_bsn_cnt3SP ///
@@ -1453,7 +1453,7 @@ keep sp_uuid customertype farmtype waterenduse apeptestid test_date_stata ///
 	// For the few cases where we have parallel time series within a(n observable) pump
 
 	// Unweighted means of numeric variables
-foreach v of varlist drwdwn tdh_adder ope af24hrs flow_gpm kwhaf gw_????_depth_???_* DD_* KWHAF_* {
+foreach v of varlist hp_nameplate hp kw_input drwdwn tdh_adder ope af24hrs flow_gpm kwhaf gw_????_depth_???_* DD_* KWHAF_* {
 	egen double temp1 = mean(`v') if `v'!=., by(sp_uuid sp_pump_id modate test_modate)
 	egen double temp2 = mean(temp1), by(sp_uuid sp_pump_id modate test_modate)
 	replace `v' = temp2 if temp2!=.
@@ -1553,7 +1553,7 @@ drop customertype waterenduse farmtype
 drop if interp_wgt==0	
 
 	// Weight-average numeric variables
-foreach v of varlist drwdwn tdh_adder ope af24hrs flow_gpm kwhaf gw_????_depth_???_* DD_* KWHAF_* {
+foreach v of varlist hp_nameplate hp kw_input drwdwn tdh_adder ope af24hrs flow_gpm kwhaf gw_????_depth_???_* DD_* KWHAF_* {
 	egen double temp_denom = sum(interp_wgt) if `v'!=., by(sp_uuid modate)
 	egen double temp1 = sum(interp_wgt * `v' / temp_denom) if `v'!=., by(sp_uuid modate)
 	egen double temp2 = mean(temp1), by(sp_uuid modate)

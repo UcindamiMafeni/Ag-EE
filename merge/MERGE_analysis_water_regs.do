@@ -58,7 +58,7 @@ keep if _merge==3
 drop _merge pull temp*	
 
 ** Drop components of KWHAF that aren't necessary for regressions
-drop drwdwn_apep tdh_adder ope af24hrs flow_gpm ddhat_* tdh_*
+drop drwdwn_apep tdh_adder af24hrs flow_gpm ddhat_* tdh_*
 
 ** Calcualte water quantities: AF_water = kwh_elec / kwh/AF
 foreach v of varlist kwhaf* {
@@ -269,6 +269,28 @@ la var L12_gw_mean_depth_mth_2SP "12-month lag of gw_mean_depth_mth_2SP"
 la var L6_ln_gw_mean_depth_mth_2SP "6-month lag of ln_gw_mean_depth_mth_2SP"
 la var L12_ln_gw_mean_depth_mth_2SP "12-month lag of ln_gw_mean_depth_mth_2SP"
 
+** Create horsepower bins
+gen hp_bin_large = 0
+replace hp_bin_large = 1 if hp_nameplate >= 35
+xtile hp_bin_quart = hp_nameplate if hp_nameplate >= 35, nq(4)
+replace hp_bin_quart = 0 if hp_nameplate < 35
+xtile hp_bin_dec = hp_nameplate if hp_nameplate >= 35, nq(10)
+replace hp_bin_dec = 0 if hp_nameplate < 35
+drop hp hp_nameplate
+
+** Create kilowatt bins
+gen kw_bin_large = 0
+replace kw_bin_large = 1 if kw_input >= 26.11
+xtile kw_bin_quart = kw_input if kw_input >= 26.11, nq(4)
+replace kw_bin_quart = 0 if kw_input < 26.11
+xtile kw_bin_dec = kw_input if kw_input >= 26.11, nq(10)
+replace kw_bin_dec = 0 if kw_input < 26.11
+drop kw_input
+
+** Create OPE bins
+xtile ope_bin_quart = ope, nq(4)
+xtile ope_bin_dec = ope, nq(10)
+drop ope
 
 ** Compress, and save
 unique sp_uuid modate
@@ -311,7 +333,7 @@ merge 1:1 sp_uuid modate using "$dirpath_data/merged/sp_month_water_panel.dta", 
 	keepusing(flag_bad_drwdwn flag_weird_pump flag_weird_cust ///
 	months_until_test months_since_test months_to_nearest_test ///
 	latlon_group latlon_miles_apart flag_parcel_match flag_clu_match ///
-	flag_clu_group*_match spcount_* apep_proj_count) ///
+	flag_clu_group*_match spcount_* apep_proj_count hp* kw_* ope*) ///
 	keep(1 3) gen(merge_sp_water_panel)
 la var merge_sp_water_panel "3 = merges into corresponding SP-month panel for water regressions"	
 cap drop spcount_*APEP
