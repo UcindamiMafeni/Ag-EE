@@ -31,7 +31,9 @@ wdist <- left_join(wdist,marker_dta,by = "user")
 wdist <- wdist %>% mutate(marker = replace(marker, is.na(marker), 0))
 wdist_present <- wdist %>% filter(marker==1)
 
+setwd(path_out)
 plot_filtered <- ggplot() +
   geom_sf(data=outline,color="grey30", fill=NA, alpha=1, show.legend = FALSE) +
-  geom_sf(data=wdist_present, aes(color= factor(marker)))
-ggsave(file.path(path_out, "Listed_wdis.png"), plot = plot_filtered)
+  geom_sf(data=wdist, aes(color= factor(marker)))
+dev.off()
+ggsave(file.path(path_out, "Listed_wdis_2.png"), plot = plot_filtered)
