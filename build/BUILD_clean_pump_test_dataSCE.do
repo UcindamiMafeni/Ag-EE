@@ -63,12 +63,17 @@ order pump_name, after(pump_ref)
 rename pump_location pump_address
 la var pump_address "Pump street address"
 
-la var service_acct "SCE service account number"
-la var sce_meter "SCE meter number"
-assert service_acct!="" 
-unique service_acct
-duplicates r service_acct
-count if sce_meter=="" // 66 missing meter numbers, which hopefully doesn't matter
+rename service_acct sa_uuid
+la var sa_uuid "SCE service account number"
+rename sce_meter meter_no
+la var meter_no "SCE meter number"
+assert sa_uuid!="" 
+tab sa_uuid if substr(sa_uuid,1,2)!="SA"
+replace sa_uuid = substr(sa_uuid,3,100) if substr(sa_uuid,1,2)=="SA"
+assert real(sa_uuid)!=.
+unique sa_uuid
+duplicates r sa_uuid
+count if meter_no=="" // 66 missing meter numbers, which hopefully doesn't matter
 
 la var pump_mfg "Pump manufacturer"
 tab pump_mfg, missing
@@ -343,7 +348,7 @@ drop temp*
 
 	// see if dropping bad tests would make us lose any SAs in doing so
 assert totlift==0 & overall_plant_efficiency==0 if flag_test_to_drop==1	
-egen temp_min = min(flag_test_to_drop), by(service_acct)
+egen temp_min = min(flag_test_to_drop), by(sa_uuid)
 tab temp_min
 tab temp_min if flag_test_to_drop==1 
 	// the answer is yes, so i will replace everything with missings instead of dropping observations
