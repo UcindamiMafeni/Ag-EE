@@ -12,9 +12,9 @@ library(rgdal)
 library(raster)
 library(dplyr)
 
-#####################################################################################
-### 1. Extract groundwater depths for each SP, from each monthly/quarterly raster ###
-#####################################################################################
+#########################################################################################
+### 1. Extract groundwater depths for each PGE SP, from each monthly/quarterly raster ###
+#########################################################################################
 
 rm(list = ls())
 path <- "T:/Projects/Pump Data/"
@@ -176,9 +176,9 @@ write.csv(pumps, file=filename , row.names=FALSE, quote=FALSE)
 
 
 
-##########################################################################################################
-### 2. Extract groundwater depths for each SP, from each monthly/quarterly raster (SAN JOAQUIN VALLEY) ###
-##########################################################################################################
+##############################################################################################################
+### 2. Extract groundwater depths for each PGE SP, from each monthly/quarterly raster (SAN JOAQUIN VALLEY) ###
+##############################################################################################################
 
 rm(list = ls())
 path <- "T:/Projects/Pump Data/"
@@ -340,9 +340,9 @@ write.csv(pumps, file=filename , row.names=FALSE, quote=FALSE)
 
 
 
-#########################################################################################################
-### 3. Extract groundwater depths for each SP, from each monthly/quarterly raster (SACRAMENTO VALLEY) ###
-#########################################################################################################
+#############################################################################################################
+### 3. Extract groundwater depths for each PGE SP, from each monthly/quarterly raster (SACRAMENTO VALLEY) ###
+#############################################################################################################
 
 rm(list = ls())
 path <- "T:/Projects/Pump Data/"
