@@ -1027,6 +1027,7 @@ use "$dirpath_data/groundwater/ca_dwr_gwl_merged.dta", clear
 drop if year<2008
 
 ** Drop observations with nonmissing "No measurement" readings
+drop if gs_ws_depth==.
 drop if measurement_issue_class=="N"
 
 ** Create month and quarter varables
@@ -1388,6 +1389,10 @@ use "$dirpath_data/groundwater/ca_dwr_gwl_merged.dta", clear
 ** Drop years prior to our sample
 drop if year<2008
 
+** Drop observations with nonmissing "No measurement" readings
+drop if gs_ws_depth==.
+drop if measurement_issue_class=="N"
+
 ** Create month and quarter varables
 gen modate = ym(year(date), month(date))
 format %tm modate
@@ -1410,7 +1415,7 @@ drop if latlon_group==. | modate==.
 egen gs_ws_depth_1 = mean(gs_ws_depth), by(modate latlon_group)
 egen temp2 = mean(gs_ws_depth) if QUES==0, by(modate latlon_group)
 egen gs_ws_depth_2 = mean(temp2), by(modate latlon_group)
-egen temp3 = mean(gs_ws_depth) if QUES==0 & well_use_desc=="Observation", by(modate latlon_group)
+egen temp3 = mean(gs_ws_depth) if QUES==0 & well_use_desc=="Observation" & discrep_2017_2020==0, by(modate latlon_group)
 egen gs_ws_depth_3 = mean(temp3), by(modate latlon_group)
 keep latlon_group modate year month latitude longitude basin_id gs_ws_depth_?
 order latlon_group modate year month latitude longitude basin_id gs_ws_depth_?
