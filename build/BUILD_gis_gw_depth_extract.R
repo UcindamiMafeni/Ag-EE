@@ -18,19 +18,17 @@ library(dplyr)
 
 rm(list = ls())
 path <- "T:/Projects/Pump Data/"
+setwd(paste0(path,"data/misc"))
 
 #Load monthly/quarterly rasters
-setwd(paste0(path,"data/misc"))
 load("temp_gw_idw_rasters.RData")
 
 #Read PGE coordinates
-setwd(paste0(path,"data/misc"))
 prems <- read.delim2("pge_prem_coord_3pulls.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
 prems$x <- as.numeric(prems$prem_lon)
 prems$y <- as.numeric(prems$prem_lat)
 
 #Read APEP coordinates
-setwd(paste0(path,"data/misc"))
 pumps <- read.delim2("apep_pump_coord.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
 pumps$x <- as.numeric(pumps$pump_lon)
 pumps$y <- as.numeric(pumps$pump_lat)
@@ -103,8 +101,26 @@ for (ym in levels(gwmth$modate)) {
   #Intermediate output
   print(paste(ym,"  ",Sys.time()))
   
-}  
+  #Remove ym's monthly rasters and data frames that we no longer need, to save memory
+  rm(list=c(paste0("gwmth_rast_1_",ym)))
+  rm(list=c(paste0("gwmth_rast_2_",ym)))
+  rm(list=c(paste0("gwmth_rast_3_",ym)))
+  rm(list=c(paste0("gwmth_1_",ym)))
+  rm(list=c(paste0("gwmth_2_",ym)))
+  rm(list=c(paste0("gwmth_3_",ym)))
   
+}  
+
+#Export monthly SP and pump results to CSV
+filename <- paste0("prems_gw_depths_from_rasters_mth.csv")
+write.csv(prems, file=filename , row.names=FALSE, quote=FALSE)
+filename <- paste0("pumps_gw_depths_from_rasters_mth.csv")
+write.csv(pumps, file=filename , row.names=FALSE, quote=FALSE)
+
+#Remove monthly columns from output dataframes
+prems <- prems %>% select(c(sp_uuid,prem_lat,prem_long,bad_geocode_flag,missing_geocode_flag,pull,x,y))
+pumps <- pumps %>% select(c(pump_lat,pump_long,latlon_group,x,y))
+
 #Loop over quarters to extract quarterly groundwater depths
 for (yq in levels(gwqtr$qtr)) {
   
@@ -165,13 +181,20 @@ for (yq in levels(gwqtr$qtr)) {
   #Intermediate output
   print(paste(yq,"  ",Sys.time()))
   
+  #Remove yq's quarterly rasters and data drames that we no longer need, to save memory
+  rm(list=c(paste0("gwqtr_rast_1_",yq)))
+  rm(list=c(paste0("gwqtr_rast_2_",yq)))
+  rm(list=c(paste0("gwqtr_rast_3_",yq)))
+  rm(list=c(paste0("gwqtr_1_",yq)))
+  rm(list=c(paste0("gwqtr_2_",yq)))
+  rm(list=c(paste0("gwqtr_3_",yq)))
+  
 }  
 
-#Export SP and pump results to CSV
-setwd(paste0(path,"data/misc"))
-filename <- paste0("prems_gw_depths_from_rasters.csv")
+#Export quarterly SP and pump results to CSV
+filename <- paste0("prems_gw_depths_from_rasters_qtr.csv")
 write.csv(prems, file=filename , row.names=FALSE, quote=FALSE)
-filename <- paste0("pumps_gw_depths_from_rasters.csv")
+filename <- paste0("pumps_gw_depths_from_rasters_qtr.csv")
 write.csv(pumps, file=filename , row.names=FALSE, quote=FALSE)
 
 
@@ -182,19 +205,17 @@ write.csv(pumps, file=filename , row.names=FALSE, quote=FALSE)
 
 rm(list = ls())
 path <- "T:/Projects/Pump Data/"
+setwd(paste0(path,"data/misc"))
 
 #Load monthly/quarterly rasters
-setwd(paste0(path,"data/misc"))
 load("temp_gw_idw_rasters_SJ.RData")
 
 #Read PGE coordinates
-setwd(paste0(path,"data/misc"))
 prems <- read.delim2("pge_prem_coord_3pulls.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
 prems$x <- as.numeric(prems$prem_lon)
 prems$y <- as.numeric(prems$prem_lat)
 
 #Read APEP coordinates
-setwd(paste0(path,"data/misc"))
 pumps <- read.delim2("apep_pump_coord.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
 pumps$x <- as.numeric(pumps$pump_lon)
 pumps$y <- as.numeric(pumps$pump_lat)
@@ -267,7 +288,25 @@ for (ym in levels(gwmth$modate)) {
   #Intermediate output
   print(paste(ym,"  ",Sys.time()))
   
+  #Remove ym's monthly rasters and data frames that we no longer need, to save memory
+  rm(list=c(paste0("gwmth_sj_rast_1_",ym)))
+  rm(list=c(paste0("gwmth_sj_rast_2_",ym)))
+  rm(list=c(paste0("gwmth_sj_rast_3_",ym)))
+  rm(list=c(paste0("gwmth_sj_1_",ym)))
+  rm(list=c(paste0("gwmth_sj_2_",ym)))
+  rm(list=c(paste0("gwmth_sj_3_",ym)))
+  
 }  
+
+#Export monthly SP and pump results to CSV
+filename <- paste0("prems_gw_depths_from_rasters_mth_SJ.csv")
+write.csv(prems, file=filename , row.names=FALSE, quote=FALSE)
+filename <- paste0("pumps_gw_depths_from_rasters_mth_SJ.csv")
+write.csv(pumps, file=filename , row.names=FALSE, quote=FALSE)
+
+#Remove monthly columns from output dataframes
+prems <- prems %>% select(c(sp_uuid,prem_lat,prem_long,bad_geocode_flag,missing_geocode_flag,pull,x,y))
+pumps <- pumps %>% select(c(pump_lat,pump_long,latlon_group,x,y))
 
 #Loop over quarters to extract quarterly groundwater depths
 for (yq in levels(gwqtr$qtr)) {
@@ -329,13 +368,20 @@ for (yq in levels(gwqtr$qtr)) {
   #Intermediate output
   print(paste(yq,"  ",Sys.time()))
   
+  #Remove yq's quarterly rasters and data frames that we no longer need, to save memory
+  rm(list=c(paste0("gwqtr_sj_rast_1_",yq)))
+  rm(list=c(paste0("gwqtr_sj_rast_2_",yq)))
+  rm(list=c(paste0("gwqtr_sj_rast_3_",yq)))
+  rm(list=c(paste0("gwqtr_sj_1_",yq)))
+  rm(list=c(paste0("gwqtr_sj_2_",yq)))
+  rm(list=c(paste0("gwqtr_sj_3_",yq)))
+  
 }  
 
-#Export SP and pump results to CSV
-setwd(paste0(path,"data/misc"))
-filename <- paste0("prems_gw_depths_from_rasters_SJ.csv")
+#Export quarterly SP and pump results to CSV
+filename <- paste0("prems_gw_depths_from_rasters_qtr_SJ.csv")
 write.csv(prems, file=filename , row.names=FALSE, quote=FALSE)
-filename <- paste0("pumps_gw_depths_from_rasters_SJ.csv")
+filename <- paste0("pumps_gw_depths_from_rasters_qtr_SJ.csv")
 write.csv(pumps, file=filename , row.names=FALSE, quote=FALSE)
 
 
@@ -346,19 +392,17 @@ write.csv(pumps, file=filename , row.names=FALSE, quote=FALSE)
 
 rm(list = ls())
 path <- "T:/Projects/Pump Data/"
+setwd(paste0(path,"data/misc"))
 
 #Load monthly/quarterly rasters
-setwd(paste0(path,"data/misc"))
 load("temp_gw_idw_rasters_SAC.RData")
 
 #Read PGE coordinates
-setwd(paste0(path,"data/misc"))
 prems <- read.delim2("pge_prem_coord_3pulls.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
 prems$x <- as.numeric(prems$prem_lon)
 prems$y <- as.numeric(prems$prem_lat)
 
 #Read APEP coordinates
-setwd(paste0(path,"data/misc"))
 pumps <- read.delim2("apep_pump_coord.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
 pumps$x <- as.numeric(pumps$pump_lon)
 pumps$y <- as.numeric(pumps$pump_lat)
@@ -431,7 +475,25 @@ for (ym in levels(gwmth$modate)) {
   #Intermediate output
   print(paste(ym,"  ",Sys.time()))
   
+  #Remove ym's monthly rasters and data frames that we no longer need, to save memory
+  rm(list=c(paste0("gwmth_sac_rast_1_",ym)))
+  rm(list=c(paste0("gwmth_sac_rast_2_",ym)))
+  rm(list=c(paste0("gwmth_sac_rast_3_",ym)))
+  rm(list=c(paste0("gwmth_sac_1_",ym)))
+  rm(list=c(paste0("gwmth_sac_2_",ym)))
+  rm(list=c(paste0("gwmth_sac_3_",ym)))
+  
 }  
+
+#Export monthly SP and pump results to CSV
+filename <- paste0("prems_gw_depths_from_rasters_mth_SAC.csv")
+write.csv(prems, file=filename , row.names=FALSE, quote=FALSE)
+filename <- paste0("pumps_gw_depths_from_rasters_mth_SAC.csv")
+write.csv(pumps, file=filename , row.names=FALSE, quote=FALSE)
+
+#Remove monthly columns from output dataframes
+prems <- prems %>% select(c(sp_uuid,prem_lat,prem_long,bad_geocode_flag,missing_geocode_flag,pull,x,y))
+pumps <- pumps %>% select(c(pump_lat,pump_long,latlon_group,x,y))
 
 #Loop over quarters to extract quarterly groundwater depths
 for (yq in levels(gwqtr$qtr)) {
@@ -493,12 +555,19 @@ for (yq in levels(gwqtr$qtr)) {
   #Intermediate output
   print(paste(yq,"  ",Sys.time()))
   
+  #Remove yq's quarterly rasters and data frames that we no longer need, to save memory
+  rm(list=c(paste0("gwqtr_sac_rast_1_",yq)))
+  rm(list=c(paste0("gwqtr_sac_rast_2_",yq)))
+  rm(list=c(paste0("gwqtr_sac_rast_3_",yq)))
+  rm(list=c(paste0("gwqtr_sac_1_",yq)))
+  rm(list=c(paste0("gwqtr_sac_2_",yq)))
+  rm(list=c(paste0("gwqtr_sac_3_",yq)))
+  
 }  
 
-#Export SP and pump results to CSV
-setwd(paste0(path,"data/misc"))
-filename <- paste0("prems_gw_depths_from_rasters_SAC.csv")
+#Export quarterly SP and pump results to CSV
+filename <- paste0("prems_gw_depths_from_rasters_qtr_SAC.csv")
 write.csv(prems, file=filename , row.names=FALSE, quote=FALSE)
-filename <- paste0("pumps_gw_depths_from_rasters_SAC.csv")
+filename <- paste0("pumps_gw_depths_from_rasters_qtr_SAC.csv")
 write.csv(pumps, file=filename , row.names=FALSE, quote=FALSE)
 
