@@ -34,6 +34,8 @@ drop subfolder?
 gen yr1= substr(yr,1,4)
 destring yr1, replace
 
+gen filepath= "C:\Users\clohani\Dropbox\California_Crop_Snapshots\Zip\" + subfolder + "/" + filename
+
 ** we now extract the name of the crop, 
 ** first, for the ones with prices_leading
 
@@ -53,7 +55,6 @@ replace index= strpos(name, ",")-1 if (strpos(name, ",")<index | index==0)  & pr
 replace crop= substr(name,1, index) if index>0 & prices_leading==0
 
 ** read files 
-gen filepath= "C:\Users\clohani\Dropbox\California_Crop_Snapshots\Zip\" + subfolder + "/" + filename
 destring yr1, replace
 drop if missing(yr1)
 
@@ -63,7 +64,7 @@ save "$path_in/List_2007-08_crops.dta", replace
 
 local M= _N
 local count_missing_2=0
-forvalues j=1(1)`M' {
+forvalues j=113(1)`M' {
 
 use "$path_in/List_2007-08_crops.dta", clear
 local file= filepath[`j']
@@ -161,12 +162,33 @@ foreach var of local month_vars {
 dis "`n_month_vars'"
 dis "`month_vars'"
 
-keep v2 `state_var' `month_vars' f_mnth f_yr
+
+local N= _N
+local p=1
+foreach var of local month_vars {
+	gen crop_`p'=""
+	
+	forvalues l=1(1)`N' {
+		local current= `var'[`l']
+		local cond_mnth strpos("`current'","Jan")>0 | strpos("`current'","Feb")>0 | (strpos("`current'","Mar")>0 & strpos("`current'","Mary")==0) | strpos("`current'","Apr")>0 | strpos("`current'","May")>0 | strpos("`current'","Jun")>0 | strpos("`current'","Jul")>0 | strpos("`current'","Aug")>0 | strpos("`current'","Sep")>0 | strpos("`current'","Oct")>0 | strpos("`current'","Nov")>0 | strpos("`current'","Dec")>0 
+		
+		if (v2[`l']=="u") {
+			break
+		}
+		if v2[`l']=="h" & !(`cond_mnth') {
+			replace crop_`p'= crop_`p' + " " + "`current'"
+		}
+	}
+	local p=`p'+1
+}
+
+keep v2 `state_var' `month_vars' f_mnth f_yr crop*
 foreach var of local month_vars {
 	local units= `var'[`row_units']
 }
-keep `state_var' `month_vars' f_mnth f_yr
+keep `state_var' `month_vars' f_mnth f_yr crop*
 rename (`state_var') (state)
+
 drop if !(missing(state) | state=="State" | state=="state" | state=="United States" | state=="California" | state== "CA" | state== "US" | state== "USA")
 
 
@@ -234,9 +256,9 @@ forvalues i=1(1)`N' {
 	replace month= mnth_`k'[`i'] in `i'
 	replace yr= yr_`k'[`i'] in `i'
 	replace price= price_`k'[`i'] in `i'
+	replace crop= crop_`k'[`i'] in `i' if !missing(crop_`k'[`i'])
 }
-
-drop mnth_* price_*
+drop mnth_* price_* crop_*
 
 gen mnth_code=1
 replace mnth_code= 2 if substr(month,1,3)=="Feb"
