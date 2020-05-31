@@ -277,6 +277,9 @@ replace hp_bin_quart = 0 if hp_nameplate < 35
 xtile hp_bin_dec = hp_nameplate if hp_nameplate >= 35, nq(10)
 replace hp_bin_dec = 0 if hp_nameplate < 35
 drop hp hp_nameplate
+la var hp_bin_large "Two bins for nameplate horsepower; cutoff at 35 hp"
+la var hp_bin_quart "Five bins for nameplate horsepower; one below 35 hp, quartiles above"
+la var hp_bin_dec "Eleven bins for nameplate horsepower; one below 35 hp, deciles above"
 
 ** Create kilowatt bins
 gen kw_bin_large = 0
@@ -286,11 +289,16 @@ replace kw_bin_quart = 0 if kw_input < 26.11
 xtile kw_bin_dec = kw_input if kw_input >= 26.11, nq(10)
 replace kw_bin_dec = 0 if kw_input < 26.11
 drop kw_input
+la var kw_bin_large "Two bins for kw power usage; cutoff at 26.11 kw"
+la var kw_bin_quart "Five bins for kw power usage; one below 26.11 kw, quartiles above"
+la var kw_bin_dec "Eleven bins for kw power usage; one below 26.11 kw, deciles above"
 
 ** Create OPE bins
 xtile ope_bin_quart = ope, nq(4)
 xtile ope_bin_dec = ope, nq(10)
 drop ope
+la var ope_bin_quart "Quartiles of OPE"
+la var ope_bin_dec "Deciles of OPE"
 
 ** Compress, and save
 unique sp_uuid modate

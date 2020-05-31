@@ -661,11 +661,9 @@ la var basin_group "Groundwater basin (numeric)"
 rename clu_id_ec clu_id
 rename clu_group*_ec clu_group*
 	// Make parcel identifier numeric, to save memory
-foreach v of varlist parcelid_conc {
-	rename `v' temp
-	encode temp, gen(`v')
-	drop temp
-}
+rename parcelid_conc temp
+encode temp, gen(parcelid_conc)
+drop temp
 	// Make CLU group identifiers numeric too, with a common encoding
 foreach v of varlist clu_group* {
 	rename `v' temp
@@ -679,25 +677,13 @@ la var flag_clu_inconsistency "Dummy=1 if CLU doesn't match county, unrestricted
 drop temp polygon_check*
 
 ** Merge CDL crop data
-tempfile sp_gis
-save `sp_gis'
-use "$dirpath_data/cleaned_spatial/cdl_panel_crop_year_full.dta", clear
-keep if fraction > 0.5
-keep clu_id year landtype fraction cluacres noncrop
-rename fraction landtype_fraction
-rename cluacres acres
-rename noncrop landtype_noncrop
-tempfile cdl
-save `cdl'
-use `sp_gis'
-merge m:1 clu_id year using `cdl', nogen keep(1 3)
+merge m:1 clu_id year using "$dirpath_data/cleaned_spatial/CDL_panel_clu_bigcat_year_wide.dta", nogen keep(1 3)
 	// Make CLU identifier numeric, to save memory
-foreach v of varlist clu_id {
-	rename `v' temp
-	encode temp, gen(`v')
-	drop temp
-}
+rename clu_id temp
+encode temp, gen(clu_id)
+drop temp
 
+/*
 ** Merge Davis cost study data
 decode county_group, gen(county_fips)
 drop county_group
@@ -706,6 +692,7 @@ merge m:1 landtype county_fips using "$dirpath_data/Davis cost studies/Davis_to_
 merge m:1 Number using "$dirpath_data/Davis cost studies/Davis_cost_studies_processed_all.dta", ///
 	nogen keep(1 3) keepusing(TOTAL_GROSS_RETURNS vc_Irrigation TOTAL_OPERATING_COSTS TOTAL_COSTS ///
 	PROFITS q_water p_water MVP_water Annual_Perennial)
+*/
 
 ** Merge in switchers indicators
 cap drop sp_same_rate_*
@@ -890,37 +877,11 @@ assert rt_category!=. & rt_large_ag!=.
 la var rt_category "PGE ag rate category (1 of 5 w/in which choosing is possible)"
 la var rt_large_ag "PGE ag rate groups based on motor size/type (0=small, 1=large, 2=ICE)"
 
-** Create indicators for crop types
-gen alfalfa = (landtype == "Alfalfa")
-gen almonds = (landtype == "Almonds")
-gen corn = (landtype == "Corn")
-gen cotton = (landtype == "Cotton")
-gen dbl_wheat_corn = (landtype == "Dbl Crop WinWht/Corn")
-gen fallow = (landtype == "Fallow/Idle Cropland")
-gen grapes = (landtype == "Grapes")
-gen grass = (landtype == "Grass/Pasture")
-gen oranges = (landtype == "Oranges")
-gen pistachios = (landtype == "Pistachios")
-gen rice = (landtype == "Rice")
-gen tomatoes = (landtype == "Tomatoes")
-gen walnuts = (landtype == "Walnuts")
-gen wheat = (landtype == "Winter Wheat")
-gen no_crop = fallow + landtype_noncrop
-gen developed = (strpos(landtype, "Developed") > 0)
-gen annual = (Annual_Perennial == "Annual")
-gen perennial = (Annual_Perennial == "Perennial")
-foreach v of varlist alfalfa-perennial {
-	replace `v' = . if landtype == ""
-}
-foreach v of varlist annual perennial {
-	egen `v'_always = min(`v'), by(sp_uuid)
-	egen `v'_ever = max(`v'), by(sp_uuid)
-}
-gen ann_per_switcher = min(annual_ever, perennial_ever)
-
 ** Create electricity consumption indicators
-gen elec_binary = (mnth_bill_kwh > 0)
+gen elec_binary = (mnth_bill_kwh>0)
 egen elec_binary_frac = mean(elec_binary), by(sp_uuid)
+la var elec_binary "Dummy=1 for kwh>0 in SP-month"
+la var elec_binary_frac "Fraction of SP's months with kwh>0"
 
 ** Drop a few long strings, to save memory
 cap drop dr_program

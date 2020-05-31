@@ -76,13 +76,13 @@ do "$dirpath_code/build/BUILD_clean_rate_data.do"
 do "$dirpath_code/build/BUILD_event_days.do"
 
 *** B18: CONVERT PARCEL SHAPEFILES TO USABLE FORMAT
-// "BUILD_parcel_conversion.R"
+// "BUILD_gis_parcel_conversion.R"
 
 *** B19: CLEAN PARCEL SHAPEFILES [B18]
-// "BUILD_parcel_clean.R"
+// "BUILD_gis_parcel_clean.R"
 	
 *** B20: CLEAN COMMON LAND UNIT SHAPEFILES
-// "BUILD_clu_clean.R"
+// "BUILD_gis_clu_clean.R"
 
 *** B21: CREATE CONCORDANCE THAT OVERLAYS CLU & PARCEL SHAPEFILES [B19 B20]
 // "BUILD_gis_clu_parcel_conc.R"
@@ -156,8 +156,6 @@ do "$dirpath_code/merge/MERGE_panel_kwhaf.do"
 
 *** M8: CONSTRUCT PANEL DATASETS FOR WATER REGRESSIONS [B25 B28 M5 M7]
 do "$dirpath_code/merge/MERGE_analysis_water_regs.do"
-
-*** M9: MERGE CROP VARIABLES INTO ELECTRICITY AND WATER PANELS [B26 M8]
 
 
 

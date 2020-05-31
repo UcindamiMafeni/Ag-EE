@@ -8,9 +8,6 @@ set more off
 
 global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
-global dirpath_code "T:/Home/Louis/backup/AgEE/AgEE_code/build"
-*global R_exe_path "C:/PROGRA~1/MIE74D~1/ROPEN~1/bin/x64/R"
-*global R_lib_path "C:/Program Files/Microsoft/R Open/R-3.4.4/library"
 
 *******************************************************************************
 *******************************************************************************
@@ -75,14 +72,6 @@ drop temp
 merge m:1 cropname using `usda_ap'
 assert _merge==2 if type=="Horticulture"
 assert _merge==1 if noncrop==1 // confirm noncrops are actually noncrops
-drop if noncrop==1
-drop noncrop
-
-	// Two obvious replacements
-sort cropname _merge
-list cropname if _merge==1	
-replace annualorperennial = "Annual" if cropname=="Other Small Grains" 
-replace annualorperennial = "Perennial" if cropname=="Other Tree Crops" 
 
 	// Keep master only
 drop if _merge==2
@@ -92,6 +81,8 @@ sort cropname
 
 	// Fix missing/ambiguous Annual/Perennial 
 br if !inlist(annualorperennial,"Annual","Perennial")
+replace annualorperennial = "Annual" if cropname=="Other Small Grains" // obvious
+replace annualorperennial = "Perennial" if cropname=="Other Tree Crops" // obvious
 replace annualorperennial = "Perennial" if cropname=="Alfalfa" // grown as a short perennial
 replace annualorperennial = "Annual" if cropname=="Celery" // grown as annual, actualy biennal
 replace annualorperennial = "Perennial" if cropname=="Clover" // conflicting information here
@@ -103,11 +94,12 @@ replace annualorperennial = "Annual" if cropname=="Other Crops" // default to an
 replace annualorperennial = "Perennial" if cropname=="Other Hay/Non Alfalfa" // most hays are perennial
 	// https://www.nrcs.usda.gov/internet/FSE_DOCUMENTS/nrcs144p2_016364.pdf
 replace annualorperennial = "Annual" if cropname=="Sod/Grass Seed" // ambiguous, but sod gets ripped up
+replace annualorperennial = "Perennial" if noncrop==1 // noncrops are semi-permanent landtypes
 assert inlist(annualorperennial,"Annual","Perennial")	
 gen perennial = annualorperennial=="Perennial"
 
 	// Make unique by land type
-drop annualorperennial cropname
+drop annualorperennial cropname noncrop
 duplicates drop
 unique landtype
 assert r(unique)==r(N)
@@ -128,10 +120,6 @@ save "$dirpath_data/cleaned_spatial/landtype_perennial.dta", replace
 	// Collapse CDL acreage by land type
 use "$dirpath_data/cleaned_spatial/cdl_panel_crop_year_full.dta", clear
 collapse (sum) landtype_acres, by(landtype noncrop) fast
-
-	// Drop noncrop land types
-drop if noncrop==1
-drop noncrop
 
 	// Define some broad categories
 gen landtype_cat = ""
@@ -159,6 +147,8 @@ replace landtype_cat = "other" if inlist(landtype,"Canola","Mustard","Safflower"
 replace landtype_cat = "other" if inlist(landtype,"Cotton","Other Crops","Sod/Grass Seed","Christmas Trees","Soybeans")
 replace landtype_cat = "vegetables" if regexm(landtype,"Dbl Crop Lettuce/") // assign based on first double crop
 replace landtype_cat = "cereal" if regexm(landtype,"Dbl Crop WinWht/") // assign based on first double crop
+replace landtype_cat = "noncrop" if noncrop==1
+drop noncrop
 assert landtype_cat!=""
 
 	// Acreage by category
@@ -234,14 +224,7 @@ save "$dirpath_data/cleaned_spatial/landtype_categories.dta", replace
 	// Start with full panel
 use "$dirpath_data/cleaned_spatial/cdl_panel_crop_year_full.dta", clear
 keep county clu_id year landtype fraction landtype_acres cluacres acres_crop ///
-	fraction_crop noncrop ever_crop_pct
-	
-	// Drop non-crop land types
-drop if noncrop==1
-drop noncrop
-sum fraction_crop, detail
-sum fraction_crop if ever_crop_pct==1, detail
-sum fraction_crop if ever_crop_pct==0, detail
+	fraction_crop ever_crop_pct
 
 	// Deal with slivers?
 qui count
@@ -312,12 +295,193 @@ duplicates r clu_id year
 compress
 save "$dirpath_data/cleaned_spatial/CDL_panel_clu_cat_year_long.dta", replace
 
+	// Define broader land categories
+use "$dirpath_data/cleaned_spatial/CDL_panel_clu_cat_year_long.dta", clear
+tab landtype_cat perennial
+gen landtype_bigcat = ""
+replace landtype_bigcat = "Noncrop" if inlist(landtype_cat,"Fallow","Noncrop")
+replace landtype_bigcat = "Annual" if perennial==0 & landtype_bigcat==""
+replace landtype_bigcat = "Fruit/Nut Perennial" if inlist(landtype_cat,"Fruit","Grapes","Nuts") & perennial==1
+replace landtype_bigcat = "Other Perennial" if perennial==1 & landtype_bigcat==""
+assert landtype_bigcat!=""
+	
+	// Collapse to broader land categories
+foreach v of varlist fraction cat_peren_acres {
+	egen double temp = sum(`v'), by(county clu_id year landtype_bigcat)
+	replace `v' = temp
+	drop temp
+}
+drop landtype_cat perennial
+duplicates drop	
+la var landtype_bigcat "Broad land type category (our own, not definitive)"
+la var fraction "Fraction of CLU area of given broad category"
+la var cat_peren_acres "Acres within CLU of given broad category"
+rename cat_peren_acres bigcat_acres
+	
+	// Save panel: CLU*year, long, by broad category
+sort county clu_id year landtype_bigcat
+order county clu_id year landtype_bigcat
+unique clu_id year landtype_bigcat
+assert r(unique)==r(N)
+duplicates r clu_id year
+compress
+save "$dirpath_data/cleaned_spatial/CDL_panel_clu_bigcat_year_long.dta", replace
+
 }
 
 *******************************************************************************
 *******************************************************************************
 
-** 4. CLU-by-year panel, using crop categories (wide)
+** 4. CLU-by-year panel, using broad land categories (wide)
+{
+	// Load panel: CLU*year, long, by broad category
+use "$dirpath_data/cleaned_spatial/CDL_panel_clu_bigcat_year_long.dta", clear
+
+	// Shorten strings pre-reshape
+tab landtype_bigcat
+replace landtype = subinstr(landtype," ","",.)
+replace landtype = subinstr(landtype,"/","",.)
+compress
+tab landtype
+
+	// Reshape wide: categories
+rename fraction frac_
+rename bigcat_acres acres_
+rename acres_crop crop_acres
+reshape wide frac_ acres_, i(county clu_id year cluacres crop_acres ///
+	fraction_crop ever_crop_pct) j(landtype_bigcat) string
+	
+	// Switch missings to zeros
+foreach v of varlist frac_* acres_* {
+	replace `v' = 0 if `v'==.
+	qui sum `v'
+	if r(max)==0 {
+		di "`v'"
+		assert 2+2==5
+	}
+}	
+	
+	// Confirm acres and fractions add up
+egen temp_f = rowtotal(frac_*)
+egen temp_a = rowtotal(acres_*)
+assert round(abs(temp_f-1),0.000001)==0
+assert round(abs(temp_a-cluacres),0.1)==0
+drop temp*
+	
+	// Fix labels
+foreach v of varlist frac_* {
+	local v2 = subinstr("`v'","_"," ",.)
+	local vbigcat = word("`v2'",2)
+	la var `v' "Fraction of CLU area: `vbigcat'"
+}
+foreach v of varlist acres_* {
+	local v2 = subinstr("`v'","_"," ",.)
+	local vbigcat = word("`v2'",2)
+	la var `v' "Acres of CLU: `vbigcat'"
+}
+
+	// Remove fallow acres (i.e. potential crop acres) from crop acres
+la var cluacres "Total CLU acres (full polygon)"
+la var crop_acres "Total CLU acres with crop or fallow in year t"
+gen crop_acres_planted = acres_Annual+acres_FruitNutPerennial+acres_OtherPerennial
+assert crop_acres_planted>-0.001
+replace crop_acres_planted = 0 if crop_acres_planted<0
+la var crop_acres_planted "Total CLU acres with crop planted in year t"
+la var fraction_crop "Fraction of CLU acres with crops or fallow in year t"
+gen fraction_crop_planted = frac_Annual+frac_FruitNutPerennial+frac_OtherPerennial
+assert fraction_crop_planted>-0.0000001
+replace fraction_crop_planted = 0 if fraction_crop_planted<0
+assert fraction_crop_planted<1.000001
+replace fraction_crop_planted = 1 if fraction_crop_planted>1
+la var fraction_crop_planted "Fraction of CLU acres with crops planted in year t"
+order crop_acres_planted, after(crop_acres)
+order fraction_crop_planted, after(fraction_crop)
+
+	// Modal land category by CLU-year	
+foreach c in Annual FruitNutPerennial Noncrop OtherPerennial {
+	egen double temp_`c' = rowtotal(frac_`c'*)
+}
+egen double temp_mode = rowmax(temp_*)
+sum temp_mode, detail
+foreach c in Annual FruitNutPerennial Noncrop OtherPerennial {
+	gen mode_`c' = temp_mode==temp_`c' & temp_mode>0
+	la var mode_`c' "Dummy for `c' as modal land category in year"
+}
+egen temp_mode_check = rowmax(mode_*)
+tab temp_mode_check
+tab temp_mode_check if temp_mode>0
+assert temp_mode_check==1 if temp_mode>0
+drop temp*
+
+	// Modal land category with >=50% by CLU-year
+foreach c in Annual FruitNutPerennial Noncrop OtherPerennial {
+	gen mode50_`c' = mode_`c'*(frac_`c'>0.5)
+	la var mode50_`c' "Dummy for `c' >50% in year"
+}
+	
+	// Ever-category dummies
+foreach c in Annual FruitNutPerennial Noncrop OtherPerennial {
+	egen double temp_sumF = rowtotal(frac_`c'*)
+	egen double temp_sumA = rowtotal(acres_`c'*)
+	egen double temp_maxF = max(temp_sumF), by(clu_id)
+	egen double temp_maxA = max(temp_sumA), by(clu_id)
+	gen ever_`c' = temp_maxF>0.20 | temp_maxA>1
+	la var ever_`c' "Dummy for CLU ever having >20% or >1 acre = `c'"
+	drop temp*
+}	
+sum ever*
+
+	// Ever 50% dummies for land categories
+foreach c in Annual FruitNutPerennial Noncrop OtherPerennial {
+	egen double temp_sumF = rowtotal(frac_`c'*)
+	egen double temp_sumA = rowtotal(acres_`c'*)
+	egen double temp_maxF = max(temp_sumF), by(clu_id)
+	egen double temp_maxA = max(temp_sumA), by(clu_id)
+	gen ever50_`c' = temp_maxF>0.50 
+	la var ever50_`c' "Dummy for CLU ever having >50% = `c'"
+	drop temp*
+}
+sum ever*
+	
+	// Mode-switcher indicator
+foreach c in Annual FruitNutPerennial Noncrop OtherPerennial {
+	egen temp_`c' = max(mode_`c'), by(clu_id)
+}
+egen temp_sum = rowtotal(temp_*)
+gen mode_switcher = temp_sum>1 
+la var mode_switcher "Dummy for CLUs where yearly mode ever switches land categories"	
+tab temp_sum
+sum mode_switcher
+drop temp*
+
+	// Mode-50-switcher indicator
+foreach c in Annual FruitNutPerennial Noncrop OtherPerennial {
+	egen temp_`c' = max(mode50_`c'), by(clu_id)
+}
+egen temp_sum = rowtotal(temp_*)
+gen mode50_switcher = temp_sum>1 
+la var mode50_switcher "Dummy for CLUs where >50% ever switches land categories"	
+tab temp_sum
+sum mode50_switcher
+drop temp*
+	
+	// Save panel: CLU*year, wide, by category/perennal
+sort county clu_id year
+order frac_Annual frac_FruitNutPerennial frac_Noncrop frac_OtherPerennial ///
+	acres_Annual acres_FruitNutPerennial acres_Noncrop acres_OtherPerennial, after(ever_crop_pct)
+order mode_switcher, after(mode_OtherPerennial)
+order mode50_switcher, after(mode50_OtherPerennial)
+unique clu_id year
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/cleaned_spatial/CDL_panel_clu_bigcat_year_wide.dta", replace
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 5. CLU-by-year panel, using crop categories (wide)
 {
 	// Load panel: CLU*year, long, by category/perennial
 use "$dirpath_data/cleaned_spatial/CDL_panel_clu_cat_year_long.dta", clear
@@ -349,9 +513,13 @@ foreach v of varlist frac_* acres_* {
 	
 	// Confirm acres and fractions add up
 egen temp_f = rowtotal(frac_*)
-egen temp_a = rowtotal(acres_*)	
-assert round(abs(temp_f-fraction_crop),0.000001)==0
-assert round(abs(temp_a-crop_acres),0.001)==0
+gen temp_cf = temp_f-frac_Noncrop_P
+egen temp_a = rowtotal(acres_*)
+gen temp_ca = temp_a-acres_Noncrop_P
+assert round(abs(temp_f-1),0.000001)==0
+assert round(abs(temp_cf-fraction_crop),0.000001)==0
+assert round(abs(temp_a-cluacres),0.1)==0
+assert round(abs(temp_ca-crop_acres),0.01)==0
 drop temp*
 	
 	// Fix labels
@@ -380,7 +548,7 @@ foreach v of varlist acres_* {
 	la var `v' "Acres of CLU: `vcat', `vap2'"
 }
 
-	// Modal crop category by CLU-year (excluding Fallow)	
+	// Modal crop category by CLU-year (excluding Fallow and Noncrop)	
 foreach c in Cereal Cotton Feed Fruit Grapes Nuts Vegetables Other {
 	egen double temp_`c' = rowtotal(frac_`c'*)
 }
@@ -388,7 +556,7 @@ egen double temp_mode = rowmax(temp_*)
 sum temp_mode, detail
 foreach c in Cereal Cotton Feed Fruit Grapes Nuts Vegetables Other {
 	gen mode_`c' = temp_mode==temp_`c' & temp_mode>0
-	la var mode_`c' "Dummy for `c' as modal crop category in year (excl Fallow)"
+	la var mode_`c' "Dummy for `c' as modal crop category in year (excl Fallow and Noncrop)"
 }
 egen temp_mode_check = rowmax(mode_*)
 tab temp_mode_check
@@ -396,29 +564,41 @@ tab temp_mode_check if temp_mode>0
 assert temp_mode_check==1 if temp_mode>0
 drop temp*
 	
-	// Modal crop category by CLU-year (including Fallow)
+	// Modal crop category by CLU-year (including Fallow but exclusing Noncrop)
 foreach c in Cereal Cotton Fallow Feed Fruit Grapes Nuts Vegetables Other {
 	egen double temp_`c' = rowtotal(frac_`c'*)
 }
 egen double temp_mode = rowmax(temp_*)
 sum temp_mode, detail
 gen mode_Fallow = temp_mode==temp_Fallow & temp_mode>0
-la var mode_Fallow "Dummy for Fallow as modal categoty in year"
+la var mode_Fallow "Dummy for Fallow as modal categoty in year (excl Noncrop)"
+drop temp*
+
+	// Modal crop category by CLU-year (including Noncrop)
+foreach c in Cereal Cotton Fallow Feed Fruit Grapes Noncrop Nuts Vegetables Other {
+	egen double temp_`c' = rowtotal(frac_`c'*)
+}
+egen double temp_mode = rowmax(temp_*)
+sum temp_mode, detail
+gen mode_Noncrop = temp_mode==temp_Noncrop & temp_mode>0
+la var mode_Noncrop "Dummy for Noncrop as modal categoty in year"
 drop temp*
 	
-	// Modal crop is perennial (excludling Fallow)
+	// Modal crop is perennial (excludling Fallow and Noncrop)
 rename frac_Fallow_A frac_Fallow
+rename frac_Noncrop_P frac_Noncrop
 foreach c in _A _P {
 	egen double temp`c' = rowtotal(frac_*`c')
 }
 egen double temp_mode = rowmax(temp_*)
 sum temp_mode, detail
 gen mode_P = temp_mode==temp_P & temp_mode>0
-la var mode_P "Dummy for perennial > annual acres in year (excl Fallow)"
+la var mode_P "Dummy for perennial > annual acres in year (excl Fallow and Noncrop)"
 sum mode_P
 sum mode_P if temp_mode>0
 drop temp*
 rename frac_Fallow frac_Fallow_A
+rename frac_Noncrop frac_Noncrop_P
 	
 	// Ever-category dummies
 foreach c in Cereal Cotton Feed Fruit Grapes Nuts Vegetables Other {
@@ -477,7 +657,7 @@ save "$dirpath_data/cleaned_spatial/CDL_panel_clu_cat_year_wide.dta", replace
 *******************************************************************************
 *******************************************************************************
 
-** 5. CLU-by-year panel, using individual crops (wide)
+** 6. CLU-by-year panel, using individual crops (wide)
 {
 	// Load panel: CLU*year, long, by crop
 use "$dirpath_data/cleaned_spatial/CDL_panel_clu_crop_year_long.dta", clear
@@ -505,6 +685,9 @@ tab landtype
 replace landtype = subinstr(landtype,"Dbl Crop ","",1)
 replace landtype = subinstr(landtype,"/Non Alfalfa","",1)
 replace landtype = subinstr(landtype,"/Idle Cropland","",1)
+replace landtype = subinstr(landtype,"Developed/","",1)
+replace landtype = subinstr(landtype,"/Pasture","",1)
+replace landtype = "Evergreen" if landtype=="Evergreen Forest"
 replace landtype = subinstr(landtype,"Vegetables","Veg",1)
 replace landtype = subinstr(landtype,"Other Other","Other",1)
 replace landtype = subinstr(landtype," ","_",.) if word(landtype,1)=="Other" & landtype!="Other Hay"
@@ -545,8 +728,8 @@ foreach v of varlist frac_* acres_* {
 	// Confirm acres and fractions add up
 egen temp_f = rowtotal(frac_*)
 egen temp_a = rowtotal(acres_*)	
-assert round(abs(temp_f-fraction_crop),0.000001)==0
-assert round(abs(temp_a-crop_acres),0.01)==0
+assert round(abs(temp_f-1),0.000001)==0
+assert round(abs(temp_a-cluacres),0.1)==0
 drop temp*
 	
 	// Fix labels
@@ -605,7 +788,7 @@ order crop_acres_planted, after(crop_acres)
 order fraction_crop_planted, after(fraction_crop)
 	
 	// Ever dummies for specific crops
-foreach c in Alfalfa Almonds Barley Corn Cotton Grapes Oats Oranges OtherHay Pistachios Rice Tomatoes Walnuts Wh {	
+foreach c in Alfalfa Almonds Corn Cotton Grapes OtherHay Pistachios Rice Tomatoes Walnuts Wh {	
 	egen double temp_sumF = rowtotal(frac_*`c'*)
 	egen double temp_sumA = rowtotal(acres_*`c'*)
 	egen double temp_maxF = max(temp_sumF), by(clu_id)
@@ -620,9 +803,10 @@ foreach c in Alfalfa Almonds Barley Corn Cotton Grapes Oats Oranges OtherHay Pis
 sum ever*
 
 	// Ever 50% dummies for specific crops
-foreach c in Alfalfa Almonds Barley Corn Cotton Grapes Oats Oranges OtherHay Pistachios Rice Tomatoes Walnuts Wh {	
+foreach c in Alfalfa Almonds Corn Cotton Grapes OtherHay Pistachios Rice Tomatoes Walnuts Wh {	
 	egen double temp_sumF = rowtotal(frac_*`c'*)
 	replace temp_sumF = temp_sumF/fraction_crop
+	replace temp_sumF = 0 if fraction_crop==0
 	egen double temp_maxF = max(temp_sumF>0.50), by(clu_id)
 	if "`c'"=="Wh" {
 		local c = "Wheat"
@@ -660,7 +844,130 @@ save "$dirpath_data/cleaned_spatial/CDL_panel_clu_crop_year_wide.dta", replace
 *******************************************************************************
 *******************************************************************************
 
-** 6. Group-by-year panel, using crop categories (wide)
+** 7. Group-by-year panel, using broad land categories (wide)
+{
+	// Merge in CLU group identifiers
+use "$dirpath_data/cleaned_spatial/CDL_panel_clu_bigcat_year_wide.dta", clear
+merge m:1 clu_id using "$dirpath_data/cleaned_spatial/clu_conc_groups.dta", ///
+	keep(1 3) keepusing(clu_group*)
+
+	// Diagnostics
+unique clu_id
+local uniq = r(unique)
+unique clu_id if _merge==1	
+di r(unique)/`uniq' // 9% of CLUs don't have a group
+
+unique clu_id if ever_crop_pct==1
+local uniq = r(unique)
+unique clu_id if ever_crop_pct==1 & _merge==1
+di r(unique)/`uniq' // 5% of ever-crop CLUs don't have a group
+tab _merge ever_crop_pct
+
+	// Drop unmerged CLUs: they are CLUs that don't show up at all in parcel concordance
+keep if _merge==3
+drop _merge
+
+	// Collapse and save, looping over CLU group identifiers
+foreach s in 0 10 25 50 75 {
+	
+	preserve
+	
+	// Drop other clu_group identifiers
+	foreach s2 in 0 10 25 50 75 {
+		if `s2'!=`s' {
+			drop clu_group`s2'
+		}
+	}
+	
+	// Sum acres variables
+	foreach v of varlist *acres* {
+		egen double temp = sum(`v'), by(clu_group`s' year)
+		replace `v' = temp
+		local vl: variable label `v'
+		local vl2 = subinstr("`vl'","CLU","CLU group",.)
+		la var `v' "`vl2'"
+		drop temp
+	}
+	rename cluacres clu_group`s'_acres
+
+	// Recalculate fraction variables
+	foreach v of varlist frac_* {
+		local vA = subinstr("`v'","frac_","acres_",1)
+		gen double temp = `vA'/clu_group`s'_acres
+		replace `v' = temp
+		local vl: variable label `v'
+		local vl2 = subinstr("`vl'","CLU","CLU group",.)
+		la var `v' "`vl2'"
+		drop temp
+	}
+	replace fraction_crop = crop_acres/clu_group`s'_acres
+	replace fraction_crop_planted = crop_acres_planted/clu_group`s'_acres
+	la var fraction_crop "Fraction of CLU group acres with crops or fallow in year t"
+	la var fraction_crop_planted "Fraction of CLU group acres with crops planted in year t"
+
+	// Take max of mode variables 
+	foreach v of varlist mode_* {
+		egen double temp = max(`v'), by(clu_group`s' year)
+		replace `v' = temp
+		local vl: variable label `v'
+		local vl2 = subinstr("`vl'","in year","in any CLU in year",.)
+		la var `v' "`vl2'"
+		drop temp
+	}
+	la var mode_switcher "Dummy for any CLU where yearly mode ever switches crop categories"
+	
+	// Take max of mode-50 variables 
+	foreach v of varlist mode50_* {
+		egen double temp = max(`v'), by(clu_group`s' year)
+		replace `v' = temp
+		local vl: variable label `v'
+		local vl2 = subinstr("`vl'","in year","in any CLU in year",.)
+		la var `v' "`vl2'"
+		drop temp
+	}
+	la var mode50_switcher "Dummy for any CLU where yearly >50% ever switches crop categories"
+
+	// Take max of ever variables 
+	foreach v of varlist ever_* {
+		egen double temp = max(`v'), by(clu_group`s' year)
+		replace `v' = temp
+		local vl: variable label `v'
+		local vl2 = subinstr("`vl'","CLU","any CLU",.)
+		la var `v' "`vl2'"
+		drop temp
+	}
+	
+	// Take max of ever-50 variables 
+	foreach v of varlist ever50_* {
+		egen double temp = max(`v'), by(clu_group`s' year)
+		replace `v' = temp
+		local vl: variable label `v'
+		local vl2 = subinstr("`vl'","CLU","any CLU",.)
+		la var `v' "`vl2'"
+		drop temp
+	}
+	
+	// Collapse
+	drop clu_id
+	duplicates drop
+	unique clu_group`s' year
+	assert r(unique)==r(N)
+	
+	// Reorder, sort, and save
+	order county clu_group`s' year
+	sort county clu_group`s' year
+	compress
+	save "$dirpath_data/cleaned_spatial/CDL_panel_clugroup`s'_bigcat_year_wide.dta", replace
+	
+	restore
+}	
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 8. Group-by-year panel, using crop categories (wide)
 {
 	// Merge in CLU group identifiers
 use "$dirpath_data/cleaned_spatial/CDL_panel_clu_cat_year_wide.dta", clear
@@ -671,7 +978,7 @@ merge m:1 clu_id using "$dirpath_data/cleaned_spatial/clu_conc_groups.dta", ///
 unique clu_id
 local uniq = r(unique)
 unique clu_id if _merge==1	
-di r(unique)/`uniq' // 6% of CLUs don't have a group
+di r(unique)/`uniq' // 9% of CLUs don't have a group
 
 unique clu_id if ever_crop_pct==1
 local uniq = r(unique)
@@ -762,7 +1069,7 @@ foreach s in 0 10 25 50 75 {
 *******************************************************************************
 *******************************************************************************
 
-** 7. Group-by-year panel, using individual crops (wide)
+** 9. Group-by-year panel, using individual crops (wide)
 {
 	// Merge in CLU group identifiers
 use "$dirpath_data/cleaned_spatial/CDL_panel_clu_crop_year_wide.dta", clear
@@ -773,7 +1080,7 @@ merge m:1 clu_id using "$dirpath_data/cleaned_spatial/clu_conc_groups.dta", ///
 unique clu_id
 local uniq = r(unique)
 unique clu_id if _merge==1	
-di r(unique)/`uniq' // 6% of CLUs don't have a group
+di r(unique)/`uniq' // 9% of CLUs don't have a group
 
 unique clu_id if ever_crop_pct==1
 local uniq = r(unique)
