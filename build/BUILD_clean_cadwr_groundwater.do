@@ -1463,10 +1463,10 @@ if 1==1{
 ** 6a. Statewide rasters (ignoring basin boundaries)
 {
 ** Read in output from GIS script to extract monthly depths from rasters
-insheet using "$dirpath_data/misc/prems_gw_depths_from_rasters.csv", double comma clear
+insheet using "$dirpath_data/misc/prems_gw_depths_from_rasters_mth.csv", double comma clear
 
-** Drop quarterly variables, and SP-specific variables
-drop *_????q? prem_lat prem_long bad_geocode_flag missing_geocode_flag x y
+** Drop SP-specific variables
+drop prem_lat prem_long bad_geocode_flag missing_geocode_flag x y
 
 ** Destring numeric variables before reshaping, to reduce file size
 foreach v of varlist depth_??_* {
@@ -1577,10 +1577,10 @@ save "$dirpath_data/groundwater/groundwater_depth_sp_month_rast.dta", replace
 ** 6b. San Joaquin Valley only rasters
 {
 ** Read in output from GIS script to extract monthly depths from rasters
-insheet using "$dirpath_data/misc/prems_gw_depths_from_rasters_SJ.csv", double comma clear
+insheet using "$dirpath_data/misc/prems_gw_depths_from_rasters_mth_SJ.csv", double comma clear
 
-** Drop quarterly variables, and SP-specific variables
-drop *_????q? prem_lat prem_long bad_geocode_flag missing_geocode_flag x y
+** Drop SP-specific variables
+drop prem_lat prem_long bad_geocode_flag missing_geocode_flag x y
 
 ** Destring numeric variables before reshaping, to reduce file size
 foreach v of varlist depth_??_* {
@@ -1689,10 +1689,10 @@ save "$dirpath_data/groundwater/groundwater_depth_sp_month_rast_SJ.dta", replace
 ** 6c. Sacramento Valley only rasters
 {
 ** Read in output from GIS script to extract monthly depths from rasters
-insheet using "$dirpath_data/misc/prems_gw_depths_from_rasters_SAC.csv", double comma clear
+insheet using "$dirpath_data/misc/prems_gw_depths_from_rasters_mth_SAC.csv", double comma clear
 
-** Drop quarterly variables, and SP-specific variables
-drop *_????q? prem_lat prem_long bad_geocode_flag missing_geocode_flag x y
+** Drop SP-specific variables
+drop prem_lat prem_long bad_geocode_flag missing_geocode_flag x y
 
 ** Destring numeric variables before reshaping, to reduce file size
 foreach v of varlist depth_??_* {
@@ -1810,10 +1810,10 @@ if 1==1{
 ** 7a. Statewide rasters (ignoring basin boundaries)
 {
 ** Read in output from GIS script to extract quarterly depths from rasters
-insheet using "$dirpath_data/misc/prems_gw_depths_from_rasters.csv", double comma clear
+insheet using "$dirpath_data/misc/prems_gw_depths_from_rasters_qtr.csv", double comma clear
 
-** Drop monthly variables, and SP-specific variables
-drop *_????m? *_????m?? prem_lat prem_long bad_geocode_flag missing_geocode_flag x y
+** Drop SP-specific variables
+drop prem_lat prem_long bad_geocode_flag missing_geocode_flag x y
 
 ** Destring numeric variables before reshaping, to reduce file size
 foreach v of varlist depth_??_* {
@@ -1924,10 +1924,10 @@ save "$dirpath_data/groundwater/groundwater_depth_sp_quarter_rast.dta", replace
 ** 7b. San Joaquin Valley only rasters
 {
 ** Read in output from GIS script to extract quarterly depths from rasters
-insheet using "$dirpath_data/misc/prems_gw_depths_from_rasters_SJ.csv", double comma clear
+insheet using "$dirpath_data/misc/prems_gw_depths_from_rasters_qtr_SJ.csv", double comma clear
 
-** Drop monthly variables, and SP-specific variables
-drop *_????m? *_????m?? prem_lat prem_long bad_geocode_flag missing_geocode_flag x y
+** Drop SP-specific variables
+drop prem_lat prem_long bad_geocode_flag missing_geocode_flag x y
 
 ** Destring numeric variables before reshaping, to reduce file size
 foreach v of varlist depth_??_* {
@@ -2036,10 +2036,10 @@ save "$dirpath_data/groundwater/groundwater_depth_sp_quarter_rast_SJ.dta", repla
 ** 7c. Sacramento Valley only rasters
 {
 ** Read in output from GIS script to extract quarterly depths from rasters
-insheet using "$dirpath_data/misc/prems_gw_depths_from_rasters_SAC.csv", double comma clear
+insheet using "$dirpath_data/misc/prems_gw_depths_from_rasters_qtr_SAC.csv", double comma clear
 
-** Drop monthly variables, and SP-specific variables
-drop *_????m? *_????m?? prem_lat prem_long bad_geocode_flag missing_geocode_flag x y
+** Drop SP-specific variables
+drop prem_lat prem_long bad_geocode_flag missing_geocode_flag x y
 
 ** Destring numeric variables before reshaping, to reduce file size
 foreach v of varlist depth_??_* {
@@ -2156,10 +2156,10 @@ if 1==1{
 ** 8a. Statewide ratsers (ignoring basin boundaries)
 {
 ** Read in output from GIS script to extract monthly depths from rasters
-insheet using "$dirpath_data/misc/pumps_gw_depths_from_rasters.csv", double comma clear
+insheet using "$dirpath_data/misc/pumps_gw_depths_from_rasters_mth.csv", double comma clear
 
-** Drop quarterly variables, and APEP-specific variables
-drop *_????q? pump_lat pump_lon x y
+** Drop APEP-specific variables
+drop pump_lat pump_lon x y
 
 ** Destring numeric variables before reshaping, to reduce file size
 foreach v of varlist depth_??_* {
@@ -2249,10 +2249,10 @@ save "$dirpath_data/groundwater/groundwater_depth_apep_month_rast.dta", replace
 ** 8b. San Joaquin Valley only rasters
 {
 ** Read in output from GIS script to extract monthly depths from rasters
-insheet using "$dirpath_data/misc/pumps_gw_depths_from_rasters_SJ.csv", double comma clear
+insheet using "$dirpath_data/misc/pumps_gw_depths_from_rasters_mth_SJ.csv", double comma clear
 
-** Drop quarterly variables, and APEP-specific variables
-drop *_????q? pump_lat pump_lon x y
+** Drop APEP-specific variables
+drop pump_lat pump_lon x y
 
 ** Destring numeric variables before reshaping, to reduce file size
 foreach v of varlist depth_??_* {
@@ -2339,10 +2339,10 @@ save "$dirpath_data/groundwater/groundwater_depth_apep_month_rast_SJ.dta", repla
 ** 8c. Sacramento Valley only rasters
 {
 ** Read in output from GIS script to extract monthly depths from rasters
-insheet using "$dirpath_data/misc/pumps_gw_depths_from_rasters_SAC.csv", double comma clear
+insheet using "$dirpath_data/misc/pumps_gw_depths_from_rasters_mth_SAC.csv", double comma clear
 
-** Drop quarterly variables, and APEP-specific variables
-drop *_????q? pump_lat pump_lon x y
+** Drop APEP-specific variables
+drop pump_lat pump_lon x y
 
 ** Destring numeric variables before reshaping, to reduce file size
 foreach v of varlist depth_??_* {
@@ -2437,10 +2437,10 @@ if 1==1{
 ** 9a. Statewide ratsers (ignoring basin boundaries)
 {
 ** Read in output from GIS script to extract quarterly depths from rasters
-insheet using "$dirpath_data/misc/pumps_gw_depths_from_rasters.csv", double comma clear
+insheet using "$dirpath_data/misc/pumps_gw_depths_from_rasters_qtr.csv", double comma clear
 
-** Drop monthly variables, and APEP-specific variables
-drop *_????m? *_????m?? pump_lat pump_lon x y
+** Drop APEP-specific variables
+drop pump_lat pump_lon x y
 
 ** Destring numeric variables before reshaping, to reduce file size
 foreach v of varlist depth_??_* {
@@ -2530,10 +2530,10 @@ save "$dirpath_data/groundwater/groundwater_depth_apep_quarter_rast.dta", replac
 ** 9b. San Joaquin Valley only rasters
 {
 ** Read in output from GIS script to extract monthly depths from rasters
-insheet using "$dirpath_data/misc/pumps_gw_depths_from_rasters_SJ.csv", double comma clear
+insheet using "$dirpath_data/misc/pumps_gw_depths_from_rasters_qtr_SJ.csv", double comma clear
 
-** Drop quarterly variables, and APEP-specific variables
-drop *_????m? *_????m?? pump_lat pump_lon x y
+** Drop APEP-specific variables
+drop pump_lat pump_lon x y
 
 ** Destring numeric variables before reshaping, to reduce file size
 foreach v of varlist depth_??_* {
@@ -2620,10 +2620,10 @@ save "$dirpath_data/groundwater/groundwater_depth_apep_quarter_rast_SJ.dta", rep
 ** 9c. Sacramento Valley only rasters
 {
 ** Read in output from GIS script to extract monthly depths from rasters
-insheet using "$dirpath_data/misc/pumps_gw_depths_from_rasters_SAC.csv", double comma clear
+insheet using "$dirpath_data/misc/pumps_gw_depths_from_rasters_qtr_SAC.csv", double comma clear
 
-** Drop quarterly variables, and APEP-specific variables
-drop *_????m? *_????m?? pump_lat pump_lon x y
+** Drop APEP-specific variables
+drop pump_lat pump_lon x y
 
 ** Destring numeric variables before reshaping, to reduce file size
 foreach v of varlist depth_??_* {
