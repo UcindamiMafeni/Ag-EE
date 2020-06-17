@@ -22,7 +22,7 @@ global dirpath_data "$dirpath/data"
 ** 1. Sept 2019 data pull
 
 
-** Load raw PGE billing data
+** Load raw SCE billing data
 use "$dirpath_data/sce_raw/bill_data_20190916.dta", clear
 
 ** Service agreement ID
@@ -46,6 +46,7 @@ order sa_uuid bill_start_dt bill_end_dt bill_length
 la var bill_start_dt "Bill period start date"
 la var bill_end_dt "Bill period end date"
 la var bill_length "Length of bill period (in days)"
+drop statl_yr_mo_dt
 
 unique sa_uuid bill_start_dt // 3481573 unique customer-service point-service aggrements
 duplicates r sa_uuid bill_start_dt
@@ -66,7 +67,7 @@ la var flag_overlap_bill "Flag for overlap with previous bill"
 ** Rate schedule
 count if tariff_sched_text=="" // no missing
 sort sa_uuid bill_start_dt
-la var sa_uuid "Rate schedule at end of billing cycle"
+la var tariff_sched_text "Rate schedule at end of billing cycle"
 
 ** Usage and demand
 destring kwh_usage bill_amount monthly_max_kw, replace
@@ -102,6 +103,7 @@ drop flag_overlap_bill
 
 sort sa_uuid bill_start_dt
 by sa_uuid: egen flag_acct= max(flag_disct_bill)
+la var flag_acct "Flag for accounts that ever have a gap in the billing cycle"
 
 sort flag_acct sa_uuid bill_start_dt
 
