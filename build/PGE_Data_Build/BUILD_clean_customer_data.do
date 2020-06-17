@@ -237,7 +237,7 @@ outsheet using "$dirpath_data/misc/pge_prem_coord_raw_20180322.txt", comma repla
 restore
 	
 	// run auxilary GIS script "BUILD_gis_climate_zone_20180322.R"
-*shell "${R_exe_path}" --vanilla <"${dirpath_code}/BUILD_gis_climate_zone.R"
+*shell "${R_exe_path}" --vanilla <"${dirpath_code}/PGE_Data_Build/BUILD_gis_climate_zone.R"
 	
 	// import results from GIS script
 preserve
@@ -525,7 +525,7 @@ outsheet using "$dirpath_data/misc/pge_prem_coord_raw_20180719.txt", comma repla
 restore
 	
 	// run auxilary GIS script "BUILD_gis_climate_zone_20180719.R"
-*shell "${R_exe_path}" --vanilla <"${dirpath_code}/BUILD_gis_climate_zone_20180719.R"
+*shell "${R_exe_path}" --vanilla <"${dirpath_code}/PGE_Data_Build/BUILD_gis_climate_zone_20180719.R"
 	
 	// import results from GIS script
 preserve
@@ -881,7 +881,7 @@ outsheet using "$dirpath_data/misc/pge_prem_coord_raw_20180827.txt", comma repla
 restore
 	
 	// run auxilary GIS script "BUILD_gis_climate_zone_20180827.R"
-*shell "${R_exe_path}" --vanilla <"${dirpath_code}/BUILD_gis_climate_zone_20180827.R"
+*shell "${R_exe_path}" --vanilla <"${dirpath_code}/PGE_Data_Build/BUILD_gis_climate_zone_20180827.R"
 	
 	// import results from GIS script
 preserve
