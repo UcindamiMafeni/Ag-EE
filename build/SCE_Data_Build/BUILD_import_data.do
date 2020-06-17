@@ -12,7 +12,7 @@ global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 *** CHANGE ME LATER
-global dirpath_raw "T:/Projects/Pump Data/data/TEMP2"
+global dirpath_raw "T:/Projects/Pump Data/data/sce_raw"
 
 ** additional directory paths to make things easier
 
