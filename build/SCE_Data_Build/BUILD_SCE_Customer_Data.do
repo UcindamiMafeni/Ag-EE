@@ -8,7 +8,7 @@ set more off
 
 global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
-global dirpath_code "C:/Users/clohani/Desktop/Code_Chinmay"
+global dirpath_code "T:/Home/Louis/backup/AgEE/AgEE_code/build"
 global dirpath_temp "$dirpath_code/Temp"
 global R_exe_path "C:/PROGRA~1/MICROS~4/ROPEN~1/R-35~1.1/bin/x64/R"
 *global R_lib_path "C:/Program Files/Microsoft/R Open/R-3.4.4/library"
@@ -114,7 +114,8 @@ la var dr_ind "Dummy for demand response participation"
 
 ** Climate zone
 tab climate_zone, missing 
-count if climate_zone=="" // no missing
+replace climate_zone = "" if climate_zone=="."
+count if climate_zone==""  // 13 no missing
 la var climate_zone "CA climate zone code"
 
 
@@ -131,7 +132,7 @@ outsheet using "$dirpath_data/misc/sce_prem_coord_raw_20190916.txt", comma repla
 restore
 	
 	// run auxilary GIS script "BUILD_gis_sce_climate_zone_20190916.R"
-shell "${R_exe_path}" --vanilla <"${dirpath_code}/BUILD_gis_climate_zone.R"
+*shell "${R_exe_path}" --vanilla <"${dirpath_code}/SCE_Data_Build/BUILD_gis_climate_zone_20190916.R"
 	
 	// import results from GIS script
 preserve
@@ -152,11 +153,12 @@ drop climate_zone
 unique sa_uuid
 assert r(unique)==r(N)
 tostring sa_uuid climate_zone, replace
-save "$dirpath_temp/gis_out.dta", replace
+tempfile gis_out
+save `gis_out'
 restore
 
 	// merge back into main dataset
-merge m:1 sa_uuid using "$dirpath_temp/gis_out.dta"
+merge m:1 sa_uuid using `gis_out'
 assert _merge!=2 // confirm everything merges in
 assert _merge==1 if latitude==. | longitude==. // confirm nothing merges if it has missing lat/lon
 assert (latitude==. | longitude==.) if _merge==1	// confirm that all non-merges have missing lat/lon
@@ -174,6 +176,68 @@ la var bad_geocode "Lat/lon not in SCE territory, and not in PGE-enveloped POU"
 la var climate_zone_gis "Climate zone, as assigned by GIS shapefile using lat/lon"
 la var bad_cz_flag "Flag for SCE-assigned climate zone that's contradicted by GIS"
 la var missing_geocode_flag "SCE geocodes are missing"	
+drop longitude1 latitude1
+
+** Clean SCE-specific variables
+la var sa_status_code "SA status code"
+tab sa_status_code, missing
+
+la var current_tariff "SA's current tariff"
+tab current_tariff, missing
+
+la var cust_name "Customer name"
+la var service_zip "SP ZIP code"
+
+assert nem_proatr_id=="" if net_mtr_ind==0
+assert nem_proatr_id=="NEMTYPE" if net_mtr_ind==1
+drop nem_proatr_id
+
+br nem* if net_mtr_ind==1
+tab nem_end_date
+assert inlist(nem_end_date,"","31DEC2525")
+drop nem_end_date
+gen temp = date(nem_start_date,"DMY")
+format %td temp
+assert temp!=. if nem_start_date!=""
+drop nem_start_date
+rename temp nem_start_date
+la var nem_start_date "NEM start date"
+tab nem_text
+rename nem_text nem_type 
+la var nem_type "NEM description"
+
+assert inlist(bcd_rate_grp_desc,"Ag & Pumping","")
+assert inlist(puc_group_code,"AG")
+tab bcd puc, missing
+tab current_tariff bcd, missing
+gen flag_non_ag_tariff = bcd_rate_grp_desc==""
+la var flag_non_ag_tariff "Flag for tariffs that are not labeled 'Ag & Pumping' "
+drop bcd_rate_grp_desc puc_group_code
+
+tab revclass_type_desc, missing
+assert revclass_type_desc=="NON DOMESTIC"
+drop revclass_type_desc
+
+br facility_sic_cd sic_desc prsn_naics naics_descr
+drop facility_sic_cd sic_desc // redundant since we have NAICS
+
+tab cec_sector_desc cec_sec_grp_desc, missing
+la var cec_sec_grp_desc "CEC sector: agr, ind, or com"
+la var cec_sector_desc "CEC subsector description"
+rename cec_sec_grp_desc cec_sector
+replace cec_sector = "Agr" if cec_sector=="Agricultural"
+replace cec_sector = "Ind" if cec_sector=="Industrial"
+replace cec_sector = "Com" if cec_sector=="Commercial"
+assert length(cec_sector)==3
+rename cec_sector_desc cec_subsector
+tab segment_name cec_sector, missing
+tab segment_name cec_subsector
+la var segment_name "Customer segment description"
+tab ind_subgrp
+la var ind_subgrp "Industry subgroup description"
+
+drop czone
+
 
 ** Confirm uniqueness and save
 unique sp_uuid sa_uuid
