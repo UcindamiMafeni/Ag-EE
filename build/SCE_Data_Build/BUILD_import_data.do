@@ -75,3 +75,13 @@ foreach year in "2016" "2017" "2018" "2019" {
 ************************************************
 ************************************************
 
+** MAY 4 2020 DATA
+
+** Extract raw xwalk
+import excel "$dirpath_raw/SCE05042020/SA to CA Table SCE29202610522.xlsx", clear sheet("ADHQ1376_1_updated") firstrow
+dropmiss, force
+compress
+save "$dirpath_data/sce_raw/customer_id_xwalk_20200504.dta", replace
+
+************************************************
+************************************************

@@ -8,13 +8,7 @@ set more off
 
 global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
-global dirpath_raw "T:/Raw Data/PumpData"
 
-** Extract raw xwalk
-import excel "$dirpath_raw/SCE05042020/SA to CA Table SCE29202610522.xlsx", clear sheet("ADHQ1376_1_updated") firstrow
-dropmiss, force
-compress
-save "$dirpath_data/sce_raw/customer_id_xwalk_20200504.dta", replace
 
 ** Clean xwalk
 use "$dirpath_data/sce_raw/customer_id_xwalk_20200504.dta", clear
