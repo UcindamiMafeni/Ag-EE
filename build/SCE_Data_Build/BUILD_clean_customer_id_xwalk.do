@@ -48,7 +48,7 @@ drop dup*
 
 sort *
 compress
-save "$dirpath_data/sce_cleaned/custer_id_xwalk_20200504.dta", replace
+save "$dirpath_data/sce_cleaned/customer_id_xwalk_20200504.dta", replace
 
 
 

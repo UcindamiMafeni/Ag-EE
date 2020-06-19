@@ -16,9 +16,10 @@ global R_exe_path "C:/PROGRA~1/MICROS~4/ROPEN~1/R-35~1.1/bin/x64/R"
 *******************************************************************************
 *******************************************************************************
 
+** Start with raw customer data
 use "$dirpath_data/sce_raw/customer_data_20190916.dta", clear
 
-** NAICS code
+** Populate NAICS code
 assert facility_naics_cd!=""
 assert length(facility_naics_cd)==6 | facility_naics_cd=="."
 //assert substr(facility_naics_cd,1,3)=="111"
@@ -26,34 +27,87 @@ rename facility_naics_cd prsn_naics
 la var prsn_naics "6-digit NAICS at customer level"
 tab prsn_naics
 rename prsn_naics naics
-merge m:1 naics using "$dirpath_data/misc/naics_descr.dta", keep(1 3)
-keep if _merge==3
-drop _merge
+merge m:1 naics using "$dirpath_data/misc/naics_descr.dta", keep(1 3) nogen
 rename naics prsn_naics
-
-** No customer ID given to us yet
-
-/*
-** Customer ID
-assert prsn_uuid!=""
-assert length(prsn_uuid)==10
-duplicates r prsn_uuid
-unique prsn_uuid // 33253 unique customers
-la var prsn_uuid "Customer ID (anonymized, 10-digit)"
-*/
+replace prsn_naics = "" if prsn_naics=="."
 
 ** Service point ID
 rename css_instl_serv_num sp_uuid
-assert sp_uuid!=""
+replace sp_uuid = "" if sp_uuid=="."
+count if sp_uuid==""
 duplicates r sp_uuid
 unique sp_uuid // 29413 unique service points
 la var sp_uuid "Service Point ID (anonymized)"
 
 ** Service account ID
 rename serv_acct_num sa_uuid
-duplicates r sa_uuid // unique
-unique sa_uuid //39078 unique service agreements
+assert sa_uuid!=""
+unique sa_uuid //45243 unique service agreements
+assert r(unique)==r(N)
 la var sa_uuid "Service Account ID"
+
+** Merge in customer ID from xwalk
+rename sp_uuid sp_uuidM
+merge 1:m sa_uuid using "$dirpath_data/sce_cleaned/customer_id_xwalk_20200504.dta"
+count if _merge==3
+local rN = r(N)
+count if _merge==3 & sp_uuid==sp_uuidM
+di r(N)/`rN' // sp_uuid matches for 99.8% of merges!
+br sa_uuid sp_uuidM sp_uuid if _merge==3 & sp_uuid!=sp_uuidM // non-matches are all half missing
+replace sp_uuidM = sp_uuid if sp_uuidM==""
+drop sp_uuid
+rename sp_uuidM sp_uuid
+count if _merge!=2 & sp_uuid==""
+	// confirm that no SPs matches exist that didn't match on SA
+egen temp_min = min(_merge), by(sp_uuid)
+egen temp_max = max(_merge), by(sp_uuid)
+tab _merge temp_max if sp_uuid!=""
+drop if _merge==2 
+drop temp* _merge
+
+** Reshape customer ID to make unique by sa_uuid
+duplicates t sa_uuid, gen(dup)
+tab dup
+sort sa_uuid sp_uuid prsn_uuid
+br sa_uuid sp_uuid prsn_uuid dup if dup>0
+gen temp_row = _n
+egen temp_row_min = min(temp_row), by(sa_uuid sp_uuid)
+gen prsn_uuid1 = prsn_uuid if temp_row==temp_row_min
+gen prsn_uuid2 = prsn_uuid[_n+1] if dup>0 & temp_row==temp_row_min & sa_uuid[_n+1]==sa_uuid & sp_uuid[_n+1]==sp_uuid
+gen prsn_uuid3 = prsn_uuid[_n+2] if dup>1 & temp_row==temp_row_min & sa_uuid[_n+2]==sa_uuid & sp_uuid[_n+2]==sp_uuid
+gen prsn_uuid4 = prsn_uuid[_n+3] if dup>2 & temp_row==temp_row_min & sa_uuid[_n+3]==sa_uuid & sp_uuid[_n+3]==sp_uuid
+gen prsn_uuid5 = prsn_uuid[_n+4] if dup>3 & temp_row==temp_row_min & sa_uuid[_n+4]==sa_uuid & sp_uuid[_n+4]==sp_uuid
+gen prsn_uuid6 = prsn_uuid[_n+5] if dup>4 & temp_row==temp_row_min & sa_uuid[_n+5]==sa_uuid & sp_uuid[_n+5]==sp_uuid
+unique sa_uuid 
+local uniq = r(unique)
+drop if temp_row!=temp_row_min
+drop temp* dup prsn_uuid
+unique sa_uuid
+assert r(unique)==r(N)
+la var prsn_uuid1 "Customer ID 1"
+la var prsn_uuid2 "Customer ID 2"
+la var prsn_uuid3 "Customer ID 3"
+la var prsn_uuid4 "Customer ID 4"
+la var prsn_uuid5 "Customer ID 5"
+la var prsn_uuid6 "Customer ID 6"
+
+** Merge newly populated SPs back into xwalk
+preserve
+keep sa_uuid sp_uuid
+duplicates drop
+tempfile for_xwalk
+save `for_xwalk'
+use "$dirpath_data/sce_cleaned/customer_id_xwalk_20200504.dta", clear
+rename sp_uuid sp_uuidM
+merge m:1 sa_uuid using `for_xwalk'
+replace sp_uuidM = sp_uuid if sp_uuidM==""
+assert sp_uuid==sp_uuidM if sp_uuid!=""
+drop sp_uuid _merge
+rename sp_uuidM sp_uuid
+duplicates drop
+compress
+save "$dirpath_data/sce_cleaned/customer_id_xwalk_20200504_updated.dta", replace
+restore
 
 ** Service agreement start/stop dates
 assert sa_estab_date!=""
@@ -89,11 +143,15 @@ replace longitude=-longitude if longitude>0 // 1 observation seems like a typo
 count if lat==. | lon==. // 1% missing, deal with below
 la var lat "Latitude of premises"
 la var lon "Longitude of premises"
-	// confirm lat/lon is unique by service point
-unique sp_uuid
+duplicates t sp_uuid lat lon, gen(dup)
+sort sp_uuid
+br if dup>0
+	// confirm lat/lon is unique by service point (where non-missing)
+unique sp_uuid if sp_uuid!=""
 local uniq = r(unique)
-unique sp_uuid lat lon
+unique sp_uuid lat lon if sp_uuid!=""
 assert `uniq'==r(unique)
+drop dup
 
 ** Net energy metering indicator
 tab nem_proatr_id, missing
@@ -115,7 +173,7 @@ la var dr_ind "Dummy for demand response participation"
 ** Climate zone
 tab climate_zone, missing 
 replace climate_zone = "" if climate_zone=="."
-count if climate_zone==""  // 13 no missing
+count if climate_zone==""  // 1667 no missing
 la var climate_zone "CA climate zone code"
 
 
@@ -176,7 +234,7 @@ la var bad_geocode "Lat/lon not in SCE territory, and not in PGE-enveloped POU"
 la var climate_zone_gis "Climate zone, as assigned by GIS shapefile using lat/lon"
 la var bad_cz_flag "Flag for SCE-assigned climate zone that's contradicted by GIS"
 la var missing_geocode_flag "SCE geocodes are missing"	
-drop longitude1 latitude1
+drop longitude1 latitude1 czone
 
 ** Clean SCE-specific variables
 la var sa_status_code "SA status code"
@@ -228,16 +286,14 @@ rename cec_sec_grp_desc cec_sector
 replace cec_sector = "Agr" if cec_sector=="Agricultural"
 replace cec_sector = "Ind" if cec_sector=="Industrial"
 replace cec_sector = "Com" if cec_sector=="Commercial"
-assert length(cec_sector)==3
+replace cec_sector = "" if cec_sector=="Other"
+assert length(cec_sector)==3 | cec_sector==""
 rename cec_sector_desc cec_subsector
 tab segment_name cec_sector, missing
 tab segment_name cec_subsector
 la var segment_name "Customer segment description"
 tab ind_subgrp
 la var ind_subgrp "Industry subgroup description"
-
-drop czone
-
 
 ** Confirm uniqueness and save
 unique sp_uuid sa_uuid
