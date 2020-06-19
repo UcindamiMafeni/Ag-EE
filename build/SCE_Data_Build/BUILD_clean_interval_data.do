@@ -121,13 +121,13 @@ save "$dirpath_data/sce_cleaned/interval_data_hourly_20190916.dta", replace
 ** Collapse to daily level and save
 use "$dirpath_data/sce_cleaned/interval_data_hourly_20190916.dta", clear
 egen double kwh_daily = sum(kwh), by(sa_uuid date)
-drop hour kwh
+drop hr kwh
 rename kwh_daily kwh
 la var kwh "kWh consumed in daily interval"
 duplicates drop
 sum kwh, detail
 count if kwh<0
-di r(N)/_N // 0.6% of daily observations are negative
+di r(N)/_N // only 9 daily observations are negative
 unique sa_uuid date
 assert r(unique)==r(N)
 compress
@@ -144,7 +144,7 @@ la var kwh "kWh consumed in monthly interval"
 duplicates drop
 sum kwh, detail
 count if kwh<0
-di r(N)/_N // 0.5% of monthly observations are negative
+di r(N)/_N // 0 monthly observations are negative
 preserve
 collapse (sum) kwh, by(modate)
 twoway line kwh modate
