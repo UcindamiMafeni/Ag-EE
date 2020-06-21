@@ -773,7 +773,7 @@ order uniq_id test_date_stata pump_ref pump_name
 unique test_date_stata pump_ref
 sort *
 compress
-save "$dirpath_data_sce_cleaned/pump_test_data.dta", replace
+save "$dirpath_data_sce_cleaned/sce_pump_test_data.dta", replace
 
 
 ************************************************

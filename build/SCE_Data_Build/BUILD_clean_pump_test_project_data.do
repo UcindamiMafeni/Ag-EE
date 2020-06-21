@@ -9,7 +9,7 @@ set more off
 global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
-** Load raw PGE customer data
+** Load raw SCE pump test project data
 use "$dirpath_data/sce_raw/pump_overhaul_data_20190916.dta", clear
 duplicates drop
 
@@ -109,7 +109,7 @@ la var customer_zip "Customer ZIP code"
 
 ** Merge into pump test data (direct)
 preserve
-use "$dirpath_data_sce_cleaned/pump_test_data.dta", clear
+use "$dirpath_data/sce_cleaned/sce_pump_test_data.dta", clear
 collapse (min) mindate = test_date_stata (max) maxdate = test_date_stata (count) ntests = uniq_id ///
 	(mean) booster_pump, by(sa_uuid)
 tempfile accts
@@ -129,7 +129,7 @@ preserve
 keep if flag_cu_prefix==1 | flag_sa_not_in_pumptests==1
 keep sa_uuid flag_cu_prefix flag_sa_not_in_pumptests
 duplicates drop
-merge 1:m sa_uuid using "$dirpath_data/sce_cleaned/custer_id_xwalk_20200504.dta", keep(1 3)
+merge 1:m sa_uuid using "$dirpath_data/sce_cleaned/customer_id_xwalk_20200504_updated.dta", keep(1 3)
 tab flag_cu_prefix _merge // they're not SA IDs
 tab flag_sa_not_in_pumptests _merge 
 restore
@@ -139,7 +139,7 @@ keep if flag_cu_prefix==1 | flag_sa_not_in_pumptests==1
 keep sa_uuid flag_cu_prefix flag_sa_not_in_pumptests
 duplicates drop
 rename sa_uuid sp_uuid
-merge 1:m sp_uuid using "$dirpath_data/sce_cleaned/custer_id_xwalk_20200504.dta", keep(1 3)
+merge 1:m sp_uuid using "$dirpath_data/sce_cleaned/customer_id_xwalk_20200504_updated.dta", keep(1 3)
 tab flag_cu_prefix _merge // they're not SP IDs
 tab flag_sa_not_in_pumptests _merge 
 restore
@@ -149,7 +149,7 @@ keep if flag_cu_prefix==1 | flag_sa_not_in_pumptests==1
 keep sa_uuid flag_cu_prefix flag_sa_not_in_pumptests
 duplicates drop
 rename sa_uuid prsn_uuid
-merge 1:m prsn_uuid using "$dirpath_data/sce_cleaned/custer_id_xwalk_20200504.dta", keep(1 3)
+merge 1:m prsn_uuid using "$dirpath_data/sce_cleaned/customer_id_xwalk_20200504_updated.dta", keep(1 3)
 tab flag_cu_prefix _merge // they're not person IDs
 tab flag_sa_not_in_pumptests _merge 
 restore
@@ -161,5 +161,5 @@ la var flag_sa_not_in_pumptests "Flag for SAs that don't merge into pump test da
 
 ** Save
 compress
-save "$dirpath_data/pge_cleaned/pump_test_project_data.dta", replace
+save "$dirpath_data/sce_cleaned/sce_pump_test_project_data.dta", replace
 
