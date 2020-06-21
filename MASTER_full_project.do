@@ -6,12 +6,12 @@ set more off
 **** MASTER DO FILE TO RUN ALL OTHER DOFILES *********
 ******************************************************
 
-global dirpath "T:/Projects/Pump Data"
+*global dirpath "T:/Projects/Pump Data"
 *global dirpath_code "S:/Fiona/backup/Ag-EE"
-global dirpath_code "T:Home/Louis/backup/AgEE/AgEE_code"
+*global dirpath_code "T:/Home/Louis/backup/AgEE/AgEE_code"
 
 ** additional directory paths
-global dirpath_data "$dirpath/data"
+*global dirpath_data "$dirpath/data"
 
 *********************************************************************************
 *********************************************************************************
@@ -21,80 +21,151 @@ global dirpath_data "$dirpath/data"
 ************ BUILD (B) ************ BUILD (B) ************ BUILD (B) ************ 
 ************ BUILD (B) ************ BUILD (B) ************ BUILD (B) ************  
 
-*** B1: IMPORT DATA TO STATA
-do "$dirpath_code/build/BUILD_import_data.do"
+***
+*** PGE.1-PGE.17 build the full set of PGE-exclusive datasets
+***
 
-*** B2: CREATE LIST OF NAICS CODES
-do "$dirpath_code/build/BUILD_naics_descr.do"
+*** B.PGE.1: IMPORT RAW PGE DATA TO STATA
+do "$dirpath_code/build/PGE_Data_Build/BUILD_import_data.do"
 
-*** B3: CLEAN CUSTOMER DATA [B1 B2]
-do "$dirpath_code/build/BUILD_clean_customer_data.do"
+*** B.PGE.2: CREATE LIST OF NAICS CODES
+do "$dirpath_code/build/PGE_Data_Build/BUILD_naics_descr.do"
+
+*** B.PGE.3: CLEAN PGE CUSTOMER DATA [B.PGE.1 B.PGE.2]
+do "$dirpath_code/build/PGE_Data_Build/BUILD_clean_customer_data.do"
 	// calls auxilary GIS scripts "BUILD_gis_climate_zone_20180322.R" 
 	//                        and "BUILD_gis_climate_zone_20180719.R"
 	//                        and "BUILD_gis_climate_zone_20180827.R"
 
-*** B4: CLEAN BILLING DATA [B1]
-do "$dirpath_code/build/BUILD_clean_bill_data.do"
+*** B.PGE.4: CLEAN PGE BILLING DATA [B.PGE.1]
+do "$dirpath_code/build/PGE_Data_Build/BUILD_clean_bill_data.do"
 
-*** B5: CLEAN ENERGY EFFICIENCY DATA [B1]
-do "$dirpath_code/build/BUILD_clean_energy_efficiency_data.do"
+*** B.PGE.5: CLEAN PGE ENERGY EFFICIENCY DATA [PGE.1]
+do "$dirpath_code/build/PGE_Data_Build/BUILD_clean_energy_efficiency_data.do"
 
-*** B6: CLEAN INTERVAL DATA [B1]
-do "$dirpath_code/build/BUILD_clean_interval_data.do"
+*** B.PGE.6: CLEAN PGE INTERVAL DATA [B.PGE.1]
+do "$dirpath_code/build/PGE_Data_Build/BUILD_clean_interval_data.do"
 
-*** B7: CLEAN METER BADGE NUMBER DATA [B1]
-do "$dirpath_code/build/BUILD_clean_badge_number_data.do"
+*** B.PGE.7: CLEAN PGE METER BADGE NUMBER DATA [B.PGE.1]
+do "$dirpath_code/build/PGE_Data_Build/BUILD_clean_badge_number_data.do"
 
-*** B8: CROSS-VALIDATE BILLING VS. INTERVAL DATA [B4 B6]
-do "$dirpath_code/build/BUILD_compare_billing_interval.do" 
+*** B.PGE.8: CROSS-VALIDATE PGE BILLING VS. INTERVAL DATA [B.PGE.4 B.PGE.6]
+do "$dirpath_code/build/PGE_Data_Build/BUILD_compare_billing_interval.do" 
 
-*** B9: CROSS-VALIDATE BILLING VS. CUSTOMER DATA [B3 B8]
-do "$dirpath_code/build/BUILD_compare_billing_customer.do"
+*** B.PGE.9: CROSS-VALIDATE PGE BILLING VS. CUSTOMER DATA [B.PGE.3 B.PGE.8]
+do "$dirpath_code/build/PGE_Data_Build/BUILD_compare_billing_customer.do"
 
-*** B10: CROSS-VALIDATE CUSTOMER VS. BILLING/INTERVAL DATA [B3 B6 B9]
-do "$dirpath_code/build/BUILD_compare_customer_usage.do"
+*** B.PGE.10: CROSS-VALIDATE PGE CUSTOMER VS. BILLING/INTERVAL DATA [B.PGE.3 B.PGE.6 B.PGE.9]
+do "$dirpath_code/build/PGE_Data_Build/BUILD_compare_customer_usage.do"
 
-*** B11: CROSS-VALIDATE CUSTOMER VS. EE DATA [B5 B10]
-do "$dirpath_code/build/BUILD_compare_customer_ee.do"
+*** B.PGE.11: CROSS-VALIDATE PGE CUSTOMER VS. EE DATA [B.PGE.5 B.PGE.10]
+do "$dirpath_code/build/PGE_Data_Build/BUILD_compare_customer_ee.do"
 
-*** B12: CROSS-VALIDATE CUSTOMER VS. METER HISTORY DATA, CREATE XWALK [B7 B11]
-do "$dirpath_code/build/BUILD_compare_customer_meter.do"
+*** B.PGE.12: CROSS-VALIDATE PGE CUSTOMER VS. METER HISTORY DATA, CREATE XWALK [B.PGE.7 B.PGE.11]
+do "$dirpath_code/build/PGE_Data_Build/BUILD_compare_customer_meter.do"
 
-*** B13: MONTHIFY BILLING DATA [B9]
-do "$dirpath_code/build/BUILD_monthify_billing_data.do"
+*** B.PGE.13: MONTHIFY PGE BILLING DATA [B.PGE.9]
+do "$dirpath_code/build/PGE_Data_Build/BUILD_monthify_billing_data.do"
 
-*** B14: CLEAN PUMP TEST DATA [B1]
-do "$dirpath_code/build/BUILD_clean_pump_test_data.do"
+*** B.PGE.14: CLEAN PGE PUMP TEST DATA [B.PGE.1]
+do "$dirpath_code/build/PGE_Data_Build/BUILD_clean_pump_test_data.do"
 
-*** B15: CLEAN PUMP TEST PROJECT DATA [B1 B14]
-do "$dirpath_code/build/BUILD_clean_pump_test_project_data.do"
+*** B.PGE.15: CLEAN PGE PUMP TEST PROJECT DATA [B.PGE.1 B.PGE.14]
+do "$dirpath_code/build/PGE_Data_Build/BUILD_clean_pump_test_project_data.do"
 
-*** B16: CLEAN PGE RATE DATA
-do "$dirpath_code/build/BUILD_clean_rate_data.do"
+*** B.PGE.16: CLEAN PGE RATE DATA
+do "$dirpath_code/build/PGE_Data_Build/BUILD_clean_rate_data.do"
 
-*** B17: BUILD EVENT DAY DATASET
-do "$dirpath_code/build/BUILD_event_days.do"
+*** B.PGE.17: BUILD PGE EVENT DAY DATASET
+do "$dirpath_code/build/PGE_Data_Build/BUILD_event_days.do"
 
-*** B18: CONVERT PARCEL SHAPEFILES TO USABLE FORMAT
+
+
+***
+*** B.SCE.1-B.SCE.15 build the full set of SCE-exclusive datasets
+***
+
+*** B.SCE.1: IMPORT RAW SCE DATA TO STATA
+do "$dirpath_code/build/SCE_Data_Build/BUILD_import_data.do"
+
+*** B.SCE.2: CLEAN SCE CUSTOMER ID CROSSWALK [B.SCE.1]
+do "$dirpath_code/build/SCE_Data_Build/BUILD_clean_customer_id_xwalk.do"
+
+*** B.SCE.3: CLEAN SCE CUSTOMER DATA [B.PGE.2 B.SCE.1 B.SCE.2]
+do "$dirpath_code/build/SCE_Data_Build/BUILD_clean_customer_data.do"
+	// calls auxilary GIS script "BUILD_gis_climate_zone_20190916.R" 
+	
+*** B.SCE.4: CLEAN SCE BILLING DATA [B.SCE.1]
+do "$dirpath_code/build/SCE_Data_Build/BUILD_clean_bill_data.do"
+
+*** B.SCE.5: CLEAN SCE ENERGY EFFICIENCY DATA [B.SCE.1]
+do "$dirpath_code/build/SCE_Data_Build/BUILD_clean_energy_efficiency_data.do"
+
+*** B.SCE.6: CLEAN SCE INTERVAL DATA [B.SCE.1]
+do "$dirpath_code/build/SCE_Data_Build/BUILD_clean_interval_data.do"
+
+*** B.SCE.7: CROSS-VALIDATE SCE BILLING VS. INTERVAL DATA [B.SCE.4 B.SCE.6]
+do "$dirpath_code/build/SCE_Data_Build/BUILD_compare_billing_interval.do" 
+
+*** B.SCE.8: CROSS-VALIDATE SCE BILLING VS. CUSTOMER DATA [B.SCE.3 B.SCE.7]
+do "$dirpath_code/build/SCE_Data_Build/BUILD_compare_billing_customer.do"
+
+*** B.SCE.9: CROSS-VALIDATE SCE CUSTOMER VS. BILLING/INTERVAL DATA [B.SCE.3 B.SCE.6 B.SCE.8]
+do "$dirpath_code/build/SCE_Data_Build/BUILD_compare_customer_usage.do"
+
+*** B.SCE.10: CROSS-VALIDATE SCE CUSTOMER VS. EE DATA [B.SCE.5 B.SCE.9]
+do "$dirpath_code/build/SCE_Data_Build/BUILD_compare_customer_ee.do"
+
+*** B.SCE.11: MONTHIFY SCE BILLING DATA [B.SCE.8]
+do "$dirpath_code/build/SCE_Data_Build/BUILD_monthify_billing_data.do"
+
+*** B.SCE.12: CLEAN SCE PUMP TEST DATA [B.SCE.1]
+do "$dirpath_code/build/SCE_Data_Build/BUILD_clean_pump_test_data.do"
+
+*** B.SCE.13: CLEAN SCE PUMP TEST PROJECT DATA [B.SCE.1 B.SCE.3 B.SCE.12]
+do "$dirpath_code/build/PGE_Data_Build/BUILD_clean_pump_test_project_data.do"
+
+start here
+
+*** B.SCE.14: CLEAN PGE RATE DATA
+do "$dirpath_code/build/PGE_Data_Build/BUILD_clean_rate_data.do"
+
+*** B.SCE.15: BUILD PGE EVENT DAY DATASET
+do "$dirpath_code/build/PGE_Data_Build/BUILD_event_days.do"
+
+
+
+
+***
+*** B.GEO.1-B.GEO.15 build the full set of geographic datasets that rely on publicly available spatial data
+***
+
+
+*** B.GEO.1: CONVERT PARCEL SHAPEFILES TO USABLE FORMAT
 // "BUILD_gis_parcel_conversion.R"
 
-*** B19: CLEAN PARCEL SHAPEFILES [B18]
+*** B.GEO.2: CLEAN PARCEL SHAPEFILES [B.GEO.1]
 // "BUILD_gis_parcel_clean.R"
 	
-*** B20: CLEAN COMMON LAND UNIT SHAPEFILES
+*** B.GEO.3: CLEAN COMMON LAND UNIT SHAPEFILES
 // "BUILD_gis_clu_clean.R"
 
-*** B21: CREATE CONCORDANCE THAT OVERLAYS CLU & PARCEL SHAPEFILES [B19 B20]
+*** B.GEO.4: CREATE CONCORDANCE THAT OVERLAYS CLU & PARCEL SHAPEFILES [B.GEO.2 B.GEO.3]
 // "BUILD_gis_clu_parcel_conc.R"
 	
-*** B22: COOKIE-CUTTER CROPLAND DATA LAYER ANNUAL FOR EACH CLU [B20]
+*** B.GEO.5: COOKIE-CUTTER CROPLAND DATA LAYER ANNUAL FOR EACH CLU [B.GEO.3]
 // "BUILD_gis_clu_cdl_conc.R"
 	// calls auxiliary scripts "BUILD_gis_clu_cdl_conc.py"
 	//                     and "constants.R"
 
-*** B23: PROCESS TWO CONCORDANCES IN STATA [B21 B22]
+*** B.GEO.6: PROCESS TWO CONCORDANCES IN STATA [B.GEO.4 B.GEO.5]
 do "$dirpath_code/build/BUILD_process_concordances.do"
 	// calls auxiliary script "BUILD_export_clu_parcel_concs.R"
+	
+
+RERORGANIZE STARTING HERE	
+	
+	
 	
 *** B24: ASSIGN SPS AND APEP PUMPS TO VARIOUS POLYGONS [B11 B14 B19 B20 B23]
 do "$dirpath_code/build/BUILD_assign_gis_polygons.do"
