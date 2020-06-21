@@ -10,7 +10,7 @@ global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 ** Load raw PGE customer data
-use "$dirpath_data/pge_raw/pump_test_project_data.dta", clear
+use "$dirpath_data/pge_raw/pump_test_project_data_20180322.dta", clear
 duplicates drop
 rename *, lower
 
@@ -76,7 +76,7 @@ la var run "Run number"
 
 ** Merge into full APEP dataset
 preserve
-use "$dirpath_data/pge_cleaned/pump_test_data.dta", clear
+use "$dirpath_data/pge_cleaned/apep_pump_test_data.dta", clear
 gen idU = _n
 keep idU test_date_stata pge_badge_nbr subsidy
 tempfile temp
@@ -105,7 +105,7 @@ gen flag_apep_mismatch = _merge==1 | temp_match_max==0
 la var flag_apep_mismatch "Flag for project meters that (i) don't match to APEP, or (ii) match at wrong date"
 
 keep if idM!=.
-drop _merge dup temp* idU test_date_stata subsidy
+drop _merge dup temp* idU test_date_stata subsidy_for_test
 duplicates drop
 unique idM
 assert r(unique)==r(N)
@@ -118,5 +118,5 @@ la var apep_proj_id "APEP project identifier"
 	
 ** Save
 compress
-save "$dirpath_data/pge_cleaned/pump_test_project_data.dta", replace
+save "$dirpath_data/pge_cleaned/apep_pump_test_project_data.dta", replace
 
