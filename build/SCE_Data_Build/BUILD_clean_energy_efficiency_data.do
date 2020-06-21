@@ -3,7 +3,7 @@ version 13
 set more off
 
 *******************************************************************************
-**** Script to import and clean raw PGE data -- acoount-level EE data ********
+**** Script to import and clean raw SCE data -- acoount-level EE data ********
 *******************************************************************************
 
 global dirpath "T:/Projects/Pump Data"
@@ -12,9 +12,9 @@ global dirpath_data "$dirpath/data"
 *******************************************************************************
 *******************************************************************************
 
-** 1. March 2018 data pull
+** 1. SCE 2019 data pull
 
-** Load raw PGE customer data
+** Load raw SCE customer EE data
 use "$dirpath_data/sce_raw/energy_efficiency_data_20190916.dta", clear
 duplicates drop
 
@@ -100,10 +100,22 @@ destring year, replace
 br if year!=year(ee_install_date) & year!=year(ee_paid_date)
 drop year // not adding any relevant infomration
 
+* Remove dups that have multiple claim IDs (for some reason that weems glitchy
+duplicates t sa_uuid eega_desc eega_desc_sub measure_desc ee_enduse ee_units quantity_ex_ante ///
+	savings_kw savings_kwh sector ee_incentive eega_code ee_install_date ee_paid_date, gen(dup)
+tab dup
+sort sa_uuid eega_desc eega_desc_sub measure_desc ee_enduse ee_units quantity_ex_ante ///
+	savings_kw savings_kwh sector ee_incentive eega_code ee_install_date ee_paid_date
+br if dup>0	
+	// these appear to be erroneous dups and I'm dropping them
+duplicates drop sa_uuid eega_desc eega_desc_sub measure_desc ee_enduse ee_units quantity_ex_ante ///
+	savings_kw savings_kwh sector ee_incentive eega_code ee_install_date ee_paid_date, force
+drop dup	
+
 ** Clean up and save
 order sa_uuid ee_install_date claimid sector ee_enduse eega_desc eega_code eega_desc_sub measure_desc ///
 	ee_incentive ee_paid_date ee_units quantity_ex_ante savings_kw savings_kwh
 sort *
 compress
-save "$dirpath_data/pge_cleaned/sce_ee_programs_20190916.dta", replace	
+save "$dirpath_data/sce_cleaned/sce_ee_programs_20190916.dta", replace	
 
