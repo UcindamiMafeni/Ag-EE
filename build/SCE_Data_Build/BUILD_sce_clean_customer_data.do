@@ -189,8 +189,8 @@ replace climate_zone = "Z07" if climate_zone=="" // an obviously wrong Climate Z
 outsheet using "$dirpath_data/misc/sce_prem_coord_raw_20190916.txt", comma replace
 restore
 	
-	// run auxilary GIS script "BUILD_gis_sce_climate_zone_20190916.R"
-*shell "${R_exe_path}" --vanilla <"${dirpath_code}/SCE_Data_Build/BUILD_gis_climate_zone_20190916.R"
+	// run auxilary GIS script "BUILD_sce_gis_sce_climate_zone_20190916.R"
+*shell "${R_exe_path}" --vanilla <"${dirpath_code}/SCE_Data_Build/BUILD_sce_gis_climate_zone_20190916.R"
 	
 	// import results from GIS script
 preserve
