@@ -236,8 +236,8 @@ replace climate_zone_cd = "Z07" if climate_zone_cd=="" // an obviously wrong Cli
 outsheet using "$dirpath_data/misc/pge_prem_coord_raw_20180322.txt", comma replace
 restore
 	
-	// run auxilary GIS script "BUILD_gis_climate_zone_20180322.R"
-*shell "${R_exe_path}" --vanilla <"${dirpath_code}/PGE_Data_Build/BUILD_gis_climate_zone.R"
+	// run auxilary GIS script "BUILD_pge_gis_climate_zone_20180322.R"
+*shell "${R_exe_path}" --vanilla <"${dirpath_code}/PGE_Data_Build/BUILD_pge_gis_climate_zone.R"
 	
 	// import results from GIS script
 preserve
@@ -524,8 +524,8 @@ replace climate_zone_cd = "Z07" if climate_zone_cd=="" // an obviously wrong Cli
 outsheet using "$dirpath_data/misc/pge_prem_coord_raw_20180719.txt", comma replace
 restore
 	
-	// run auxilary GIS script "BUILD_gis_climate_zone_20180719.R"
-*shell "${R_exe_path}" --vanilla <"${dirpath_code}/PGE_Data_Build/BUILD_gis_climate_zone_20180719.R"
+	// run auxilary GIS script "BUILD_pge_gis_climate_zone_20180719.R"
+*shell "${R_exe_path}" --vanilla <"${dirpath_code}/PGE_Data_Build/BUILD_pge_gis_climate_zone_20180719.R"
 	
 	// import results from GIS script
 preserve
@@ -880,8 +880,8 @@ replace climate_zone_cd = "Z07" if climate_zone_cd=="" // an obviously wrong Cli
 outsheet using "$dirpath_data/misc/pge_prem_coord_raw_20180827.txt", comma replace
 restore
 	
-	// run auxilary GIS script "BUILD_gis_climate_zone_20180827.R"
-*shell "${R_exe_path}" --vanilla <"${dirpath_code}/PGE_Data_Build/BUILD_gis_climate_zone_20180827.R"
+	// run auxilary GIS script "BUILD_pge_gis_climate_zone_20180827.R"
+*shell "${R_exe_path}" --vanilla <"${dirpath_code}/PGE_Data_Build/BUILD_pge_gis_climate_zone_20180827.R"
 	
 	// import results from GIS script
 preserve
