@@ -24,7 +24,7 @@ set more off
 ***
 *** PGE.1-PGE.17 build the full set of PGE-exclusive datasets
 ***
-
+{
 *** B.PGE.1: IMPORT RAW PGE DATA TO STATA
 do "$dirpath_code/build/PGE_Data_Build/BUILD_pge_import_data.do"
 
@@ -78,13 +78,15 @@ do "$dirpath_code/build/PGE_Data_Build/BUILD_pge_clean_rate_data.do"
 
 *** B.PGE.17: BUILD PGE EVENT DAY DATASET
 do "$dirpath_code/build/PGE_Data_Build/BUILD_pge_event_days.do"
-
+}
+***
+***
 
 
 ***
 *** B.SCE.1-B.SCE.15 build the full set of SCE-exclusive datasets
 ***
-
+{
 *** B.SCE.1: IMPORT RAW SCE DATA TO STATA
 do "$dirpath_code/build/SCE_Data_Build/BUILD_sce_import_data.do"
 
@@ -125,44 +127,65 @@ do "$dirpath_code/build/SCE_Data_Build/BUILD_sce_clean_pump_test_data.do"
 *** B.SCE.13: CLEAN SCE PUMP TEST PROJECT DATA [B.SCE.1 B.SCE.3 B.SCE.12]
 do "$dirpath_code/build/PGE_Data_Build/BUILD_sce_clean_pump_test_project_data.do"
 
-start here
-
 *** B.SCE.14: CLEAN PGE RATE DATA
 do "$dirpath_code/build/PGE_Data_Build/BUILD_sce_clean_rate_data.do"
+	// this still needs some work
 
-*** B.SCE.15: BUILD PGE EVENT DAY DATASET ?????
-do "$dirpath_code/build/PGE_Data_Build/BUILD_sce_event_days.do"
-
-
-
-
+}
 ***
-*** B.GIS.1-B.GIS.15 build the full set of geographic datasets that rely on publicly available spatial data
 ***
 
 
+***
+*** B.GIS.1-B.GIS.?? build the full set of geographic datasets that rely on publicly available spatial data
+***
+{
 *** B.GIS.1: CONVERT PARCEL SHAPEFILES TO USABLE FORMAT
-// "BUILD_gis_parcel_conversion.R"
+// "GIS_Data_Build/BUILD_gis_parcel_conversion.R"
 
 *** B.GIS.2: CLEAN PARCEL SHAPEFILES [B.GIS.1]
-// "BUILD_gis_parcel_clean.R"
+// "GIS_Data_Build/BUILD_gis_parcel_clean.R"
 	
 *** B.GIS.3: CLEAN COMMON LAND UNIT SHAPEFILES
-// "BUILD_gis_clu_clean.R"
+// "GIS_Data_Build/BUILD_gis_clu_clean.R"
 
 *** B.GIS.4: CREATE CONCORDANCE THAT OVERLAYS CLU & PARCEL SHAPEFILES [B.GIS.2 B.GIS.3]
-// "BUILD_gis_clu_parcel_conc.R"
+// "GIS_Data_Build/BUILD_gis_clu_parcel_conc.R"
 	
 *** B.GIS.5: COOKIE-CUTTER CROPLAND DATA LAYER ANNUAL FOR EACH CLU [B.GIS.3]
-// "BUILD_gis_clu_cdl_conc.R"
+// "GIS_Data_Build/BUILD_gis_clu_cdl_conc.R"
 	// calls auxiliary scripts "BUILD_gis_clu_cdl_conc.py"
 	//                     and "constants.R"
 
 *** B.GIS.6: PROCESS TWO CONCORDANCES IN STATA [B.GIS.4 B.GIS.5]
-do "$dirpath_code/build/BUILD_process_concordances.do"
-	// calls auxiliary script "BUILD_export_clu_parcel_concs.R"
+do "$dirpath_code/build/GIS_Data_Build/BUILD_gis_process_concordances.do"
+	// calls auxiliary script "BUILD_gis_export_clu_parcel_concs.R"
+	
+*** B.GIS.?: PROCESS CLU-PARCEL CONCORDANCE, AND AGGREGATE UNITS UP TO FIELDS AND FARMS [B23 B24]
+do "$dirpath_code/build/BUILD_aggr_units_fields_farms.do"
+
+*** B.GIS.?: CONSTRUCT ANNUAL PANEL OF CROPS AT THE FIELD AND FARM LEVELS [B23 B25]
+do "$dirpath_code/build/BUILD_cdl_panel_crop_year.do"
+		
+*** B.GIS.?: CREATE CONCORDANCES BETWEEN CLUs: WATER BASINS, COUNTIES [B.GIS.4 B.GIS.5]
+CHIN: polygon-to-polygon merge of CLU-to-county, CLU-to-water-basin	
+}
+***
+***
 	
 
+***
+*** B.SFW.1-B.SFW.?? build all surface water datasets
+***
+	
+CHIN's linear code goes here
+The last step of this code will be the polygon-to-polygon merge of CLUs to water districts
+***
+***
+	
+	
+	
+	
 RERORGANIZE STARTING HERE	
 	
 	
@@ -175,11 +198,6 @@ do "$dirpath_code/build/BUILD_assign_gis_polygons.do"
 	//                        and "BUILD_gis_parcel_assign.R"
 	//                        and "BUILD_gis_clu_assign.R"
 
-*** B25: PROCESS CLU-PARCEL CONCORDANCE, AND AGGREGATE UNITS UP TO FIELDS AND FARMS [B23 B24]
-do "$dirpath_code/build/BUILD_aggr_units_fields_farms.do"
-
-*** B26: CONSTRUCT ANNUAL PANEL OF CROPS AT THE FIELD AND FARM LEVELS [B23 B25]
-do "$dirpath_code/build/BUILD_cdl_panel_crop_year.do"
 
 *** B27: ASSIGN DAILY MIN/MAX TEMPERATURE TO EACH SP AND APEP PUMP [B24]
 do "$dirpath_code/build/BUILD_daily_temperatures.do"

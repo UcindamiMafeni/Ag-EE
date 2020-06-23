@@ -1,5 +1,130 @@
-*** Code to generate rates for SCE ***
+clear
 
+*******************************************************************
+** Code to build SCE agricultural tariffs up from raw data files **
+*******************************************************************
+
+global path_in = "T:/Projects/Pump Data/data/sce_raw/Rates/Processed_Excel"
+global path_temp = "T:/Projects/Pump Data/data/temp"
+global path_out = "T:/Projects/Pump Data/data/sce_cleaned"
+
+**********************************************************************
+**********************************************************************
+
+** 1. Import rate histories in raw excel files (which have been extracted from PDFs)
+{
+	// This chunk of code reads in processed XLSX files and creates 
+cd "$path_in"	
+local files : dir . files "*"
+foreach f in `files' {
+
+	import excel using "$path_in/`f'", clear
+	sxpose, clear
+
+	qui ds
+	local vars `r(varlist)'
+	dis `vars'
+
+	foreach var of local vars {
+		local nname= `var'[1]
+		rename `var' `nname'
+
+	}
+
+	drop if _n==1
+	
+	cap rename date Date
+	cap rename index Index
+	
+	split Date, p(.)
+	destring Date1 Date2 Date3, replace
+	gen date_2= mdy(Date2,Date1,Date3)
+	drop Date*
+	format date_2 %td
+
+	qui ds
+	local vars `r(varlist)'
+	foreach v in `vars' {
+		noi noi cap {
+			replace `v' = subinstr(`v',"(R)","",.)
+			replace `v' = subinstr(`v',"(R","",.)
+			replace `v' = subinstr(`v',"(I)","",.)
+			replace `v' = subinstr(`v',"(N","",.)
+			replace `v' = subinstr(`v',"N/A","",.)
+			replace `v' = subinstr(`v',")","",.)
+			replace `v' = subinstr(`v',"*","",.)
+			replace `v' = trim(itrim(`v'))
+			replace `v' = word(`v'[_n-1],2) if date_2==date_2[_n-1] & `v'==""
+			replace `v' = word(`v',1) if wordcount(`v')>1
+			replace `v' = subinstr(`v',"(","-",1) if substr(`v',1,1)=="("
+		}		
+	}
+	destring `vars', replace
+	
+	
+
+	local N= _N 
+
+	gen negs= 1
+	set tracedepth 1
+	set trace on
+	foreach var of local vars {
+		cap {
+			replace negs = -1 if `var'<0
+			replace `var'= `var'*negs
+			replace negs= 1 
+		}
+	}
+	drop negs
+
+	gen bundled =1
+	replace bundled= 0 if Index==1
+
+	gen energycharge_dwr_sum_on_pk= 0
+	gen energycharge_dwr_sum_m_pk= 0
+	gen energycharge_dwr_sum_off_pk= 0
+	gen energycharge_dwr_win_on_pk= 0
+	gen energycharge_dwr_win_m_pk= 0
+	gen energycharge_dwr_win_off_pk= 0
+
+	cap replace energycharge_dwr_sum_on_pk= energycharge_sum_on_pk if Index==3
+	cap replace energycharge_dwr_sum_m_pk= energycharge_sum_m_pk if Index==3
+	cap replace energycharge_dwr_sum_off_pk= energycharge_sum_off_pk if Index==3
+
+	cap replace energycharge_dwr_win_on_pk= energycharge_win_on_pk if Index==3
+	cap replace energycharge_dwr_win_m_pk= energycharge_win_m_pk if Index==3
+	cap replace energycharge_dwr_win_off_pk= energycharge_win_off_pk if Index==3
+
+	cap replace energycharge_sum_on_pk= 0 if Index==3
+	cap replace energycharge_sum_m_pk= 0 if Index==3
+	cap replace energycharge_sum_off_pk= 0 if Index==3
+
+	cap replace energycharge_win_on_pk= 0 if Index==3
+	cap replace energycharge_win_m_pk= 0 if Index==3
+	cap replace energycharge_win_off_pk= 0 if Index==3
+
+
+	local all `vars'
+	local except "Index bundled date_2"
+	local to_collapse: list all - except
+	collapse (max) `to_collapse', by(bundled date_2)
+	
+	gen ratename = subinstr("`f'",".xlsx","",1)
+	order ratename
+	
+	compress
+	local f2 = subinstr("`f'",".xlsx",".dta",1)
+	save "$path_temp/sce_rate_`f2'", replace
+	
+}	
+
+}
+
+**********************************************************************
+**********************************************************************
+
+** 2. Hand code up rate histories for the rates that were impossible to extract from PDFs
+{
 
 set trace on
 //set paths here
@@ -13091,6 +13216,7 @@ replace voltage_dis_energy = 0.0 if `cond2' & voltage_cat==3
 
 replace old= 0 if missing(old)
 
+/*
 *********************************
 *** 8. Schedule- TOU-PA-3-SOP ***
 *********************************
@@ -13118,3 +13244,65 @@ replace energycharge_dwr_win_off_pk = 0.00095 if `cond1'
 replace energycharge_dwr_win_sup_off_pk= 0.00095 if `cond1'
 replace demandcharge = 0.0 if `cond1'
 replace demand
+*/
+
+compress
+save "$path_temp/sce_rate_hand_coded.dta", replace
+
+}
+
+**********************************************************************
+**********************************************************************
+
+** 3. Combine all SCE rates into a single file, and standardize 
+{
+clear
+cd "$path_temp"	
+local files : dir . files "sce_rate_*.dta"
+foreach f in `files' {
+	append using `f'
+}
+duplicates drop
+
+replace rateschedule = ratename if rateschedule==""
+assert ratename==rateschedule | ratename==""
+drop ratename
+order rateschedule
+replace rateschedule = upper(rateschedule)
+tab rateschedule
+la var rateschedule "SCE ag rate schedule"
+
+replace rate_start_date = date_2 if rate_start_date==.
+assert date_2==rate_start_date | date_2==.
+drop date_2
+order rate_start_date, after(rateschedule)
+la var rate_start_date "Rate effective date"
+
+br ratesch energycharge_*
+order bundled energycharge_*, after(rate_start_date)
+
+tab old, missing
+drop old
+
+br ratesche rate_start_date pf*
+replace pf_adjust_1 = pfa_1 if pfa_1!=. & pf_adjust_1==.
+replace pf_adjust_2 = pfa_2 if pfa_2!=. & pf_adjust_2==. & pfa_2==pfa_3 & pfa_2!=pfa_1
+replace pf_adjust_2 = pfa_3 if pfa_3!=. & pf_adjust_2==. & pfa_2!=pfa_3 & pfa_2==pfa_1
+drop pfa_?
+
+
+br ratesched rate_start_date bundled voltage_cat voltage_dis_energy*
+
+// this is still a mess, but I think we can extract most of what we need in for marginal prices as is
+// need to come back and clean further to make any sense of the fixed charges
+
+sort rateschedule bundled rate_start_date voltage_cat
+unique rateschedule rate_start_date bundled voltage_cat
+	// this should be unique!
+compress
+save "$path_out/sce_ag_rates_compiled.dta", replace
+
+}
+
+**********************************************************************
+**********************************************************************
