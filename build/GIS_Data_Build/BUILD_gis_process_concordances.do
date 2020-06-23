@@ -386,7 +386,7 @@ sort *
 compress
 save "$dirpath_data/cleaned_spatial/clu_parcel_conc.dta", replace
 
-** Export list of ever-CLU-matched parcels to csv, as input into "BUILD_gis_parcel_assign.R"
+** Export list of ever-CLU-matched parcels to csv
 use "$dirpath_data/cleaned_spatial/clu_parcel_conc.dta", clear
 unique parcelid
 drop if drop_parcelid_total==1
