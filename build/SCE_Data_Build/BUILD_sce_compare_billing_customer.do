@@ -184,7 +184,7 @@ assert temp_nem_min==temp_nem_max
 
 ** Drop duplicates and variables from customer details
 drop if _merge==2
-drop prsn_uuid* meter_no longitude latitude net_mtr_ind nem_typ climate_zone *naics* cust_name service_zip ///
+drop prsn_uuid* meter_no prem_long prem_lat net_mtr_ind nem_typ climate_zone *naics* cust_name service_zip ///
 	cec_subsector cec_sector segment_name ind_subgrp sa_start sa_stop in_calif in_sce in_pou pou_name ///
 	bad_geocode_flag climate_zone_gis bad_cz_flag missing_geocode_flag current_tariff nem_start_date ///
 	sa_status_code temp* _merge flag_non_ag_tariff

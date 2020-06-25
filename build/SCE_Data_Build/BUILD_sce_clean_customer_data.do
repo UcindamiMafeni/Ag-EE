@@ -295,6 +295,10 @@ la var segment_name "Customer segment description"
 tab ind_subgrp
 la var ind_subgrp "Industry subgroup description"
 
+** Rename latitude and longitude for consistency with PGE datasets
+rename latitude prem_lat
+rename longitude prem_long
+
 ** Confirm uniqueness and save
 unique sp_uuid sa_uuid
 assert r(unique)==r(N)
