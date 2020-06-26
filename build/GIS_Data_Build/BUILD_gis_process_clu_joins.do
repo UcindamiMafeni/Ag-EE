@@ -97,7 +97,7 @@ foreach v of varlist statefp-totacres {
 }
 replace miles_to_nearest_county = . if miles_to_nearest_county>3	
 	
-	// clean up and label
+	// clean up
 br
 keep clu_id county statefp countyfp name county_match flag_multicounty_clu flag_clu_not_in_county miles_to_nearest_county
 unique name
@@ -113,7 +113,12 @@ rename name county_name
 gen flag_county_mismatch = 1 - county_match
 tabstat flag_county_mismatch, by(clu_file_county) s(mean)
 drop county_match
+foreach v of varlist fips statefp countyfp flag_county_mismatch flag_multicounty_clu {
+	cap replace `v' = "" if county_name==""
+	cap replace `v' = . if county_name==""
+}
 
+	// label
 la var clu_id "CLU unique identifier"
 la var clu_file_county "County that CLU comes from in raw data"
 la var county_name "County that CLU is actually in, geographically speaking"
@@ -124,8 +129,19 @@ la var flag_county_mismatch "Flag for CLUs in different counties than their raw 
 la var flag_multicounty_clu "Flag for CLUs where <80% of matched acreage is in a single county"
 la var flag_clu_not_in_county "Flag for CLUs that don't spatially overlap with any CA county polygon"
 la var miles_to_nearest_county "For unmatched CLUs, miles to the nearest CA county polygon"
-
 order clu_id clu_file_county county_name fips statefp countyfp flag_county_mismatch flag_multicounty_clu
+
+	// create separate variable for nearest county, to avoid ambiguity later on
+gen county_name_nearest = county_name if flag_clu_not_in_county==1
+gen fips_nearest = fips if flag_clu_not_in_county==1
+la var county_name_nearest "Nearest county to CLUs that don't have a proper polygon overlap"
+la var fips_nearest "FIPS of nearest county to CLUs that don't have a proper polygon overlap"
+foreach v of varlist county_name fips statefp countyfp flag_county_mismatch {
+	cap replace `v' = "" if flag_clu_not_in_county==1
+	cap replace `v' = . if flag_clu_not_in_county==1
+}
+
+	// save
 sort clu_id
 unique clu_id
 assert r(unique)==r(N)
@@ -190,14 +206,179 @@ save "$dirpath_data/groundwater/ca_water_basins.dta", replace
 
 ** 5. Process CLU-to-basin polygon-to-polygon join
 {
-
 insheet using "$dirpath_data/misc/CLU_basins.csv", clear comma names
+foreach vy of varlist *y {
+	local vx = substr("`vy'",1,length("`vy'")-1) + "x"
+	replace `vx' = "" if `vx'=="NA" & `vy'!="NA"
+	replace `vy' = "" if `vy'=="NA" & `vx'!="NA"
+	replace `vx' = `vy' if `vy'!="" & `vx'==""
+	assert inlist(`vy',"",`vx')
+	drop `vy'
+}
+rename *x *
+foreach v of varlist * {
+	replace `v' = "" if `v'=="NA"
+	destring `v', replace
+}
 assert clu_id!="" & objectid!=. & basin_name!=""
 egen tag_clu = tag(clu_id)
  
 	// deal with duplicates: keep if >=80% of matched CLU area is in a single sub-basin polygon
 gsort clu_id -intacres 
 duplicates t clu_id, gen(dup)
+unique clu_id if dup>0 //1889 dups
+br clu_id objectid basin_name basin_su_1 intacres tot_int_area dup if dup>0
+gen pct_int_area = intacres/tot_int_area
+egen max_pct_int_area = max(pct_int_area), by(clu_id)
+hist max_pct_int_area if tag_clu & dup>0
+unique clu_id
+local uniq = r(unique)
+drop if dup>0 & max_pct_int_area>0.80 & pct_int_area<max_pct_int_area
+unique clu_id
+assert r(unique)==`uniq'
+
+	// deal with duplicates: keep if >50% of matched CLU area is in a single sub-basin polygon, but flag
+duplicates t clu_id, gen(dup2)
+unique clu_id if dup2>0 //537 dups
+br clu_id objectid basin_name basin_su_1 intacres tot_int_area pct_int_area max_pct_int_area dup2 if dup2>0
+gen flag_multisubbasin_clu = dup2>0
+hist max_pct_int_area if tag_clu & dup2>0
+egen temp1 = sum(pct_int_area), by(clu_id basin_name)
+assert (temp1>0.999 | temp1<0.8) if dup2>0
+gen flag_multibasin_clu = dup2>0 & temp1<0.8
+unique clu_id
+local uniq = r(unique)
+drop if dup2>0 & max_pct_int_area>0.50 & pct_int_area<max_pct_int_area
+unique clu_id
+assert r(unique)==`uniq'
+
+	// deal with duplicates: keep if plurality of matched CLU area is in a single sub-basin polygon, but flag
+duplicates t clu_id, gen(dup3)
+unique clu_id if dup3>0 //1 dups
+br clu_id objectid basin_name basin_su_1 intacres tot_int_area pct_int_area max_pct_int_area dup3 if dup3>0
+unique clu_id
+local uniq = r(unique)
+drop if dup2>0 & pct_int_area<max_pct_int_area
+unique clu_id
+assert r(unique)==`uniq'
+assert r(unique)==r(N)
+
+	// compare acreages
+gen temp = tot_int_area/cluacres	
+sum temp, detail // these are clearly in the same units
+sort temp // edges of state + very small acreages explain most of the tails of this mismatch
+br cluacres tot_int_area temp
+gen temp2 = log(cluacres)
+twoway scatter temp temp2, msize(vtiny)
+drop cluacres intacres tot_int_area temp*
+
+	// deal with unmatched CLUs
+gen flag_clu_not_in_basin = d_min!=.
+tab flag_clu_not_in_basin
+gen miles_to_nearest_basin = d_min*0.000621371 // convert from meters to miles
+sum miles_to_nearest_basin, detail	
+sort miles
+br
+	// if you're over 10 miles from the nearest basin, we'll say that you're not matched to basin
+foreach v of varlist objectid-d_min{
+	cap replace `v' = . if miles_to_nearest_basin>10 & miles_to_nearest_basin!=.
+	cap replace `v' = "" if miles_to_nearest_basin>10 & miles_to_nearest_basin!=.
+}
+replace miles_to_nearest_basin = . if miles_to_nearest_basin>10	
+
+	// clean up and label
+br
+keep clu_id objectid basin_name basin_su_1 basin_numb basin_subb flag* miles_to_nearest_basin
+unique objectid
+local uniq = r(unique)
+unique objectid basin_name basin_su_1 basin_numb basin_subb
+assert r(unique)==`uniq'
+
+rename objectid basin_object_id 
+rename basin_numb basin_id
+rename basin_subb basin_sub_id
+rename basin_su_1 basin_sub_name
+
+replace basin_name = "AÑO NUEVO AREA" if basin_id=="3-020"
+replace basin_sub_name = "AÑO NUEVO AREA" if basin_sub_id=="3-020" 
+foreach v of varlist basin_name basin_sub_name {
+	replace `v' = upper(trim(itrim(`v')))
+}
+
+la var clu_id "CLU unique identifier"
+la var basin_object_id "Groundwater basin polygon identifier (assigned by GIS)"
+la var basin_id "Groundwater basin identifier"
+la var basin_sub_id "Groundwater sub-basin identifier"
+la var basin_name "Groundwater basin name"
+la var basin_sub_name "Groundwater sub-basin name"
+la var flag_multisubbasin_clu "Flag for CLUs where <80% of matched acreage is in a single sub-basin"
+la var flag_multibasin_clu "Flag for CLUs where <80% of matched acreage is in a single basin"
+la var flag_clu_not_in_basin "Flag for CLUs that don't overlap with in a groundwater basin polygon"
+la var miles_to_nearest_basin "Miles to nearest groundwater basin, for unmatched CLUs (cut off at 10 miles"
+
+	// Merge in water basin variables to confirm they match
+rename basin_id basin_idM
+rename basin_sub_id basin_sub_idM
+rename basin_name basin_nameM
+rename basin_sub_name basin_sub_nameM
+joinby basin_object_id using "$dirpath_data/groundwater/ca_water_basins.dta", unmatched(master)
+assert _merge==3 if basin_object_id!=.
+assert basin_name==basin_nameM if basin_object_id!=.
+assert basin_sub_name==basin_sub_nameM if basin_object_id!=.
+assert basin_id==basin_idM if basin_object_id!=.
+assert basin_sub_id==basin_sub_idM if basin_object_id!=.
+drop _merge-basin_sub_area_sqmi
+rename *M *
+
+	// save
+sort clu_id
+unique clu_id
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/cleaned_spatial/clu_basin_conc.dta", replace
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 6. Run auxilary GIS script "BUILD_gis_clu_water_districts.R" to spatially join 
+**    CLUs to Nick Hagerty water district polygons and export to csv
+
+*******************************************************************************
+*******************************************************************************
+
+** 7. Process CLU-to-water district polygon-to-polygon join
+{
+
+insheet using "$dirpath_data/misc/CLU_water_districts.csv", clear comma names
+foreach vy of varlist cluacresy countyy {
+	local vx = substr("`vy'",1,length("`vy'")-1) + "x"
+	replace `vx' = "" if `vx'=="NA" & `vy'!="NA"
+	replace `vy' = "" if `vy'=="NA" & `vx'!="NA"
+	replace `vx' = `vy' if `vy'!="" & `vx'==""
+	assert inlist(`vy',"",`vx')
+	drop `vy'
+}
+rename cluacresx cluacres
+rename countyx county
+foreach v of varlist * {
+	replace `v' = "" if `v'=="NA"
+	destring `v', replace
+}
+assert clu_id!="" 
+egen tag_clu = tag(clu_id)
+
+
+	// 
+egen temp = sum(intacres), by(clu_id)
+gen temp2 = temp/cluacres
+sum temp2, detail
+	
+	// deal with duplicates: keep if >=80% of matched CLU area is in a single sub-basin polygon
+gsort clu_id -intacres 
+duplicates t clu_id, gen(dup)
+tab dup
 unique clu_id if dup>0 //1889 dups
 br clu_id objectid basin_name basin_su_1 intacres tot_int_area dup if dup>0
 gen pct_int_area = intacres/tot_int_area
@@ -277,6 +458,42 @@ assert r(unique)==r(N)
 compress
 save "$dirpath_data/cleaned_spatial/clu_county_conc.dta", replace
 
+
+
+
+	// Convert from km to miles
+replace nearestwbasn_dist_km = nearestwbasn_dist_km*0.621371
+rename nearestwbasn_dist_km nearestwbasn_miles
+sum nearestwbasn_miles, detail // p90 = 11.75 miles, not great, not terrible
+local p90 = r(p90)
+
+	// Assign nearest water districts within 11.75 miles (vast majority not in APEP)
+assert inlist(in_wbasn,0,1)
+assert nearestwbasn_miles!=. if in_wbasn==0
+assert nearestwbasn_miles==. if in_wbasn==1
+rename in_wbasn wbasn_dist_miles
+replace wbasn_dist_miles = 1 - wbasn_dist_miles
+replace wbasn_dist_miles = nearestwbasn_miles if nearestwbasn_miles!=.	
+sum wbasn_dist_miles, det
+replace wbasn_id = nearestwbasn_id if nearestwbasn_id!=. & wbasn_dist_miles<=`p90'
+
+	// Drop nearest water district variables
+drop nearestwbasn*	
+
+	// Merge in water basin variables
+rename wbasn_id basin_object_id
+joinby basin_object_id using "$dirpath_data/groundwater/ca_water_basins.dta", unmatched(master)
+assert _merge==3 if basin_object_id!=.
+assert upper(wbasn)==basin_name if wbasn!=""
+drop _merge wbasn
+order wbasn_dist_miles, after(basin_object_id)
+rename wbasn_dist_miles basin_dist_miles
+
+	// Label
+la var basin_object_id "Groundwater basin polygon (assigned by GIS)"	
+la var basin_dist_miles "Distance to goundwater basin (cut off at 11.75 miles)"	
+
+
 }
 
 *******************************************************************************
@@ -286,21 +503,3 @@ save "$dirpath_data/cleaned_spatial/clu_county_conc.dta", replace
 
 
 
-
-
-
-
-
-lobal path_in= "C:\Users\clohani\Desktop\Code_Chinmay"
-
-import delimited using "$path_in/Intersected_CLU_basin.csv", clear varnames(1)
-destring tot_int_area, replace force
-gsort clu_id -tot_int_area
-by clu_id: keep if _n==1
-save "$path_in/CLU merge Basin County/Merged_CLU_basin.dta", replace
-
-import delimited using "$path_in/Intersected_CLU_county.csv", clear varnames(1)
-destring tot_int_area, replace force
-gsort clu_id -tot_int_area
-by clu_id: keep if _n==1
-save "$path_in/CLU merge Basin County/Merged_CLU_county.dta", replace
