@@ -17,17 +17,16 @@ library(SDMTools) #, lib.loc=libP)
 library(sf)
 library(assertr)
 library(lwgeom)
-
-if(Sys.getenv("USERNAME") == "clohani"){
-  root_gh <- "C:/Users/clohani/OneDrive/Documents/github/Ag-EE"
-}
+library(parallel)
+library(cluster)
 
 m2_to_acre <- 0.000247105
 
-path_counties <- "T:/Projects/Pump Data/data/spatial/Counties"
-path_clu <- "T:/Projects/Pump Data/data/cleaned_spatial/CLU/clu_poly"
-path_output <- "C:/Users/clohani/Desktop/Code_Chinmay"
-path_basins <- "T:/Projects/Pump Data/data/spatial/CA_Bulletin_118_Groundwater_Basins"
+path <- "T:/Projects/Pump Data/"
+
+path_basins <- paste0(path,"data/spatial/CA_Bulletin_118_Groundwater_Basins")
+path_clu <- paste0(path,"data/cleaned_spatial/CLU/clu_poly")
+path_output <- paste0(path,"data/misc")
 
 #create sf objects for CLUs and basins
 clu <- st_read(file.path(path_clu, "clu_poly.shp"))
@@ -58,7 +57,6 @@ inter <- st_intersection(lwgeom::st_make_valid(clu), lwgeom::st_make_valid(basin
 
 #find area of these things
 #create a variable which sums total area of these things
-
 inter <- inter %>% 
   mutate(IntAcres = as.numeric(st_area(.)) * m2_to_acre) %>%
   st_set_geometry(NULL) %>%
@@ -66,38 +64,60 @@ inter <- inter %>%
   mutate(tot_int_area= sum(IntAcres)) %>%
   ungroup
 
-## save outputs
-#saveRDS(inter, file.path(path_output, "CLU_Basins.RDS"))
-## check if the total area of intersections is atleast as much as the CLU area
-#inter %>%
-#  verify(tot_area>CLUAcres)
+#subset CLUs to isolate non-matches
+clu_matched <- as.data.frame(inter$CLU_ID)
+names(clu_matched) <- "CLU_ID"
+clu_unmatched <- anti_join(clu, clu_matched, by="CLU_ID")
 
-# define a variable that tells whether intersected or not, take union with original, select largest intersected
+#for unmatched CLUs, create function to find distance to nearest basin
+nearest_dist <- function(clu_indiv){
+  d_which <- st_nearest_feature(lwgeom::st_make_valid(clu_indiv), lwgeom::st_make_valid(basins))
+  d_min <- st_distance(lwgeom::st_make_valid(clu_indiv), lwgeom::st_make_valid(basins)[d_which,])
+  d_nearest <- st_drop_geometry(basins[d_which,])
+  d_out <- cbind(st_drop_geometry(clu_indiv),d_min,d_nearest, stringsAsFactors=FALSE)
+  return(d_out)
+} 
 
-union_clus <- inter %>%
-  mutate(has_intersection=1) %>%
-  bind_rows(valid_clu,.)
+#parallelize, and execute this function
+cores <- detectCores()
+cl <- makeCluster(24)
+clusterEvalQ(cl, library(lwgeom))
+clusterEvalQ(cl, library(sf))
+clusterSetRNGStream(cl, 12345)
+clusterExport(cl=cl, varlist=c('clu_unmatched','basins','nearest_dist'))
+out_nearest <- as.data.frame(t(parSapply(cl=cl, 1:nrow(clu_unmatched), function(i) nearest_dist(clu_unmatched[i,]))),stringsAsFactors=FALSE)
+stopCluster(cl)
 
-sliced_union_clus <- union_clus %>%
-  group_by(CLU_ID) %>%
-  arrange(desc(IntAcres), .by_group = TRUE) %>%
-  slice(1)%>%
-  ungroup()
+#unlist parsapply results, because parSapply is stupid af
+out_nearest <- out_nearest %>% unnest(CLUAcres)
+out_nearest <- out_nearest %>% unnest(County)
+out_nearest <- out_nearest %>% unnest(CLU_ID)
+out_nearest <- out_nearest %>% unnest(d_min)
+out_nearest <- out_nearest %>% unnest(OBJECTID)
+out_nearest <- out_nearest %>% unnest(Basin_Numb)
+out_nearest <- out_nearest %>% unnest(Basin_Subb)
+out_nearest <- out_nearest %>% unnest(Basin_Name)
+out_nearest <- out_nearest %>% unnest(Basin_Su_1)
+out_nearest <- out_nearest %>% unnest(Region_Off)
+out_nearest <- out_nearest %>% unnest(GlobalID)
+out_nearest <- out_nearest %>% unnest(totAcres)
 
-# code for summarising things 
+out_nearest <- out_nearest %>% mutate(CLUAcres = as.numeric(CLUAcres))
+out_nearest <- out_nearest %>% mutate(County = as.character(County))
+out_nearest <- out_nearest %>% mutate(CLU_ID = as.character(CLU_ID))
+out_nearest <- out_nearest %>% mutate(d_min = as.numeric(d_min))
+out_nearest <- out_nearest %>% mutate(OBJECTID = as.numeric(OBJECTID))
+out_nearest <- out_nearest %>% mutate(Basin_Numb = as.character(Basin_Numb))
+out_nearest <- out_nearest %>% mutate(Basin_Subb = as.character(Basin_Subb))
+out_nearest <- out_nearest %>% mutate(Basin_Name = as.character(Basin_Name))
+out_nearest <- out_nearest %>% mutate(Basin_Su_1 = as.character(Basin_Su_1))
+out_nearest <- out_nearest %>% mutate(Region_Off = as.character(Region_Off))
+out_nearest <- out_nearest %>% mutate(GlobalID = as.character(GlobalID))
+out_nearest <- out_nearest %>% mutate(totAcres = as.numeric(totAcres))
 
-union_clus %>% 
-  mutate(all=1) %>%
-  group_by(all) %>%
-  summarise(`1%`=quantile(frac_area, probs=0.01, na.rm = TRUE),
-            `5%`=quantile(frac_area, probs=0.5, na.rm = TRUE),
-            `10%`=quantile(frac_area, probs=0.10, na.rm = TRUE),
-            `25%`=quantile(frac_area, probs=0.25, na.rm = TRUE),
-            `50%`=quantile(frac_area, probs=0.5, na.rm = TRUE),
-            `75%`=quantile(frac_area, probs=0.75, na.rm = TRUE),
-            `90%`=quantile(frac_area, probs=0.9, na.rm = TRUE),
-            `99%`=quantile(frac_area, probs=0.99, na.rm = TRUE),
-            avg=mean(frac_area, na.rm = TRUE)
-  )
+#export results
+outfile <- full_join(inter,out_nearest, by="CLU_ID")
+file <- paste0(path_output,"/CLU_basins.csv")
+write.csv(outfile, file, sep=",", row.names=FALSE, col.names=TRUE)
 
-saveRDS(union_clus, file.path(path_output, "Intersected_CLU_basin.rds"))
+
