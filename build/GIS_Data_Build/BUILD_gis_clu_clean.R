@@ -66,3 +66,13 @@ clu <-
 st_write(clu, file.path(build_spatial, "CLU/clu_poly"), 
 	driver = "ESRI Shapefile", delete_layer = TRUE)
 saveRDS(clu, file.path(build_spatial, "CLU/clu.RDS"))
+
+
+## Extract CLU polygon centroids
+clus <- readRDS(file.path(build_spatial, "CLU/clu.RDS"))
+centroids <- st_centroid(clus)
+head(centroids)
+centroids <- centroids[,names(centroids) %in% c("CLU_ID","geometry")]
+head(centroids)
+centroids$rowID <- seq.int(nrow(centroids))
+saveRDS(centroids, file.path(build_spatial, "CLU/clu_centroids.RDS"))
