@@ -14,14 +14,11 @@ library(purrr)
 library(tictoc)
 library(sf)
 
-if(Sys.getenv("USERNAME") == "Yixin Sun"){
-	root_gh <- "C:/Users/Yixin Sun/Documents/Github/Ag-EE"
-	root_db <- "C:/Users/Yixin Sun/Documents/Dropbox/Energy Water Project"
-}
-source(file.path(root_gh, "build/GIS_Data_Build/constants.R"))
+raw_spatial <- "T:/Projects/Pump Data/Data/Spatial Data"
+build_spatial <- "T:/Projects/Pump Data/Data/cleaned_spatial"
 
-raw_spatial <- file.path(root_db, "Data/Spatial Data")
-build_spatial <- file.path(root_db, "Data/cleaned_spatial")
+main_crs <- 4326
+m2_to_acre <- 0.000247105
 
 P <- 3
 G <- 10
@@ -79,7 +76,6 @@ cdl_dict <-
 # ===========================================================================
 # Run arcpy script and read in data generated from that program
 # ===========================================================================
-# setwd(file.path(root_gh, "build"))
 # shell('python "GIS_Data_Build/BUILD_gis_clu_cdl_conc.py"')
 
 # reading in clu_cdl concordance

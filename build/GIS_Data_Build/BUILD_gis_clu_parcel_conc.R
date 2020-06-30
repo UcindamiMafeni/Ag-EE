@@ -9,12 +9,11 @@ library(lwgeom)
 library(tigris)
 library(furrr)
 
-if(Sys.getenv("USERNAME") == "Yixin Sun"){
-	root_gh <- "C:/Users/Yixin Sun/Documents/Github/Ag-EE"
-	root_db <- "C:/Users/Yixin Sun/Documents/Dropbox/Energy Water Project"
-}
+raw_spatial <- "T:/Projects/Pump Data/Data/Spatial Data"
+build_spatial <- "T:/Projects/Pump Data/Data/cleaned_spatial"
 
-source(file.path(root_gh, "build/GIS_Data_Build/constants.R"))
+main_crs <- 4326
+m2_to_acre <- 0.000247105
 
 num_workers <- 2
 
