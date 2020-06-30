@@ -1,7 +1,7 @@
-#######################################################
-#  Script to assign SP premises and APEP pumps to     #
-#  California counties                                #
-####################################################### 
+##########################################
+#  Script to assign PGE SPs, APEP pumps, #
+#  and SCE SPs to California counties    #
+##########################################
 rm(list = ls())
 
 
@@ -53,9 +53,9 @@ ggplot() +
                color=rgb(0,1,0), fill=rgb(0,0,1), alpha=1) 
 
 
-#########################################
-### 2. Assign SP lat/lons to counties ###
-#########################################
+#############################################
+### 2. Assign PGE SP lat/lons to counties ###
+#############################################
 
 #Read PGE coordinates
 setwd(paste0(path,"data/misc"))
@@ -127,8 +127,8 @@ ggplot() +
              alpha=1, size=1) 
 
 #Drop extraneous variables
-prems <- prems[c("sp_uuid","prem_lat","prem_long","longitude","latitude",
-                 "bad_geocode_flag","pull","county","in_county","county_id")]
+prems <- prems[c("sp_uuid","county","in_county","IN_county.GEOID")]
+names(prems)[4] <- "fips"
 
 #Export results to txt
 filename <- "pge_prem_coord_polygon_counties.txt"
@@ -217,11 +217,92 @@ ggplot() +
              alpha=1, size=1) 
 
 #Drop extraneous variables
-pumps <- pumps[c("latlon_group","pump_lat","pump_long","longitude","latitude",
-                 "county","in_county","county_id")]
+pumps <- pumps[c("latlon_group","county","in_county","IN_county.GEOID")]
+names(pumps)[4] <- "fips"
 
 #Export results to txt
 filename <- "apep_pump_coord_polygon_counties.txt"
 write.table(pumps, file=filename , row.names=FALSE, col.names=TRUE, sep="%", quote=FALSE, append=FALSE)
 
+
+#############################################
+### 4. Assign SCE SP lat/lons to counties ###
+#############################################
+
+#Read PGE coordinates
+setwd(paste0(path,"data/misc"))
+socal <- read.delim2("sce_prem_coord_1pull.txt",header=TRUE,sep=",",stringsAsFactors=FALSE)
+socal$longitude <- as.numeric(socal$prem_lon)
+socal$latitude <- as.numeric(socal$prem_lat)
+
+#Convert to SpatialPointsDataFrame
+coordinates(socal) <- ~ longitude + latitude
+proj4string(socal) <- proj4string(counties)
+
+#Assign each lat/lon to the county polygon it's contained in
+socal@data$IN_county <- over(socal, counties)
+
+#Reproject everything into planar coordinates
+utmStr <- "+proj=utm +zone=%d +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"
+crs <- CRS(sprintf(utmStr, 10))
+countiesUTM <- spTransform(counties, crs) #reproject into planar coordinates, because that's what the distance function uses
+socalUTM <- spTransform(socal, crs)
+
+#Create empy vectors to loop over, to calculate distance to a county
+n <- nrow(socal@data)
+nearestCounty <- character(n)
+nearestCounty_ID <- numeric(n)
+nearestCounty_dist_km <- numeric(n)
+
+#Create vector of only those observations where county is missing
+missings <- c(1:n)[is.na(socal@data$IN_county$COUNTYFP)]
+
+#Calculate distance to a county, for lat/lons not contained in a polygon
+for (j in seq_along(missings)) {
+  i <- missings[j]
+  temp <- countiesUTM@data[which.min(gDistance(socalUTM[i,], countiesUTM, byid=TRUE)),]
+  nearestCounty[i]      <- as.character(temp$NAME)
+  nearestCounty_ID[i]   <- as.numeric(as.character(temp$COUNTYFP))
+  nearestCounty_dist_km[i] <- min(gDistance(socalUTM[i,], countiesUTM, byid=TRUE))/1000
+}
+
+#Convert back to regular dataframe
+socal <- as.data.frame(socal)
+
+#Assign in_county dummy and store county name
+socal$county <- socal$IN_county.NAME
+socal$in_county <- as.numeric(is.na(socal$county)==0)
+socal$county_id <- as.numeric(as.character(socal$IN_county.COUNTYFP))
+summary(socal$in_county)
+summary(socal$in_county[socal$bad_geocode_flag==0])
+
+#Append nearest county variables
+socal <- cbind(socal, nearestCounty, nearestCounty_ID, nearestCounty_dist_km)
+summary(socal[socal$in_county==0,]$nearestCounty_dist_km)
+
+#Plot points in counties
+ggplot() + 
+  geom_polygon(data=CAoutline, aes(x=long, y=lat, group=group), 
+               color="grey30", fill=NA, alpha=1) +
+  geom_polygon(data=counties, aes(x=long, y=lat, group=group), 
+               color="green", fill=NA, alpha=1) +
+  geom_point(data=socal[socal$in_county==1,], aes(x=longitude, y=latitude), color=rgb(0,0,1), shape=19, 
+             alpha=1, size=1) 
+
+#Plot points NOT in counties // all have bad geocodes
+ggplot() + 
+  geom_polygon(data=CAoutline, aes(x=long, y=lat, group=group), 
+               color="grey30", fill=NA, alpha=1) +
+  geom_polygon(data=counties, aes(x=long, y=lat, group=group), 
+               color="green", fill=NA, alpha=1) +
+  geom_point(data=socal[(socal$in_county==0),], aes(x=longitude, y=latitude), color=rgb(0,0,1), shape=19, 
+             alpha=1, size=1) 
+
+#Drop extraneous variables
+socal <- socal[c("sp_uuid","county","in_county","IN_county.GEOID")]
+names(socal)[4] <- "fips"
+
+#Export results to txt
+filename <- "sce_prem_coord_polygon_counties.txt"
+write.table(socal, file=filename , row.names=FALSE, col.names=TRUE, sep="%", quote=FALSE, append=FALSE)
 
