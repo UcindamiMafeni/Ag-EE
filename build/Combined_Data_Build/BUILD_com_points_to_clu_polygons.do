@@ -16,7 +16,7 @@ global dirpath_code "T:/Home/Louis/backup/AgEE/AgEE_code/build"
 *******************************************************************************
 
 ** 1. Save PGE SP coordinates (techincally *premise* coordinates)
-if 1==0{
+if 1==1{
 
 ** Load all 3 PGE customer datasets
 use "$dirpath_data/pge_cleaned/pge_cust_detail_20180719.dta", clear
@@ -63,11 +63,13 @@ assert r(unique)==r(N)
 drop dup temp*
 
 ** Export coordinates
-preserve
-drop if missing_geocode_flag==1
-outsheet using "$dirpath_data/misc/pge_prem_coord_3pulls.txt", comma replace
-restore
-	
+if 1==0 {
+	preserve
+	drop if missing_geocode_flag==1
+	outsheet using "$dirpath_data/misc/pge_prem_coord_3pulls.txt", comma replace
+	restore
+}	
+
 ** Save
 la var pull "Which PGE data pull did this SP come from?"
 compress
@@ -79,7 +81,7 @@ save "$dirpath_data/pge_cleaned/pge_sp_premise_gis.dta", replace
 *******************************************************************************
 
 ** 2. Save APEP pump coordinates
-if 1==0{
+if 1==1{
 
 ** Load APEP test dataset
 use "$dirpath_data/pge_cleaned/apep_pump_test_data.dta", clear
@@ -95,14 +97,16 @@ assert r(unique)==r(N)
 keep apeptestid test_date_stata crop pumplatnew pumplongnew latlon_group
 
 ** Export coordinates
-preserve
-drop if latlon_group==.
-keep pumplatnew pumplongnew latlon_group
-duplicates drop
-rename pumplatnew pump_lat
-rename pumplongnew pump_long
-outsheet using "$dirpath_data/misc/apep_pump_coord.txt", comma replace
-restore
+if 1==0 {
+	preserve
+	drop if latlon_group==.
+	keep pumplatnew pumplongnew latlon_group
+	duplicates drop
+	rename pumplatnew pump_lat
+	rename pumplongnew pump_long
+	outsheet using "$dirpath_data/misc/apep_pump_coord.txt", comma replace
+	restore
+}
 	
 ** Save
 la var latlon_group "APEP lat/lon identifier"
@@ -115,7 +119,7 @@ save "$dirpath_data/pge_cleaned/apep_pump_gis.dta", replace
 *******************************************************************************
 
 ** 3. Save SCE SP/SA coordinates
-if 1==0{
+if 1==1{
 
 ** Load all 1 SCE customer datasets
 use "$dirpath_data/sce_cleaned/sce_cust_detail_20190916.dta", clear
@@ -171,10 +175,12 @@ unique sp_uuid
 assert r(unique)==r(N)
 
 ** Export coordinates
-preserve
-drop if missing_geocode_flag==1
-outsheet using "$dirpath_data/misc/sce_prem_coord_1pull.txt", comma replace
-restore
+if 1==0 {
+	preserve
+	drop if missing_geocode_flag==1
+	outsheet using "$dirpath_data/misc/sce_prem_coord_1pull.txt", comma replace
+	restore
+}
 	
 ** Save
 la var pull "Which SCE data pull did this SP come from?"
@@ -1048,41 +1054,4 @@ save "$dirpath_data/sce_cleaned/sce_sp_premise_gis.dta", replace
 
 *******************************************************************************
 *******************************************************************************
-
-
-*******************************************************************************
-*******************************************************************************
-
-
-LEFTOVER CODE
-{
-
-	// Label
-la var wdist "Water district (assigned by GIS)"	
-la var wdist_dist_miles "Distance to water district (cut off at 2.13 miles)"	
-la var wdist_id "Water district ID (from shapefile)"
-la var wdist_area_sqmi "GIS-derived area of water district (sq miles)"
-
-
-	// Label
-la var in_parcel "Dummy for SPs properly within parcel polygons, all parcels"
-la var parcelid "Unique parcel ID, all parcels (county, area, lon, lat)"	
-la var parcel_county "County of assigned parcel, all parcels"	
-la var parcel_acres "Area (acres) of assigned parcel, all parcels"
-la var parcel_dist_miles "Distance to assigned parcel, all parcels (cut off at 1 mile)"
-
-	// Label
-la var in_parcel "Dummy for SPs properly within parcel polygons, CLU-merged parcels"
-la var parcelid "Unique parcel ID, CLU-merged parcels (county, area, lon, lat)"	
-la var parcel_county "County of assigned parcel, CLU-merged parcels"	
-la var parcel_acres "Area (acres) of assigned parcel, CLU-merged parcels"
-la var parcel_dist_miles "Distance to assigned parcel, CLU-merged parcels (cut off at 1 mile)"
-
-	// Rename to differentiate from the all-parcel varaibles
-rename *parcel_* *parcel_conc_*
-rename in_parcel in_parcel_conc
-rename parcelid parcelid_conc
-	
-}	
-	sfsfsdf
 
