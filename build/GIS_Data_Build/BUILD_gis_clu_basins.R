@@ -4,6 +4,8 @@
 
 rm(list = ls())
 
+#Data downloaded from: https://data.cnra.ca.gov/dataset/ca-bulletin-118-groundwater-basins
+
 library(tidyverse)
 library(dplyr)
 library(ggmap) #, lib.loc=libP)
@@ -23,6 +25,47 @@ library(cluster)
 m2_to_acre <- 0.000247105
 
 path <- "T:/Projects/Pump Data/"
+
+########################################################################
+### 1. Export data on basins, and confirm they are within California ###
+########################################################################
+
+setwd(paste0(path,"data/spatial"))
+
+#Load Water Basins shapefile
+wbasn <- readOGR(dsn = "CA_Bulletin_118_Groundwater_Basins", layer = "CA_Bulletin_118_Groundwater_Basins")
+proj4string(wbasn)
+wbasn <- spTransform(wbasn, CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+
+#Load CA state outline
+CAoutline <- readOGR(dsn = "State", layer = "CA_State_TIGER2016")
+proj4string(CAoutline)
+CAoutline <- spTransform(CAoutline, CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=GRS80 +towgs84=0,0,0"))
+
+#Confirm water basins align with California map
+ggplot() + 
+  geom_polygon(data=CAoutline, aes(x=long, y=lat, group=group), 
+               color="grey30", fill=NA, alpha=1) +
+  geom_polygon(data=wbasn, aes(x=long, y=lat, group=group, color=rgb(0,0,1)), 
+               color=rgb(0,1,0), fill=rgb(0,0,1), alpha=1) 
+
+#Calculate area of each water basin polygon
+wbasn@data$area_km2 <- area(wbasn)/1000000
+data <- wbasn@data
+summary(data$area_km2)
+
+#Export dataset of water basins
+setwd(paste0(path,"data/misc"))
+filename <- "ca_water_basins_raw.txt"
+write.table(data, file=filename , row.names=FALSE, col.names=TRUE, sep="%", quote=FALSE, append=FALSE)
+
+rm(wbasn,CAoutline,data,filename)
+
+
+
+####################################
+### 2. Proceed with spatial join ###
+####################################
 
 path_basins <- paste0(path,"data/spatial/CA_Bulletin_118_Groundwater_Basins")
 path_clu <- paste0(path,"data/cleaned_spatial/CLU/clu_poly")
