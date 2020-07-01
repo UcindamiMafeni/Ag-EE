@@ -483,7 +483,7 @@ merge 1:1 sp_uuid using `gis_out'
 assert _merge!=2
 assert missing_geocode_flag==1 if _merge==1 // confirm that all non-merges have missing lat/lon
 assert _merge==1 if missing_geocode_flag==1 // confirm that missing lat/lons don't merge
-replace in_clu = 0 if _merge==1 // flag missing lat/lons as non-merges
+replace in_clu_ec = 0 if _merge==1 // flag missing lat/lons as non-merges
 assert _merge==3 if prem_lat!=. & prem_lon!=.
 assert prem_lat!=. & prem_lon!=. if _merge==3
 drop if _merge==2
@@ -1038,7 +1038,7 @@ merge 1:1 sp_uuid using `gis_out'
 assert _merge!=2
 assert missing_geocode_flag==1 if _merge==1 // confirm that all non-merges have missing lat/lon
 assert _merge==1 if missing_geocode_flag==1 // confirm that missing lat/lons don't merge
-replace in_clu = 0 if _merge==1 // flag missing lat/lons as non-merges
+replace in_clu_ec = 0 if _merge==1 // flag missing lat/lons as non-merges
 assert _merge==3 if prem_lat!=. & prem_lon!=.
 assert prem_lat!=. & prem_lon!=. if _merge==3
 drop if _merge==2
