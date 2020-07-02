@@ -1,0 +1,79 @@
+%
+% DATA 
+%
+% Normally I like empirical strategy --> data, but here I think it makes more sense to put the data first, since you kind of need to understand the electricity data before walking through the regression framework
+
+\subsection{Electricity data}
+
+We begin by estimating how farmers' electricity consumption responds to changes in electricity price. We use confidential customer-level electricity datasets, which PGE's data management team prepared for us under a non-disclosure agreement. These data comprise the universe of agricultural electricity consumers in PGE's service territory, and we observe each customer's monthly bills at the service account level, from 2008--2017. We aggregate service accounts up to 108,172 unique service points (i.e.\ the physical location of an electricity meter), allowing us to construct ``monthified'' panel of electricity consumption (in kWh) at the service point (SP) level.\footnote{
+PGE's monthly bill cycles are customer-specific, and billing periods typically do not end at the end of a calendar month. We ``monthify'' billed kWh for each SP by splitting/weight-averaging multiple bills in a single calendar month, in order to create a SP by month panel. Most SPs have a single service account at each point in time, but service accounts often turn over a given SP.
+}
+We also observe several key covariates for each service point, including its latitude and longitude; an indicator for accounts with solar panels on net-energy metering (NEM), which we drop from our estimation sample; and an identifier to link service point locations to physical electricity meters.
+
+PGE's offers 23 distinct agricultural tariffs, and our billing data report the particular tariff associated with each monthly bill. Prices on each tariff update multiple times per year, and historic prices are publicly available, along with information on tariff-specific rules and eligibility criteria. This allows us to construct a 10-year panel of hourly volumetric (marginal) electricity prices, which we collapse to the monthly level by taking an unweighted average across hours. Then, we assign each service point a monthly average marginal electricity price in \$/kWh.
+
+Table \ref{tab:pge_ag_tariffs} describes each agricultural tariff in detail. Importantly, PGE classifies all agricultural consumers into 5 disjoint categories, based on their physical capital (i.e.\ pump size; internal combustion engine) and their type of electricity meter (i.e.\ conventional vs.\ smart meters).\footnote{ 
+Conventional meters record electricity consumption using an analog dial, whereas smart meters can digitally store the full time profile of consumption. During our sample period, PGE gradually phased out conventional meters, replacing them with smart meters capable of supporting time-varying electricity pricing. 
+}
+While farmers may switch tariffs \emph{within} categories, they may not switch tariffs \emph{across} categories. This restriction lets us identify price elasticities of demand by instrumenting for farm $i$'s marginal price with the marginal price of its within-category default tariff. Figure \ref{fig:marg_price_3rates} plots time series of monthly average marginal prices for 3 of the most common tariffs in our estimation sample. Our identifying variation in electricity prices comes from (i) these time series not moving in parallel, and (ii) across-category tariff switching induced by PGE's large-scale smart meter rollout.
+
+\subsection{Pump data}
+
+To complement our electricity data, we have rich data on agricultural groundwater pumps collected by PGE's Advanced Pumping Efficiency Program (APEP). These data include the universe of APEP-subsidized pump tests from 2011--2017, and we observe detailed measurements and technical specifications for 21,851 unique tests at 17,107 unique pump locations. Importantly, we also observe identifiers for the electricity meter associated with each pump test. This allows us to match pump tests to electricity service points, thereby isolating a sample of 11,851 service points for which agricultural groundwater pumping is confirmed to be a major end-use.\footnote{
+Pumping is likely the \emph{only} end-use at most matched service points, as PGE typically installs a dedicated meters for each pump.
+}
+We restrict our empirical analysis to this 11 percent subset of agricultural service points, in order to best isolate groundwater pumpers and avoid incorporating other agricultural electricity end-uses.\footnote{
+We are currently working on using satellite images to predict whether service points outside the APEP-matched sample are also groundwater pumps. We hope to incorporate these farms into future analysis, as there are likely many groundwater pumps that never received an APEP-subsidized pump test.
+}
+
+Table \ref{tab:elec_summary_stats} reports summary statistics for this subset of agricultural service points (in the right column). Compared to the full set of PGE's agricultural customers, APEP-matched service points tend to consume nearly twice as much electricity, and tend to pay lower marginal prices. Only 24 percent of service points shift across tariff categories, and the vast majority of switches are triggered by PGE's smart meter rollout. Figure \ref{fig:pge_ca_map} reveals that APEP-matched service points are heavily concentrated in California's Central Valley, and appear to be a geographically representative subset of PGE's agricultural customers.
+
+Besides helping us identify a subset of agricultural consumers who pump groundwater, APEP data allow us to characterize pump-specific groundwater production functions. Groundwater extracted is Leontief in electricity (for pumps with electric motors), and 1 kWh of electricity in will yield a particular volume of groundwater out (measured in acre-feet (AF)). This kWh per AF relationship is governed by physics:
+\begin{equation}
+\frac{\text{kWh}}{\text{AF}} ~=~ \text{kW} \div \frac{\text{AF}}{\text{hour}} 
+ ~=~ \frac{\big[\text{Lift (feet)} \big]\times \big[\text{Flow (gallon/minute)}\big]}{\big[\text{Operating pump efficiency (\%)}\big] \times \big[\text{Constant}\big]} \div \frac{\text{AF}}{\text{hour}} 
+\label{eq:kwhaf_formula1}
+\end{equation}
+The power (kW) required to pump 1 acre-foot is directly proportionate to both the vertical distance the water must travel to the surface (i.e.\ lift) and the speed at which the water travels (i.e.\ flow). It is inversely proportionate to rate at which the pump converts electric energy into the movement of water (i.e.\ operating pump efficiency). We can simplify (\ref{eq:kwhaf_formula1}) by converting from gallons to acre-feet: 
+\begin{equation}
+\Rightarrow~~\frac{\text{kWh}}{\text{AF}} ~=~ \frac{\big[\text{Lift (feet)} \big] \times \big[\text{Constant}\big]}{\text{Operating pump efficiency (\%)}} 
+\label{eq:kwhaf_formula2}
+\end{equation}
+For each APEP pump test, we observe measurements of kWh/AF, operating pump efficiency, flow, and lift. We also observe the standing water level, or the baseline groundwater depth in the absence of pumping. Because pumping lowers the water level at a given location, standing water levels help us more accurately calibrate how changes in aquifer depth impact lift for each pump.\footnote{
+Lift is (approximately) the sum of the standing water level, drawdown (i.e., how much pump $i$ impacts its own depth), and other pump-specific factors (e.g., discharge pressure, gauge corrections, height of the pump above the surface).
+Drawdown depends on rate of extraction (i.e.\ flow) and the physical properties of the substrata. Greater flow increases drawdown, as water levels fall with faster extraction. More transmissive (or porous) rock formations have lower drawdown, because water levels are able to horizontally reequilibrate  more quickly.
+}
+
+
+\subsection{Water data}
+
+While a given farm's pumping technology is relatively constant in the short run, its kWh/AF conversion factor is sensitive to short-run changes in groundwater levels. In order to capture these short-run shocks in pumping costs, we use publicly available groundwater data from California's Department of Water Resources collected under the California Statewide Groundwater Elevation Monitoring (CASGEM) Program.\footnote{
+These data are available at: 
+\url{https://water.ca.gov/Programs/Groundwater-Management/Groundwater-Elevation-Monitoring--CASGEM}
+} 
+These data report depth below the surface at 16,015 unique monitoring stations during our 2008--2017 sample period, with an average of 25 measurements at each location at different points in time. We rasterize all measurements within each month (and quarter), using inverse distance weighting to interpolate a gridded two-dimensional surface of average depth at each point in space. This allows us to construct a monthly (and quarterly) panel of estimated groundwater depths at each electricity service point.
+
+We assign each service point to a groundwater basin, using publicly available shapefiles maintained by the California Department of Water Resources.\footnote{Water basin shapefiles are available at \url{https://water.ca.gov/Programs/Groundwater-Management/Bulletin-118}. 
+%Water district shapefiles are available at \url{https://data.cnra.ca.gov/dataset/water-districts}.
+}
+ Groundwater basins are broadly defined by stratigraphic barriers through which water does not travel horizontally. We control for annual changes in water levels that impact all farms within the same water basin. We also obtained shapefiles of irrigation districts in California from the California Department of Water Resources, the California Atlas, and the California Environmental Health Tracking Program, following \textcite{hagerty2019}. We spatially match PGE service points to these shapefiles to determine to which irrigation district (if any) each service point belongs.\footnote{In ongoing work, we are expanding upon this by using data on each irrigation district's water allocations in a heterogeneity analysis.} Irrigation districts (a.k.a.\ water districts) are administrative entities that govern farmers' annual allocations of surface water. Because groundwater and surface water are obvious substitutes, we non-parametrically control for annual shocks to farms' surface water allocations at the water district level. This helps to isolate variation in pumping behavior driven by variation in pumping costs, rather than variation in the availability of groundwater substitutes.
+ %\footnote{
+%We are currently working to incorporate additional spatial data products, including (i) shapefiles of common land units, which correspond to agricultural fields; (ii) shapefiles of parcels, which roughly correspond to farms; and (iii) the USDA Cropland Data Layer, which uses satellite imagery to classify fields by crop type. Together, these data will enable us to aggregate up from service points to farms, and to build a panel of crop choices at the farm-year level.
+%}
+
+\subsection{Groundwater prices and quantities}
+
+We merge the above data sources into a panel of groundwater prices and quantities, at the service point by month level. To convert from electricity (kWh or \$/kWh) to groundwater (AF or \$/AF), we simply need to populate a kWh/AF conversion factor for every panel observation. We construct estimates for kWh/AF by parameterizing Equation (\ref{eq:kwhaf_formula2}) using (i) monthly (or quarterly) rasters of groundwater depths at each service point; (ii) pump-specific conversions between standing water level and lift, as calculated from APEP pump tests; and (iii) APEP-measured operating pump efficiencies. We take unweighted averages of APEP variables across multiple pumps within a single service point; we also extrapolate each service point's first pump test backwards, extrapolate its last pump test forwards, and interpolate between multiple pump tests using a triangular kernel in time. 
+
+Table \ref{tab:water_summary_stats} reports summary statistics for this merged panel dataset. We observe 3.45 unique pump tests for the average APEP-matched service point, and APEP data reveal substantial (cross-sectional) variation in operating pump efficiencies and kWh/AF conversion factors. Our constructed  kWh/AF estimates tend to moderate extreme values, which compresses the right tail of \emph{measured} kWh/AF (while also slightly shifting this distribution left). Interestingly, implied marginal groundwater prices exhibit far less seasonal variation than marginal electricity prices. This is because groundwater levels tend to be higher in summer months (compared to winter months), which tends to reduce (constructed) kWh/AF in months when electricity prices are highest.
+
+
+%\subsection{Surface water data} We obtained shapefiles of irrigation districts in California from the California Department of Water Resources, the California Atlas, and the California Environmental Health Tracking Program, following \textcite{hagerty2019}. We spatially match PGE service points to these shapefiles to determine to which irrigation district (if any) each service point belongs.\footnote{In ongoing work, we are expanding upon this by using data on each irrigation district's water allocations in a heterogeneity analysis.}
+
+
+\subsection{Crop data}
+\paragraph{Common Land Units} 
+In order to match electricity meters to cropland, we use the USDA Farm Service Agency's Common Land Unit (CLU) data. We obtained the universe of USDA CLUs in California.\footnote{In the 2008 Farm Bill, the CLU data were made restricted-access. We therefore use the 2008 CLUs for our full sample.} A CLU is the smallest contiguous unit of agricultural land under common land cover, land management, and ownership.\footnote{The USDA provides more detail on CLUs here: \url{https://www.fsa.usda.gov/programs-and-services/aerial-photography/imagery-products/common-land-unit-clu/index}.} We link PGE service points to CLUs via a spatial match.\footnote{In ongoing work, we are pursuing a second method of linking service points to land area: using county assessor tax parcels.} 
+
+\paragraph{Cropland Data Layer} We obtain data on cropped acreage from the U.S. Department of Agriculture's (USDA) Cropland Data Layer (CDL). This satellite-derived product provides information on what crop is being grown at every 30-by-30 meter pixel in the United States from 1997 to 2019. California was added to the CDL starting in 2007. The CDL is generated using satellite imagery in conjunction with a machine learning algorithm, and is ground-truthed against the USDA's Farm Service Agency's farm surveys. In California during our sample period, the CDL reports 83 distinct landcover classifications. We classify these landcover categories into three broad groups: fallow, annual crops, and perennial crops. The fallow category consists of land that is fallowed according to the CDL, as well as grass and pastureland. The major annual crops in our sample are winter wheat, cotton, tomatoes, corn, rice, and strawberries. The major perennial crops are almonds, grapes, walnuts, pistachios, and oranges. 
+We match the CDL to farms using CLUs. In this draft, we assign each CLU to a crop using the modal CDL pixel in the CLU. If this modal crop type does not cover over 50 percent of pixels in the CLU, we label the CLU as having missing data.\footnote{In ongoing work, we are constructing additional cropping variables, including the share of land in a CLU under different crop types.} 
