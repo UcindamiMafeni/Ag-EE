@@ -1,0 +1,65 @@
+\begin{table}\centering
+\caption{\normalsize Summary Statistics -- Pump Tests and Groundwater Consumption}
+\label{tab:water_summary_stats}
+\begin{tabular}{lrcrcrr}
+\hline
+\hline
+\\ 
+\vspace{-8mm}
+\\
+&& $\begin{matrix}\text{Matched to Pumps}\end{matrix}$ \\
+[.1em]
+\cline{2-3}
+\\
+\vspace{-7mm}
+\\
+Service point-month observations && 1,168,553 \\ 
+[.2em]
+Unique service points (SPs) && 11,851 \\ 
+[1.4em]
+Matched APEP points per SP && 3.45 \\ 
+ && (8.80) \\
+[.4em]
+Operating pump efficiency (\%) && 54.46   \\
+ && (11.52)   \\
+[.4em]
+kWh per AF conversion factor (APEP measured) && 430.30   \\
+ && (254.21)   \\
+[.4em]
+kWh per AF conversion factor (constructed) && 346.94   \\
+ && (206.03)   \\
+[1.4em]
+Monthly groundwater consumption (AF) && 49.0   \\
+ && (151.7)   \\
+[.4em]
+Monthly groundwater consumption (AF), summer && 74.0   \\
+ && (191.9)   \\
+[.4em]
+Monthly groundwater consumption (AF), winter && 23.4   \\
+ && (86.6)   \\
+[1.4em]
+Average marginal groundwater price (\$/AF) && 39.91   \\
+ && (29.63)   \\
+[.4em]
+Average marginal groundwater price (\$/AF), summer && 41.76   \\
+ && (31.34)   \\
+[.4em]
+Average marginal groundwater price (\$/AF), winter && 38.01   \\
+ && (27.63)   \\
+[.2em]
+\hline
+\end{tabular}
+\captionsetup{width=.93\textwidth}
+\caption*{\scriptsize \emph{Notes:} These summary stats are from the merged panel of 
+groundwater prices and quantities, which combines electricity data, pump test data, and groundwater data.
+We observe 3.45 unique APEP pump tests for the average matched service point, although 37 percent of 
+service points match to only a single APEP test.
+Our constructed kWh per AF conversion factor (i.e. $\widehat{\text{kWh}\big/\text{AF}}_{it}$) uses monthly 
+groundwater rasters to capture changes in (measured) kWh per AF over time, and estimation error 
+compresses the right tail of distribution of measured kWh per AF. 
+Monthly groundwater consumption divides electricity consumption (kWh) by $\widehat{\text{kWh}\big/\text{AF}}_{it}$. 
+Grounwater prices multiply marignal electricity prices (\$/kWh) by $\widehat{\text{kWh}\big/\text{AF}}_{it}$. 
+Summer months are May--October.
+Standard deviations of sample means in parentheses.
+}
+\end{table}

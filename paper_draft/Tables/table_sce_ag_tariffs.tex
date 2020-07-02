@@ -1,0 +1,220 @@
+
+\documentclass[hidelinks,12pt]{article}
+\usepackage{lastpage}
+\usepackage{fancyhdr}
+\fancyfoot{}
+\cfoot{\thepage{}~of~\pageref{LastPage}}
+\usepackage{caption}
+\usepackage[pdftex]{graphicx}
+\usepackage{epstopdf}
+\usepackage{mathtools}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amstext}
+\usepackage{amsthm}
+\usepackage{enumerate}
+\usepackage{amssymb}
+\usepackage{breqn}
+\usepackage{xr-hyper}
+\usepackage{hyperref}
+\usepackage{bigints}
+\usepackage{color}
+%\usepackage{parskip}
+\usepackage[letterpaper]{geometry}
+\usepackage{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{setspace}
+\usepackage{keyval}
+\usepackage{ifthen}
+%\usepackage[american]{babel}
+\usepackage{etoolbox}
+\usepackage[all]{nowidow}
+\usepackage[utf8]{inputenc}
+\usepackage{csquotes}
+\usepackage{comment}
+\usepackage{placeins}
+\usepackage{upgreek}
+%\usepackage{natbib}
+\usepackage{array}
+\usepackage{adjustbox}
+\usepackage[demo,abs]{overpic}
+\usepackage{booktabs}
+
+%%% MAJOR RATES WITH BILLS: 
+%PA-1, 
+%PA-2, 
+%TOU-PA-2B
+%TOU-PA-2D
+%TOU-PA-2A
+%TOU-PA-3B
+
+%TOU-PA-5, TOU-PA-A, TOU-PA-B, TOU-PA-SOP-1, TPA2-SOP1
+
+
+
+\begin{document}
+\begin{table}[b!]\centering
+\footnotesize
+\caption{SCE Agricultural Tariffs}
+\label{tab:sce_ag_tariffs}
+\vspace{-2mm}
+\begin{adjustbox}{center}
+\begin{tabular}{|c|c|c|c|}
+\hline
+\textbf{Category} & \textbf{Tariff} & \textbf{ Description} & \textbf{ Percent} \\
+\hline
+$ \begin{matrix}
+\text{\bf Medium demand $+$, smart meters} \\
+\text{Maximum demand $\ge$ 37 kW, or} \\
+\text{$\ge$ 50 horsepower}
+\end{matrix} $
+ & \textbf{AP-I} &  
+\footnotesize $ \begin{matrix}
+\text{Time-of-use pricing, } \\
+\text{allow SCE to interrupt supply} \\
+\end{matrix} $ &  XX \\
+\hline
+$ \begin{matrix}
+\text{\bf Small/medium demand, conventional meters} \\
+\text{Connected load $\leq$ 268 hp, or} \\
+\text{maximum demand $\leq$ 200 kW} \\
+\end{matrix} $ & \textbf{PA-1} &
+\footnotesize $ \begin{matrix}
+\text{No demand charge} \\
+\text{PRICE DETAILS (summer vs winter)} \\
+\text{being phased out (mandatory TOU)} \\
+\end{matrix} $ &  XX \\
+\hline
+$ \begin{matrix}
+\text{\bf Small/medium demand, conventional meters} \\
+\text{Maximum demand $\leq$ 200 kW} \\
+\end{matrix} $ & \textbf{PA-2} &
+\footnotesize $ \begin{matrix}
+\text{Demand charge} \\
+\text{PRICE DETAILS} \\
+\text{being phased out (mandatory TOU)} \\
+\end{matrix} $ &  XX \\
+\hline
+
+\multirow{4}{*}{
+$ \begin{matrix} \\ \\ \\ \\
+\text{\bf Small/medium demand, smart meters} \\
+\text{Maximum demand $\leq$ 200 kW} \\
+\end{matrix} $ 
+} & \textbf{TOU-PA-2-A}& 
+\footnotesize $ \begin{matrix}
+\text{PRICE DETAILS} \\
+\text{summer peak, mid-peak, offpeak}\\
+\text{winter mid-peak and off-peak} \\
+\text{Being phased out to TOU-PA-2-E} \\
+\end{matrix} $ &  XX \\
+\cline{2-4}
+ & \textbf{TOU-PA-2-B}\footnote{This rate has a CPP option.} &
+\footnotesize $ \begin{matrix}
+\text{PRICE DETAILS} \\
+\text{summer peak, mid-peak, offpeak}\\
+\text{winter mid-peak and off-peak} \\
+\text{Being phased out to TOU-PA-2-D} \\
+\end{matrix} $ &  XX \\
+\cline{2-4}
+&  \textbf{TOU-PA-2-D}\footnote{This rate has a CPP option, a 5-to-8 option, a 5-to-8-CPP option, and an RTP option.} & 
+\footnotesize $ \begin{matrix}
+\text{PRICE DETAILS} \\
+\text{summer peak/offpeak}\\
+\text{winter midpeak, offpeak, superoffpeak} \\
+\end{matrix} $ &  XX \\
+\cline{2-4}
+& \textbf{TOU-PA-2-E}\footnote{This rate has a 5-to-8 option.} & 
+\footnotesize $ \begin{matrix}
+\text{PRICE DETAILS} \\
+\text{summer peak/offpeak}\\
+\text{winter midpeak, offpeak, superoffpeak} \\
+\end{matrix} $ &  XX \\
+\hline
+$ \begin{matrix}
+\text{\bf Small/medium demand, smart meters} \\
+\text{Maximum demand $\leq$ 200 kW} \\
+\end{matrix} $ & \textbf{TOU-PA-2-SOP} &
+\footnotesize $ \begin{matrix}
+\text{Super off-peak} \\
+\text{PRICE DETAILS} \\
+\text{being phased out (to TOU-PA-A/B)} \\
+\end{matrix} $ &  XX \\
+\hline
+
+\multirow{4}{*}{
+$ \begin{matrix} \\ \\ \\ \\
+\text{\bf Large demand, smart meters} \\
+\text{Maximum demand $\geq$ 200 $\leq$ 500 kW}\footnote{Customers with demand $>500$ kW are required to shift to TOU-8 or TOU-8S unless they are water agencies; packing houses/cotton gins/nut hulling and shelling/producing milk for human consumption; or agricultural customers using electricity at the same location where they produce agricultural products.} \\
+\end{matrix} $ 
+} & \textbf{TOU-PA-3-A}& 
+\footnotesize $ \begin{matrix}
+\text{PRICE DETAILS} \\
+\text{summer peak, mid-peak, offpeak}\\
+\text{winter mid-peak and off-peak} \\
+\text{Being phased out to TOU-PA-3-E} \\
+\end{matrix} $ &  XX \\
+\cline{2-4}
+ & \textbf{TOU-PA-3-B}\footnote{This rate has a CPP option.} &
+\footnotesize $ \begin{matrix}
+\text{PRICE DETAILS} \\
+\text{summer peak, mid-peak, offpeak}\\
+\text{winter mid-peak and off-peak} \\
+\text{Being phased out to TOU-PA-3-D} \\
+\end{matrix} $ &  XX \\
+\cline{2-4}
+&  \textbf{TOU-PA-3-D}\footnote{This rate has a CPP option, a 5-to-8 option, a 5-to-8-CPP option, and an RTP option.} & 
+\footnotesize $ \begin{matrix}
+\text{PRICE DETAILS} \\
+\text{summer peak/offpeak}\\
+\text{winter midpeak, offpeak, superoffpeak} \\
+\end{matrix} $ &  XX \\
+\cline{2-4}
+& \textbf{TOU-PA-3-E}\footnote{This rate has a 5-to-8 option.} & 
+\footnotesize $ \begin{matrix}
+\text{PRICE DETAILS} \\
+\text{summer peak/offpeak}\\
+\text{winter midpeak, offpeak, superoffpeak} \\
+\end{matrix} $ &  XX \\
+\hline
+$ \begin{matrix}
+\text{\bf Small/medium demand, smart meters} \\
+\text{Maximum demand $\leq$ 200 kW} \\
+\end{matrix} $ & \textbf{TOU-PA-3-SOP} &
+\footnotesize $ \begin{matrix}
+\text{Super off-peak} \\
+\text{PRICE DETAILS} \\
+\text{being phased out (to TOU-3-A/B)} \\
+\end{matrix} $ &  XX \\
+\hline
+$ \begin{matrix}
+\text{\bf Medium/large demand, smart meters} \\
+\text{Maximum demand $\geq$ 26 kW, or} \\
+\text{horsepower $\geq$ 35, and} \\
+\text{Maximum demand $\leq$ 500} \\
+\end{matrix} $ & \textbf{TOU-PA-5} &
+\footnotesize $ \begin{matrix}
+\text{Super off-peak} \\
+\text{PRICE DETAILS} \\
+\text{being phased out (to TOU-3-A/B)} \\
+\end{matrix} $ &  XX \\
+\hline
+
+\end{tabular}
+\end{adjustbox}
+ \captionsetup{width=1.1\textwidth}
+\caption*{\scriptsize \emph{Notes:}
+This table provides a rough summary of SCE's XX electricity tariffs for agricultural customers. In order to qualify for any of the rates in this table, 70 percent or more of a customer's demand must be for an agricultural or pumping end-use, and none of the remaining demand can be for residential purposes.
+The first column lists the XX disjoint categories of customers, defined (primarily) by size of demand/pumping capital and electricity meters.
+Effective default tariffs within each group are in bold, and farmers may switch tariffs \emph{within} a category (but not \emph{across} categories).
+All tariffs have fixed (\$/kW) and volumetric (\$/kWh) prices that vary by summer vs.\ winter. 
+%All time-of-use tariffs (i.e. all but 1A and 1B) also vary between peak (12:00pm--6:00pm on summer weekdays), partial peak (8:30am--9:30pm on weekends), and off-peak periods.
+%DEF tariffs are functionally equivalent to their ABC analogs, and are holdovers for the earliest customers to adopt time-of-use pricing.
+Actual tariffs are far more complex. Tariff documents are available at \url{https://library.sce.com/}.
+The right-most column reports the percent of observations in our main estimation sample on each tariff.
+}
+\end{table}
+
+\end{document}

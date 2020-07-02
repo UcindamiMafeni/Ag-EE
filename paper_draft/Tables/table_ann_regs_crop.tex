@@ -1,0 +1,66 @@
+\begin{table}[t!]\centering
+\small
+\caption{Annual Cropping Response to Input Costs \label{tab:ann_regs_crop}}
+\vspace{-0.1cm}
+\small
+\begin{adjustbox}{center} 
+\begin{tabular}{lcccccc} 
+\hline \hline
+\vspace{-0.37cm}
+\\
+ & \multicolumn{3}{c}{Electricity} & \multicolumn{3}{c}{Groundwater} \\
+ \cmidrule(r){2-4} \cmidrule(l){5-7}
+ & Annuals & Perennials & Fallow & Annuals & Perennials & Fallow \\
+[0.1em]
+ & (1)  & (2)  & (3)  & (4)  & (5)  & (6) \\ 
+\vspace{-0.37cm}
+\\
+\cline{2-7}
+\vspace{-0.27cm}
+\\
+ $\log\big(P^{\text{elec}}_{iy}\big)$ ~ & $-0.04$$^{*}$  & $0.02$ & $0.03$ &  &  &  \\ 
+& $(0.02)$ & $(0.02)$ & $(0.02)$ &  &  &  \\
+[0.1em] 
+ $\log\big(P^{\text{water}}_{iy}\big)$ ~ &  &  &  & $-0.04$$^{*}$ & $0.02$  & $0.03$ \\ 
+&  &  &  & $(0.02)$ & $(0.02)$ & $(0.02)$ \\
+[1.5em] 
+Instrument: \\
+[0.1em] 
+~~ Default $\log\big(P^{\text{elec}}_{iy}\big)$  & Yes & Yes & Yes  & Yes  & Yes & Yes \\
+[1.5em] 
+Fixed effects: \\
+[0.1em] 
+~~Unit $\times$ physical capital & Yes & Yes & Yes & Yes & Yes & Yes  \\
+[0.1em] 
+~~Water basin $\times$ year & Yes & Yes & Yes & Yes & Yes & Yes \\
+[0.1em] 
+~~Water district $\times$ year & Yes & Yes & Yes & Yes & Yes & Yes \\
+[1.5em] 
+Service point units & 8,823 & 8,823 & 8,823 & 7,868 & 7,868 & 7,868  \\ 
+[0.1em] 
+Years  & 9 & 9 & 9 & 9 & 9 & 9 \\ 
+[0.1em] 
+Observations & 43,207 & 43,207 & 43,207 & 38,178 & 38,178 & 38,178 \\ 
+[0.1em] 
+First stage $F$-statistic & 2093 & 2093 & 2093 & 1581 & 1581 & 1581 \\ 
+[0.15em]
+\hline
+\end{tabular}
+\end{adjustbox}
+\captionsetup{width=\textwidth}
+\caption*{\scriptsize \emph{Notes:} Each regression estimates Equation (\ref{eq:reg_crop_switch}) at the service point by year level for different categories of crops.
+Columns (1)--(3) report results for the cropping response to electricity price, and Columns (4)--(6) report results for the cropping response to groundwater price.
+Columns (1) and (4) report the semi-elasticity of having an annual crop with respect to the price of electricity or water, respectively.
+Columns (2) and (5) report the semi-elasticity of having a perennial crop with respect to the price of electricity or water, respectively.
+Columns (3) and (6) report the semi-elasticity of fallowing with respect to the price of electricity or water, respectively.
+We estimate these regressions using two-stage least squares, instrumenting with unit $i$'s within-category default logged electricity price in year $y$.
+``Physical capital'' is a categorical variable for (i) small pumps, (ii) large pumps, and (iii) internal combustion engines, and unit $\times$
+physical capital fixed effects control for shifts in tariff category triggered by the installation of new pumping equipment.
+Water basin $\times$ year fixed effects control for broad geographic trends in groundwater depth.
+Water district $\times$ year fixed effects control for annual variation in surface water allocations.
+All regressions drop solar NEM customers, customers with bad geocodes, years with irregular electricity bills
+(e.g.\ first/last bills, bills longer/shorter than 1 month, overlapping bills for a single account), and incomplete years.
+Standard errors (in parentheses) are clustered by service point and by year.
+Significance: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$.
+}
+\end{table}

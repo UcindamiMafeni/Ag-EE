@@ -1,0 +1,74 @@
+\begin{table}\centering
+\caption{\normalsize Summary Statistics -- Electricity Data}
+\label{tab:elec_summary_stats}
+\begin{tabular}{lrcrcrr}
+\hline
+\hline
+\\ 
+\vspace{-8mm}
+\\
+&& $\begin{matrix}\text{All Ag}\\ \text{Customers}\end{matrix}$  && $\begin{matrix}\text{Matched} \\ \text{to Pumps}\end{matrix}$ \\
+[.1em]
+\cline{3-5}
+\\
+\vspace{-7mm}
+\\
+Service point-month observations && 9,991,458 && 1,168,553 \\ 
+[.2em]
+Unique service points (SPs) && 108,172 && 11,851 \\ 
+[.2em]
+SPs that switch tariff categories  && 44,414 && 2,844   \\
+[.2em]
+SPs that switch categories (pumping capital)  && 3,454 && 561   \\
+[.2em]
+SPs that switch categories (smart meters)  && 43,045 && 2,553   \\
+[.2em]
+Share of SP-months on time-varying tariffs  && 0.702 && 0.886   \\
+[.2em]
+Share of SP-months on peak-day tariffs  && 0.295 && 0.152   \\
+[1.4em]
+Monthly electricity consumption (kWh) && 6080.9 && 12055.7   \\
+ && (39783.1) && (25075.1)   \\
+[.4em]
+Monthly electricity consumption (kWh), summer && 8249.6 && 17589.1   \\
+ && (45660.8) && (29818.5)   \\
+[.4em]
+Monthly electricity consumption (kWh), winter && 3849.7 && 6362.8   \\
+ && (32498.8) && (17232.5)   \\
+[1.4em]
+Average marginal electricity price (\$/kWh) && 0.148 && 0.113   \\
+ && (0.050) && (0.042)   \\
+[.4em]
+Average marginal electricity price (\$/kWh), summer && 0.171 && 0.130   \\
+ && (0.051) && (0.044)   \\
+[.4em]
+Average marginal electricity price (\$/kWh), winter && 0.126 && 0.096   \\
+ && (0.037) && (0.032)   \\
+[1.4em]
+Average monthly bill (\$, non-zero bills) && 936.66 && 1814.15   \\
+ && (4662.71) && (3285.26)   \\
+[.4em]
+Average monthly bill (\$, non-zero bills), summer && 1398.90 && 2821.16   \\
+ && (5847.34) && (4020.99)   \\
+[.4em]
+Average monthly bill (\$, non-zero bills), winter && 456.17 && 764.99   \\
+ && (2888.86) && (1742.21)   \\
+[.2em]
+\hline
+\end{tabular}
+\captionsetup{width=\textwidth}
+\caption*{\scriptsize \emph{Notes:} The left column reports summary statistics 
+for the universe of agricultural electricity customers in PGE service territory, from 2008--2017.
+The right column includes the subset of agricultural customers that we successfully match to a 
+groundwater pump in the APEP pump test dataset---i.e., our main estimation sample.
+``Pumping capital'' denotes tariff category switches driven by shifts between small pumps ($<35$ hp) and 
+large pumps ($\ge 35$ hp), or adding/removing an auxiliary internal combustion engine.
+Most tariff category switches were driven by PGE's smart meter rollout.
+Time-varying tariffs (i.e.\ all except 1A and 1B) have higher marginal prices during peak demand hours. 
+Peak-day tariffs (i.e.\ 4A, 4D, 4C, 4F, 5C, 5F) have very high marginal prices during peak
+hours on the 14 highest-demand summer days.
+Monthly bills include both volumetric (\$/kWh) and fixed charges (\$/kW, \$/hp, and \$/day).
+Summer months are May--October.
+Standard deviations of sample means in parentheses.
+}
+\end{table}

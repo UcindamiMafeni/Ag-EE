@@ -1,0 +1,66 @@
+\begin{table}[t!]\centering
+\small
+\caption{Annual Demand Elasticity Heterogeneity -- Electricity and Groundwater \label{tab:ann_regs_het}}
+\vspace{-0.1cm}
+\small
+\begin{adjustbox}{center} 
+\begin{tabular}{lcccccc} 
+\hline \hline
+\vspace{-0.37cm}
+\\
+ & \multicolumn{3}{c}{Electricity} & \multicolumn{3}{c}{Groundwater} \\
+ \cmidrule(r){2-4} \cmidrule(l){5-7}
+ & Annuals & Perennials & Switchers & Annuals & Perennials & Switchers \\
+[0.1em]
+ & (1)  & (2)  & (3)  & (4)  & (5)  & (6) \\ 
+\vspace{-0.37cm}
+\\
+\cline{2-7}
+\vspace{-0.27cm}
+\\
+ $\log\big(P^{\text{elec}}_{iy}\big)$ ~ & $-0.23$  & $-1.15$$^{***}$ & $-2.65$$^{***}$ &  &  &  \\ 
+& $(0.20)$ & $(0.29)$ & $(0.71)$ &  &  &  \\
+[0.1em] 
+ $\log\big(P^{\text{water}}_{iy}\big)$ ~ &  &  &  & $-0.16$ & $-0.97$$^{***}$  & $-2.63$$^{***}$ \\ 
+&  &  &  & $(0.19)$ & $(0.28)$ & $(0.69)$ \\
+[1.5em] 
+Instrument: \\
+[0.1em] 
+~~ Default $\log\big(P^{\text{elec}}_{iy}\big)$  & Yes & Yes & Yes  & Yes  & Yes & Yes \\
+[1.5em] 
+Fixed effects: \\
+[0.1em] 
+~~Unit $\times$ physical capital & Yes & Yes & Yes & Yes & Yes & Yes  \\
+[0.1em] 
+~~Water basin $\times$ year & Yes & Yes & Yes & Yes & Yes & Yes \\
+[0.1em] 
+~~Water district $\times$ year & Yes & Yes & Yes & Yes & Yes & Yes \\
+[1.5em] 
+Service point units & 3,675 & 6,839 & 708 & 3,382 & 6,017 & 649  \\ 
+[0.1em] 
+Years  & 9 & 9 & 9 & 9 & 9 & 9 \\ 
+[0.1em] 
+Observations & 21,016 & 39,239 & 3,932 & 19,241 & 34,274 & 3,577 \\ 
+[0.1em] 
+First stage $F$-statistic & 862 & 1707 & 566 & 1003 & 1656 & 276 \\ 
+[0.15em]
+\hline
+\end{tabular}
+\end{adjustbox}
+\captionsetup{width=\textwidth}
+\caption*{\scriptsize \emph{Notes:} Each regression estimates Equation (\ref{eq:reg_elec_annual}) or Equation (\ref{eq:reg_water_annual}) at the service point by year level for a subset of service points.
+Columns (1)--(3) report results for electricity consumption, and Columns (4)--(6) report results for groundwater consumption.
+Columns (1) and (4) report demand elasticities for service points that have an annual crop or are fallowed in every year of our sample.
+Columns (2) and (5) report demand elasticities for service points that have a perennial crop or are fallowed in every year of our sample.
+Columns (3) and (6) report demand elasticities for service points that switch between annual and perennial crops during our sample.
+We estimate these regressions using two-stage least squares, instrumenting with unit $i$'s within-category default logged electricity price in year $y$.
+``Physical capital'' is a categorical variable for (i) small pumps, (ii) large pumps, and (iii) internal combustion engines, and unit $\times$
+physical capital fixed effects control for shifts in tariff category triggered by the installation of new pumping equipment.
+Water basin $\times$ year fixed effects control for broad geographic trends in groundwater depth.
+Water district $\times$ year fixed effects control for annual variation in surface water allocations.
+All regressions drop solar NEM customers, customers with bad geocodes, years with irregular electricity bills
+(e.g.\ first/last bills, bills longer/shorter than 1 month, overlapping bills for a single account), and incomplete years.
+Standard errors (in parentheses) are clustered by service point and by year.
+Significance: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$.
+}
+\end{table}
