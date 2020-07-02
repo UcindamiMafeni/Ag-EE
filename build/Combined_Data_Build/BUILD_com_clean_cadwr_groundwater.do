@@ -1231,8 +1231,8 @@ compress
 save "$dirpath_data/groundwater/avg_groundwater_depth_subbasin_quarter.dta", replace
 restore
 
-** Diagnostics: coverage by basin/quarter
-use "$dirpath_data/pge_cleaned/sp_premise_gis.dta", clear
+** Diagnostics: coverage by basin/quarter, for PGE SPs
+use "$dirpath_data/pge_cleaned/pge_sp_premise_gis.dta", clear
 gen N_sps = 1
 collapse (sum) N_sps, by(basin_id basin_name) fast
 unique basin_id
@@ -1240,11 +1240,11 @@ assert r(unique)==r(N)
 sum N_sps if N_sps>1000
 local rsum = r(sum)
 sum N_sps
-di `rsum'/r(sum) // 93% of SPs are in a basin with at least 1000 other SPs
+di `rsum'/r(sum) // 93% of PGE SPs are in a basin with at least 1000 other SPs
 merge 1:m basin_id using "$dirpath_data/groundwater/avg_groundwater_depth_basin_quarter.dta"
 tab _merge
 sum N_sps if _merge==1
-di r(sum) // 4429 SPs are in basins that don't merge into DWR data
+di r(sum) // 4262 PGE SPs are in basins that don't merge into DWR data
 drop if _merge==2
 tabstat N_sps, by(_merge) s(sum)
 keep if _merge==3
@@ -1255,10 +1255,10 @@ collapse (sum) N_qtrs?, by(N_sps basin_id basin_name) fast
 sum N_sps if N_qtrs1>30
 local rsum = r(sum)
 sum N_sps
-di `rsum'/r(sum) // 90% of SPs are in basins with at least 30 quarters of readings
+di `rsum'/r(sum) // 97% of PGE SPs are in basins with at least 30 quarters of readings
 
-** Diagnostics: coverage by sub-basin/quarter
-use "$dirpath_data/pge_cleaned/sp_premise_gis.dta", clear
+** Diagnostics: coverage by sub-basin/quarter, for PGE SPs
+use "$dirpath_data/pge_cleaned/pge_sp_premise_gis.dta", clear
 gen N_sps = 1
 collapse (sum) N_sps, by(basin_id basin_name basin_sub_id basin_sub_name) fast
 unique basin_sub_id
@@ -1266,11 +1266,11 @@ assert r(unique)==r(N)
 sum N_sps if N_sps>1000
 local rsum = r(sum)
 sum N_sps
-di `rsum'/r(sum) // 85% of SPs are in a sub-basin with at least 1000 other SPs
+di `rsum'/r(sum) // 82% of PGE SPs are in a sub-basin with at least 1000 other SPs
 merge 1:m basin_sub_id using "$dirpath_data/groundwater/avg_groundwater_depth_subbasin_quarter.dta"
 tab _merge
 sum N_sps if _merge==1
-di r(sum) // 5063 SPs are in sub-basins that don't merge into DWR data
+di r(sum) // 4409 PGE SPs are in sub-basins that don't merge into DWR data
 drop if _merge==2
 tabstat N_sps, by(_merge) s(sum)
 keep if _merge==3
@@ -1281,7 +1281,60 @@ collapse (sum) N_qtrs?, by(N_sps basin_id basin_name basin_sub_id basin_sub_name
 sum N_sps if N_qtrs1>30
 local rsum = r(sum)
 sum N_sps
-di `rsum'/r(sum) // 73% of SPs are in basins with at least 30 quarters of readings
+di `rsum'/r(sum) // 92% of PGE SPs are in sub-basins with at least 30 quarters of readings
+
+** Diagnostics: coverage by basin/quarter, for SCE SPs
+use "$dirpath_data/sce_cleaned/sce_sp_premise_gis.dta", clear
+gen N_sps = 1
+collapse (sum) N_sps, by(basin_id basin_name) fast
+unique basin_id
+assert r(unique)==r(N)
+sum N_sps if N_sps>1000
+local rsum = r(sum)
+sum N_sps
+di `rsum'/r(sum) // 69% of SCE SPs are in a basin with at least 1000 other SPs
+merge 1:m basin_id using "$dirpath_data/groundwater/avg_groundwater_depth_basin_quarter.dta"
+tab _merge
+sum N_sps if _merge==1
+di r(sum) // 6240 SCE SPs are in basins that don't merge into DWR data
+drop if _merge==2
+tabstat N_sps, by(_merge) s(sum)
+keep if _merge==3
+gen N_qtrs1 = gw_qtr_bsn_mean1!=.
+gen N_qtrs2 = gw_qtr_bsn_mean2!=.
+gen N_qtrs3 = gw_qtr_bsn_mean3!=.
+collapse (sum) N_qtrs?, by(N_sps basin_id basin_name) fast
+sum N_sps if N_qtrs1>30
+local rsum = r(sum)
+sum N_sps
+di `rsum'/r(sum) // 91% of SCE SPs are in basins with at least 30 quarters of readings
+
+** Diagnostics: coverage by sub-basin/quarter, for SCE SPs
+use "$dirpath_data/sce_cleaned/sce_sp_premise_gis.dta", clear
+gen N_sps = 1
+collapse (sum) N_sps, by(basin_id basin_name basin_sub_id basin_sub_name) fast
+unique basin_sub_id
+assert r(unique)==r(N)
+sum N_sps if N_sps>1000
+local rsum = r(sum)
+sum N_sps
+di `rsum'/r(sum) // 53% of SCE SPs are in a sub-basin with at least 1000 other SPs
+merge 1:m basin_sub_id using "$dirpath_data/groundwater/avg_groundwater_depth_subbasin_quarter.dta"
+tab _merge
+sum N_sps if _merge==1
+di r(sum) // 6270 SCE SPs are in sub-basins that don't merge into DWR data
+drop if _merge==2
+tabstat N_sps, by(_merge) s(sum)
+keep if _merge==3
+gen N_qtrs1 = gw_qtr_sub_mean1!=.
+gen N_qtrs2 = gw_qtr_sub_mean2!=.
+gen N_qtrs3 = gw_qtr_sub_mean3!=.
+collapse (sum) N_qtrs?, by(N_sps basin_id basin_name basin_sub_id basin_sub_name) fast
+sum N_sps if N_qtrs1>30
+local rsum = r(sum)
+sum N_sps
+di `rsum'/r(sum) // 90% of SCE SPs are in sub-basins with at least 30 quarters of readings
+
 
 ** Fill out basin/month panel
 use "$dirpath_data/groundwater/avg_groundwater_depth_basin_month.dta", clear
@@ -1450,14 +1503,14 @@ restore
 **   of groundwater depth!
 
 ** Run "BUILD_gis_gw_depth_extract.R" to extract groundwater depths from each 
-**   monthly/quarterly raster, for SP lat/lons and APEP pump lat/lons!
+**   monthly/quarterly raster, for 3 sets of lat/lons: PGE SPs, APEP pumps, SCE SPs
 
 }
 
 *******************************************************************************
 *******************************************************************************
 
-** 6. Construct panels of groundwater depth for SPs (monthly)
+** 6. Construct panels of groundwater depth for PGE SPs (monthly)
 if 1==1{
 
 ** 6a. Statewide rasters (ignoring basin boundaries)
@@ -1520,7 +1573,7 @@ assert r(unique)==r(N)
 drop dup* temp*
 
 ** Merge in basin identifiers
-merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/sp_premise_gis.dta", keepusing(basin_id)
+merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/pge_sp_premise_gis.dta", keepusing(basin_id)
 drop if _merge==2
 assert _merge==3
 drop _merge
@@ -1571,7 +1624,7 @@ drop _merge
 unique sp_uuid modate
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/groundwater/groundwater_depth_sp_month_rast.dta", replace
+save "$dirpath_data/groundwater/groundwater_depth_pge_sp_month_rast.dta", replace
 }
 
 ** 6b. San Joaquin Valley only rasters
@@ -1634,7 +1687,7 @@ assert r(unique)==r(N)
 drop dup* temp*
 
 ** Merge in basin identifiers
-merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/sp_premise_gis.dta", keepusing(basin_id)
+merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/pge_sp_premise_gis.dta", keepusing(basin_id)
 drop if _merge==2
 assert _merge==3
 drop _merge
@@ -1682,7 +1735,7 @@ rename dist_miles_sj_? gw_rast_dist_sj_mth_?
 unique sp_uuid modate
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/groundwater/groundwater_depth_sp_month_rast_SJ.dta", replace
+save "$dirpath_data/groundwater/groundwater_depth_pge_sp_month_rast_SJ.dta", replace
 
 }
 
@@ -1746,7 +1799,7 @@ assert r(unique)==r(N)
 drop dup* temp*
 
 ** Merge in basin identifiers
-merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/sp_premise_gis.dta", keepusing(basin_id)
+merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/pge_sp_premise_gis.dta", keepusing(basin_id)
 drop if _merge==2
 assert _merge==3
 drop _merge
@@ -1794,7 +1847,7 @@ rename dist_miles_sac_? gw_rast_dist_sac_mth_?
 unique sp_uuid modate
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/groundwater/groundwater_depth_sp_month_rast_SAC.dta", replace
+save "$dirpath_data/groundwater/groundwater_depth_pge_sp_month_rast_SAC.dta", replace
 
 }
 
@@ -1804,7 +1857,7 @@ save "$dirpath_data/groundwater/groundwater_depth_sp_month_rast_SAC.dta", replac
 *******************************************************************************
 *******************************************************************************
 
-** 7. Construct panels of groundwater depth for SPs (quarterly)
+** 7. Construct panels of groundwater depth for PGE SPs (quarterly)
 if 1==1{
 
 ** 7a. Statewide rasters (ignoring basin boundaries)
@@ -1867,7 +1920,7 @@ assert r(unique)==r(N)
 drop dup* temp*
 
 ** Merge in basin identifiers
-merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/sp_premise_gis.dta", keepusing(basin_id)
+merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/pge_sp_premise_gis.dta", keepusing(basin_id)
 drop if _merge==2
 assert _merge==3
 drop _merge
@@ -1918,7 +1971,7 @@ drop _merge
 unique sp_uuid qtr
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/groundwater/groundwater_depth_sp_quarter_rast.dta", replace
+save "$dirpath_data/groundwater/groundwater_depth_pge_sp_quarter_rast.dta", replace
 }
 
 ** 7b. San Joaquin Valley only rasters
@@ -1981,7 +2034,7 @@ assert r(unique)==r(N)
 drop dup* temp*
 
 ** Merge in basin identifiers
-merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/sp_premise_gis.dta", keepusing(basin_id)
+merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/pge_sp_premise_gis.dta", keepusing(basin_id)
 drop if _merge==2
 assert _merge==3
 drop _merge
@@ -2029,7 +2082,7 @@ rename dist_miles_sj_? gw_rast_dist_sj_qtr_?
 unique sp_uuid qtr
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/groundwater/groundwater_depth_sp_quarter_rast_SJ.dta", replace
+save "$dirpath_data/groundwater/groundwater_depth_pge_sp_quarter_rast_SJ.dta", replace
 
 }
 
@@ -2093,7 +2146,7 @@ assert r(unique)==r(N)
 drop dup* temp*
 
 ** Merge in basin identifiers
-merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/sp_premise_gis.dta", keepusing(basin_id)
+merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/pge_sp_premise_gis.dta", keepusing(basin_id)
 drop if _merge==2
 assert _merge==3
 drop _merge
@@ -2141,7 +2194,7 @@ rename dist_miles_sac_? gw_rast_dist_sac_qtr_?
 unique sp_uuid qtr
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/groundwater/groundwater_depth_sp_quarter_rast_SAC.dta", replace
+save "$dirpath_data/groundwater/groundwater_depth_pge_sp_quarter_rast_SAC.dta", replace
 
 }
 
@@ -2713,10 +2766,205 @@ save "$dirpath_data/groundwater/groundwater_depth_apep_quarter_rast_SAC.dta", re
 *******************************************************************************
 *******************************************************************************
 
-** 10. Diagnostics 
+** 10. Construct panels of groundwater depth for SCE SPs (monthly)
+if 1==1{
+
+** Statewide rasters (ignoring basin boundaries)
+{
+** Read in output from GIS script to extract monthly depths from rasters
+insheet using "$dirpath_data/misc/socal_gw_depths_from_rasters_mth.csv", double comma clear
+
+** Drop SP-specific variables
+drop prem_lat prem_long bad_geocode_flag missing_geocode_flag x y
+
+** Destring numeric variables before reshaping, to reduce file size
+foreach v of varlist depth_??_* {
+	cap replace `v' = "" if `v'=="NA"
+	destring `v', replace
+}
+
+** Reshape long, to convert into SP-month panel
+reshape long depth_1s depth_1b depth_2s depth_2b depth_3s depth_3b ///
+	distkm_1 distkm_2 distkm_3, i(sp_uuid pull) j(MODATE) string
+
+** Reformat string variables
+tostring sp_uuid pull, replace
+assert real(sp_uuid)!=.
+gen modate = ym(real(substr(MODATE,2,4)),real(substr(MODATE,7,2)))
+format %tm modate
+assert string(modate,"%tm")==substr(MODATE,2,10)
+drop MODATE
+order sp_uuid pull modate
+unique sp_uuid pull modate
+assert r(unique)==r(N)
+sort sp_uuid modate pull
+
+** Confirm uniqueness by SP-modate
+unique sp_uuid modate
+assert r(unique)==r(N)
+
+** Merge in basin identifiers
+merge m:1 sp_uuid using "$dirpath_data/sce_cleaned/sce_sp_premise_gis.dta", keepusing(basin_id)
+drop if _merge==2
+assert _merge==3
+drop _merge
+
+** Merge in number of groundwater measurements in each basin/month
+merge m:1 basin_id modate using "$dirpath_data/groundwater/avg_groundwater_depth_basin_month.dta", ///
+	keep(1 3) keepusing(gw_mth_bsn_mean1 gw_mth_bsn_mean2 gw_mth_bsn_mean3 ///
+	gw_mth_bsn_cnt1 gw_mth_bsn_cnt2 gw_mth_bsn_cnt3)
+foreach v of varlist gw_mth_bsn_cnt? {
+	replace `v' = 0 if _merge==1
+	assert `v'!=.
+}
+sum gw_mth_bsn_cnt?, detail
+	
+** Convert kilometers to miles
+foreach v of varlist distkm_? {
+	replace `v' = `v'*0.621371
+	local v2 = subinstr("`v'","km","_miles",1)
+	rename `v' `v2'
+}	
+	
+** Distance threshold from nearest raster point
+sum dist_miles_1 if gw_mth_bsn_cnt1>1, detail
+sum dist_miles_1 if gw_mth_bsn_cnt1>10, detail
+sum dist_miles_1 if gw_mth_bsn_cnt1>50, detail
+sum dist_miles_1 if gw_mth_bsn_cnt1>100, detail
+sum dist_miles_1 if gw_mth_bsn_cnt1>500, detail
+sum dist_miles_1 if gw_mth_bsn_cnt1==0, detail
+
+** Label
+la var sp_uuid "Service Point ID"
+la var pull "Which SCE data pull is this SP from?"
+la var modate "Year-Month"
+la var depth_1s "Extracted gw depth (all measurements, simple, feet)"
+la var depth_1b "Extracted gw depth (all measurements, bilinear, feet)"
+la var depth_2s "Extracted gw depth (non-ques measurements, simple, feet)"
+la var depth_2b "Extracted gw depth (non-ques measurements, bilinear, feet)"
+la var depth_3s "Extracted gw depth (obs non-ques measurements, simple, feet)"
+la var depth_3b "Extracted gw depth (obs non-ques measurements, bilinear, feet)"
+la var dist_miles_1 "Miles to nearest gw measurement in raster (all)"
+la var dist_miles_2 "Miles to nearest gw measurement in raster (non-ques)"
+la var dist_miles_3 "Miles to nearest gw measurement in raster (obs non-ques)"
+rename depth_?? gw_rast_depth_mth_??
+rename dist_miles_? gw_rast_dist_mth_?
+drop _merge
+
+** Save
+unique sp_uuid modate
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/groundwater/groundwater_depth_sce_sp_month_rast.dta", replace
+}
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 11. Construct panels of groundwater depth for SCE SPs (quarterly)
+if 1==1{
+
+** Statewide rasters (ignoring basin boundaries)
+{
+** Read in output from GIS script to extract quarterly depths from rasters
+insheet using "$dirpath_data/misc/socal_gw_depths_from_rasters_qtr.csv", double comma clear
+
+** Drop SP-specific variables
+drop prem_lat prem_long bad_geocode_flag missing_geocode_flag x y
+
+** Destring numeric variables before reshaping, to reduce file size
+foreach v of varlist depth_??_* {
+	cap replace `v' = "" if `v'=="NA"
+	destring `v', replace
+}
+
+** Reshape long, to convert into SP-quarter panel
+reshape long depth_1s depth_1b depth_2s depth_2b depth_3s depth_3b ///
+	distkm_1 distkm_2 distkm_3, i(sp_uuid pull) j(QTR) string
+
+** Reformat string variables
+tostring sp_uuid pull, replace
+assert real(sp_uuid)!=.
+gen qtr = yq(real(substr(QTR,2,4)),real(substr(QTR,7,2)))
+format %tq qtr
+assert string(qtr,"%tq")==substr(QTR,2,10)
+drop QTR
+order sp_uuid pull qtr
+unique sp_uuid pull qtr
+assert r(unique)==r(N)
+sort sp_uuid qtr pull
+
+** Confirm uniqueness by SP-quarter
+unique sp_uuid qtr
+assert r(unique)==r(N)
+
+** Merge in basin identifiers
+merge m:1 sp_uuid using "$dirpath_data/sce_cleaned/sce_sp_premise_gis.dta", keepusing(basin_id)
+drop if _merge==2
+assert _merge==3
+drop _merge
+
+** Merge in number of groundwater measurements in each basin/quarter
+merge m:1 basin_id qtr using "$dirpath_data/groundwater/avg_groundwater_depth_basin_quarter.dta", ///
+	keep(1 3) keepusing(gw_qtr_bsn_mean1 gw_qtr_bsn_mean2 gw_qtr_bsn_mean3 ///
+	gw_qtr_bsn_cnt1 gw_qtr_bsn_cnt2 gw_qtr_bsn_cnt3)
+foreach v of varlist gw_qtr_bsn_cnt? {
+	replace `v' = 0 if _merge==1
+	assert `v'!=.
+}
+sum gw_qtr_bsn_cnt?, detail
+	
+** Convert kilometers to miles
+foreach v of varlist distkm_? {
+	replace `v' = `v'*0.621371
+	local v2 = subinstr("`v'","km","_miles",1)
+	rename `v' `v2'
+}	
+	
+** Distance threshold from nearest raster point
+sum dist_miles_1 if gw_qtr_bsn_cnt1>1, detail
+sum dist_miles_1 if gw_qtr_bsn_cnt1>10, detail
+sum dist_miles_1 if gw_qtr_bsn_cnt1>50, detail
+sum dist_miles_1 if gw_qtr_bsn_cnt1>100, detail
+sum dist_miles_1 if gw_qtr_bsn_cnt1>500, detail
+sum dist_miles_1 if gw_qtr_bsn_cnt1==0, detail
+
+** Label
+la var sp_uuid "Service Point ID"
+la var pull "Which SCE data pull is this SP from?"
+la var qtr "Year-Quarter"
+la var depth_1s "Extracted gw depth (all measurements, simple, feet)"
+la var depth_1b "Extracted gw depth (all measurements, bilinear, feet)"
+la var depth_2s "Extracted gw depth (non-ques measurements, simple, feet)"
+la var depth_2b "Extracted gw depth (non-ques measurements, bilinear, feet)"
+la var depth_3s "Extracted gw depth (obs non-ques measurements, simple, feet)"
+la var depth_3b "Extracted gw depth (obs non-ques measurements, bilinear, feet)"
+la var dist_miles_1 "Miles to nearest gw measurement in raster (all)"
+la var dist_miles_2 "Miles to nearest gw measurement in raster (non-ques)"
+la var dist_miles_3 "Miles to nearest gw measurement in raster (obs non-ques)"
+rename depth_?? gw_rast_depth_qtr_??
+rename dist_miles_? gw_rast_dist_qtr_?
+drop _merge
+
+** Save
+unique sp_uuid qtr
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/groundwater/groundwater_depth_sce_sp_quarter_rast.dta", replace
+}
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 12. Diagnostics on PGE depths from basin-agnostic vs -specific rasters
 {
 
-** 10a. Monthly, SP, SJ
+** 12a. Monthly, SP, SJ
+{
 use "$dirpath_data/groundwater/groundwater_depth_sp_month_rast.dta", clear
 keep if basin_id=="5-022"
 merge 1:1 sp_uuid modate using "$dirpath_data/groundwater/groundwater_depth_sp_month_rast_SJ.dta"
@@ -2769,11 +3017,10 @@ correlate gw_rast_depth_mth_2s gw_rast_depth_sj_mth_2s if inrange(gw_rast_dist_s
 correlate gw_rast_depth_mth_2s gw_rast_depth_sj_mth_2s if inrange(gw_rast_dist_sj_mth_2,70,80)
 correlate gw_rast_depth_mth_2s gw_rast_depth_sj_mth_2s if inrange(gw_rast_dist_sj_mth_2,80,90)
 correlate gw_rast_depth_mth_2s gw_rast_depth_sj_mth_2s if inrange(gw_rast_dist_sj_mth_2,90,.)
+}
 
-
-
-
-** 10b. Monthly, SP, SAC
+** 12b. Monthly, SP, SAC
+{
 use "$dirpath_data/groundwater/groundwater_depth_sp_month_rast.dta", clear
 keep if basin_id=="5-021"
 merge 1:1 sp_uuid modate using "$dirpath_data/groundwater/groundwater_depth_sp_month_rast_SAC.dta"
@@ -2812,9 +3059,10 @@ twoway ///
 
 reg temp gw_rast_dist_sac_mth_2 gw_rast_dist_mth_2
 gen temp3 = gw_rast_dist_sac_mth_2 - gw_rast_dist_mth_2
-
+}
 
 ** 10c. Quarterly, SP, SJ
+{
 use "$dirpath_data/groundwater/groundwater_depth_sp_quarter_rast.dta", clear
 keep if basin_id=="5-022"
 merge 1:1 sp_uuid qtr using "$dirpath_data/groundwater/groundwater_depth_sp_quarter_rast_SJ.dta"
@@ -2869,8 +3117,9 @@ correlate gw_rast_depth_qtr_2s gw_rast_depth_sj_qtr_2s if inrange(gw_rast_dist_s
 correlate gw_rast_depth_qtr_2s gw_rast_depth_sj_qtr_2s if inrange(gw_rast_dist_sj_qtr_2,40,50)
 correlate gw_rast_depth_qtr_2s gw_rast_depth_sj_qtr_2s if inrange(gw_rast_dist_sj_qtr_2,50,60)
 correlate gw_rast_depth_qtr_2s gw_rast_depth_sj_qtr_2s if inrange(gw_rast_dist_sj_qtr_2,60,.)
+}
 
-	}
+}
 
 *******************************************************************************
 *******************************************************************************
