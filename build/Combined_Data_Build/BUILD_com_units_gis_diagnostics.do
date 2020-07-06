@@ -15,188 +15,27 @@ global dirpath_code "T:/Home/Louis/backup/AgEE/AgEE_code/build"
 *******************************************************************************
 *******************************************************************************
 
-** 1. Compare assigned parcels, all vs. CLU-matched
-if 1==0{
+** 1. Diagnostics: compare assigned CLUs, all vs. ever-crop
+if 1==1{
 
-** SP premise lat/lons
-use "$dirpath_data/pge_cleaned/sp_premise_gis.dta", clear
+** 1a. PGE SPs
+{
+use "$dirpath_data/pge_cleaned/pge_sp_premise_gis.dta", clear
 unique sp_uuid
 assert r(unique)==r(N)
-gen temp_parcel_any = parcelid!=""
-gen temp_parcel_conc_any = parcelid_conc!=""
-gen temp_parcel_match = parcelid==parcelid_conc & parcelid!=""
-
-	// How many SPs have parcel assignments
-tab temp_parcel_any // 96%
-tab temp_parcel_any if pull=="20180719" // 94% in both
-tab temp_parcel_any if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 // 98%
-
-tab temp_parcel_conc_any // 94%
-tab temp_parcel_conc_any if pull=="20180719" // 94% in both
-tab temp_parcel_conc_any if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 // 97%
-
-	// Compare parcels (properly within polygon)
-tab in_parcel in_parcel_conc // 64% in both
-tab in_parcel in_parcel_conc if pull=="20180719" // 73% in both
-tab in_parcel in_parcel_conc if pull=="20180719" & bad_geocode_flag!=1 & ///
-	missing_geocode_flag!=1 // 73% in both (barely a sample restriction)
-	
-tab temp_parcel_match if in_parcel==1 & in_parcel_conc==1 & ///
-	bad_geocode_flag!=1 & missing_geocode_flag!=1 & parcel_county==parcel_conc_county // 99.7%
-tab temp_parcel_match if in_parcel==1 & in_parcel_conc==1 & pull=="20180719" & ///
-	bad_geocode_flag!=1 & missing_geocode_flag!=1 & parcel_county==parcel_conc_county // 99.8%
-	
-	// Compare parcels (properly within polygon, or < 1 mile away)
-tab temp_parcel_match if parcelid!="" & parcelid_conc!="" & ///
-	bad_geocode_flag!=1 & missing_geocode_flag!=1 & parcel_county==parcel_conc_county // 77%
-tab temp_parcel_match if parcelid!="" & parcelid_conc!="" & pull=="20180719" & ///
-	bad_geocode_flag!=1 & missing_geocode_flag!=1 & parcel_county==parcel_conc_county // 85%
-
-	// Formalizing validation checks, from weakest to strongest
-	
-	// Denominator
-count if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 
-local rN = r(N)
-
-	// Has *a* parcel
-count if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 & ///
-	(parcelid!="" | parcelid_conc!="")
-di r(N)/`rN' // 98.0%
-	
-	// Has *a* parcel that matches county
-count if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 & ///
-	(parcelid!="" | parcelid_conc!="") & (parcel_county==county | parcel_conc_county==county)
-di r(N)/`rN' // 96.0%
-	
-	// Has CLU-matched parcel that matches county
-count if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 & ///
-	parcelid_conc!="" & parcel_conc_county==county
-di r(N)/`rN' // 94.4%
-	
-	// Has CLU-matched parcel that matches county, and matches unrestricted parcel
-count if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 & ///
-	parcelid_conc!="" & parcel_conc_county==county & temp_parcel_match==1
-di r(N)/`rN' // 79.1%
-	
-	// Properly within CLU-matched parcel that matches county, and matches unrestricted parcel
-count if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 & ///
-	parcelid_conc!="" & parcel_conc_county==county & temp_parcel_match==1 & in_parcel_conc==1
-di r(N)/`rN' // 70.0%
-
-	// Comparing to non-APEP pulls
-count if pull!="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1
-local rN = r(N)
-count if pull!="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 & ///
-	parcelid_conc!="" & parcel_conc_county==county & temp_parcel_match==1 & in_parcel_conc==1
-di r(N)/`rN' // 56.0%, not bad!
-
-
-** APEP pump lat/lons
-use "$dirpath_data/pge_cleaned/apep_pump_gis.dta", clear
-drop crop-test_date_stata
-duplicates drop
-unique latlon_group
-assert r(unique)==r(N)
-gen temp_parcel_any = parcelid!=""
-gen temp_parcel_conc_any = parcelid_conc!=""
-gen temp_parcel_match = parcelid==parcelid_conc & parcelid!=""
-
-	// How many pumps have parcel assignments
-tab temp_parcel_any // 97.5%
-tab temp_parcel_conc_any // 92.5%
-
-	// Compare parcels (properly within polygon)
-tab in_parcel in_parcel_conc // 70.8% in both
-	
-tab temp_parcel_match if in_parcel==1 & in_parcel_conc==1 & ///
-	parcel_county==parcel_conc_county // 99.8%
-	
-	// Compare parcels (properly within polygon, or < 1 mile away)
-tab temp_parcel_match if parcelid!="" & parcelid_conc!="" & ///
-	parcel_county==parcel_conc_county // 80.3%
-
-	// Formalizing validation checks, from weakest to strongest
-	
-	// Denominator
-count
-local rN = r(N)
-
-	// Has *a* parcel
-count if (parcelid!="" | parcelid_conc!="")
-di r(N)/`rN' // 97.7%
-	
-	// Has *a* parcel that matches county
-count if (parcelid!="" | parcelid_conc!="") & (parcel_county==county | parcel_conc_county==county)
-di r(N)/`rN' // 96.4%
-	
-	// Has CLU-matched parcel that matches county
-count if parcelid_conc!="" & parcel_conc_county==county
-di r(N)/`rN' // 91.0%
-	
-	// Has CLU-matched parcel that matches county, and matches unrestricted parcel
-count if parcelid_conc!="" & parcel_conc_county==county & temp_parcel_match==1
-di r(N)/`rN' // 72.0%
-	
-	// Properly within CLU-matched parcel that matches county, and matches unrestricted parcel
-count if parcelid_conc!="" & parcel_conc_county==county & temp_parcel_match==1 & in_parcel_conc==1
-di r(N)/`rN' // 68.7%
-
-
-
-}
-
-*******************************************************************************
-*******************************************************************************
-
-** 2. Compare assigned CLUs, all vs. ever-crop
-if 1==0{
-
-** SP premise lat/lons
-use "$dirpath_data/pge_cleaned/sp_premise_gis.dta", clear
-unique sp_uuid
-assert r(unique)==r(N)
-gen temp_clu_any = clu_id!=""
-gen temp_clu_ec_any = clu_id_ec!=""
+gen temp_clu_all = clu_id!=""
+gen temp_clu_ec = clu_id_ec!=""
 gen temp_clu_match = clu_id==clu_id_ec & clu_id!=""
 
 	// How many SPs have CLU assignments
-tab temp_clu_any // 96.8%
-tab temp_clu_any if pull=="20180719" // 94.9% in both
-tab temp_clu_any if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 // 98.2%
+tab temp_clu_all // 96%
+tab temp_clu_all if pull=="20180719" // 94%
+tab temp_clu_all if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 // 97%
 
-tab temp_clu_ec_any // 96.1%
-tab temp_clu_ec_any if pull=="20180719" // 94.8% in both
-tab temp_clu_ec_any if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 // 98.1%
+tab temp_clu_ec // 95%
+tab temp_clu_ec if pull=="20180719" // 94%
+tab temp_clu_ec if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 // 97%
 
-	// Compare CLUs (properly within polygon)
-tab in_clu in_clu_ec // 41.2% in both
-tab in_clu in_clu_ec if pull=="20180719" // 54.6% in both
-tab in_clu in_clu_ec if pull=="20180719" & bad_geocode_flag!=1 & ///
-	missing_geocode_flag!=1 // 54.6% in both (barely a sample restriction)
-	
-tab temp_clu_match if in_clu==1 & in_clu_ec==1 & ///
-	bad_geocode_flag!=1 & missing_geocode_flag!=1 & clu_county==clu_ec_county // 100%
-	// No weird overlapping CLU issues thankfully
-	
-	// Compare CLUs (properly within polygon, or < 1 mile away)
-tab temp_clu_match if clu_id!="" & clu_id_ec!="" & ///
-	bad_geocode_flag!=1 & missing_geocode_flag!=1 & clu_county==clu_ec_county // 97.7%
-tab temp_clu_match if clu_id!="" & clu_id_ec!="" & pull=="20180719" & ///
-	bad_geocode_flag!=1 & missing_geocode_flag!=1 & clu_county==clu_ec_county // 99.4%
-
-tab temp_clu_match if clu_id!="" & clu_id_ec!="" & ///
-	bad_geocode_flag!=1 & missing_geocode_flag!=1 // 97.7%
-tab temp_clu_match if clu_id!="" & clu_id_ec!="" & pull=="20180719" & ///
-	bad_geocode_flag!=1 & missing_geocode_flag!=1 // 99.4%
-
-tab temp_clu_match if clu_id!="" & clu_id_ec!="" & ///
-	bad_geocode_flag!=1 & missing_geocode_flag!=1 & clu_county==county // 97.7%
-tab temp_clu_match if clu_id!="" & clu_id_ec!="" & pull=="20180719" & ///
-	bad_geocode_flag!=1 & missing_geocode_flag!=1 & clu_county==county // 99.3%
-
-
-	// Formalizing validation checks, from weakest to strongest
-	
 	// Denominator
 count if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 
 local rN = r(N)
@@ -204,98 +43,175 @@ local rN = r(N)
 	// Has *a* CLU
 count if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 & ///
 	(clu_id!="" | clu_id_ec!="")
-di r(N)/`rN' // 98.2%
+di r(N)/`rN' // 97.4%
 	
-	// Has *a* clu that matches county
+	// Assigned CLU is consistent
 count if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 & ///
-	(clu_id!="" | clu_id_ec!="") & (clu_county==county | clu_ec_county==county)
-di r(N)/`rN' // 96.2%
+	clu_id_ec!="" & temp_clu_match==1
+di r(N)/`rN' // 96.7%
 	
-	// Has ever-crop CLU that matches county
-count if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 & ///
-	clu_id_ec!="" & clu_ec_county==county
-di r(N)/`rN' // 96.1%
-	
-	// Has ever-crop CLU that matches county, and matches unrestricted CLU
-count if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 & ///
-	clu_id_ec!="" & clu_ec_county==county & temp_clu_match==1
-di r(N)/`rN' // 95.4%
-sum clu_ec_dist_miles if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 & ///
-	clu_id_ec!="" & clu_ec_county==county & temp_clu_match==1, detail
-	// 95% of these w/in .16 miles, 99% of these w/in .52 miles 
-	
-	// Properly within ever-crop CLU that matches county, and matches unrestricted CLU
-count if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 & ///
-	clu_id_ec!="" & clu_ec_county==county & temp_clu_match==1 & in_clu_ec==1
-di r(N)/`rN' // 53.7%
-
-
 	// Comparing to non-APEP pulls
 count if pull!="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1
 local rN = r(N)
 count if pull!="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 & ///
-	clu_id_ec!="" & clu_ec_county==county & temp_clu_match==1
-di r(N)/`rN' // 93.0%, not bad!
-sum clu_ec_dist_miles if pull!="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 & ///
-	clu_id_ec!="" & clu_ec_county==county & temp_clu_match==1, detail
-	// 95% of these w/in .21 miles, 99% of these w/in .59 miles 
-count if pull!="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 & ///
-	clu_id_ec!="" & clu_ec_county==county & temp_clu_match==1 & in_clu_ec==1
-di r(N)/`rN' // 43.2%, not bad!
+	clu_id_ec!="" & temp_clu_match==1
+di r(N)/`rN' // 93.9%
+}
 
-
-** APEP pump lat/lons
+** 1b. APEP pumps
+{
 use "$dirpath_data/pge_cleaned/apep_pump_gis.dta", clear
 drop crop-test_date_stata
 duplicates drop
 unique latlon_group
 assert r(unique)==r(N)
-gen temp_clu_any = clu_id!=""
-gen temp_clu_ec_any = clu_id_ec!=""
+gen temp_clu_all = clu_id!=""
+gen temp_clu_ec = clu_id_ec!=""
 gen temp_clu_match = clu_id==clu_id_ec & clu_id!=""
 
 	// How many pumps have CLU assignments
-tab temp_clu_any // 94.5%
-tab temp_clu_ec_any // 93.8%
-
-	// Compare CLUs (properly within polygon)
-tab in_clu in_clu_ec // 54.1% in both
-	
-tab temp_clu_match if in_clu==1 & in_clu_ec==1 & ///
-	clu_county==clu_ec_county // 100%
-	
-	// Compare CLUs (properly within polygon, or < 1 mile away)
-tab temp_clu_match if clu_id!="" & clu_id_ec!="" & ///
-	clu_county==clu_ec_county // 98.3%
-
-	// Formalizing validation checks, from weakest to strongest
-
-	// Denominator
-count
-local rN = r(N)
+tab temp_clu_all // 92%
+tab temp_clu_ec // 91%
 
 	// Has *a* CLU
 count if (clu_id!="" | clu_id_ec!="")
-di r(N)/`rN' // 94.5%
+di r(N)/_N // 92.1%
 	
-	// Has *a* CLU that matches county
-count if (clu_id!="" | clu_id_ec!="") & (clu_county==county | clu_ec_county==county)
-di r(N)/`rN' // 91.6%
-	
-	// Has ever-crop CLU that matches county
-count if clu_id_ec!="" & clu_ec_county==county
-di r(N)/`rN' // 90.9%
-	
-	// Has ever-crop CLU that matches county, and matches unrestricted CLU
-count if clu_id_ec!="" & clu_ec_county==county & temp_clu_match==1
-di r(N)/`rN' // 89.2%
-sum clu_ec_dist_miles if clu_id_ec!="" & clu_ec_county==county & temp_clu_match==1, detail 
-	// 95% of these w/in .37 miles, 99% of these w/in .85 miles 
-	
-	// Properly within ever-crop CLU that matches county, and matches unrestricted CLU
-count if clu_id_ec!="" & clu_ec_county==county & temp_clu_match==1 & in_clu_ec==1
-di r(N)/`rN' // 52.1%
+	// Assigned CLU parcel is consistent
+count if clu_id_ec!="" & temp_clu_match==1
+di r(N)/_N // 90.0%
+}
 
+** 1c. SCE SPs
+{
+use "$dirpath_data/sce_cleaned/sce_sp_premise_gis.dta", clear
+unique sp_uuid
+assert r(unique)==r(N)
+gen temp_clu_all = clu_id!=""
+gen temp_clu_ec = clu_id_ec!=""
+gen temp_clu_match = clu_id==clu_id_ec & clu_id!=""
+
+	// How many SPs have parcel assignments
+tab temp_clu_all // 55%
+tab temp_clu_ec // 53%
+
+	// Denominator
+count if bad_geocode_flag!=1 & missing_geocode_flag!=1 
+local rN = r(N)
+
+	// Has *a* CLU
+count if bad_geocode_flag!=1 & missing_geocode_flag!=1 & (clu_id!="" | clu_id_ec!="")
+di r(N)/`rN' // 67.1%
+	
+	// Assigned CLU is consistent
+count if bad_geocode_flag!=1 & missing_geocode_flag!=1 & clu_id_ec!="" & temp_clu_match==1
+di r(N)/`rN' // 61.0%
+}
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 2. Dioagnostics: compare assigned parcels, via all vs. ever-crop CLUs
+if 1==1{
+
+** 2a. PGE SPs
+{
+use "$dirpath_data/pge_cleaned/pge_sp_premise_gis.dta", clear
+unique sp_uuid
+assert r(unique)==r(N)
+gen temp_parcel_all = parcelid!=""
+gen temp_parcel_ec = parcelid_ec!=""
+gen temp_parcel_match = parcelid==parcelid_ec & parcelid!=""
+
+	// How many SPs have parcel assignments
+tab temp_parcel_all // 91%
+tab temp_parcel_all if pull=="20180719" // 90%
+tab temp_parcel_all if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 // 93%
+
+tab temp_parcel_ec // 90%
+tab temp_parcel_ec if pull=="20180719" // 90%
+tab temp_parcel_ec if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 // 93%
+
+tab temp_parcel_match if in_clu==1 & in_clu_ec==1 & ///
+	bad_geocode_flag!=1 & missing_geocode_flag!=1 // 95.4%
+tab temp_parcel_match if in_clu==1 & in_clu_ec==1 & pull=="20180719" & ///
+	bad_geocode_flag!=1 & missing_geocode_flag!=1 // 96.2%
+	
+	// Denominator
+count if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 
+local rN = r(N)
+
+	// Has *a* parcel
+count if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 & ///
+	(parcelid!="" | parcelid_ec!="")
+di r(N)/`rN' // 93.5%
+	
+	// Assigned parcel is consistent across both CLU assignments
+count if pull=="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 & ///
+	parcelid_ec!="" & temp_parcel_match==1
+di r(N)/`rN' // 92.9%
+	
+	// Comparing to non-APEP pulls
+count if pull!="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1
+local rN = r(N)
+count if pull!="20180719" & bad_geocode_flag!=1 & missing_geocode_flag!=1 & ///
+	parcelid_ec!="" & temp_parcel_match==1
+di r(N)/`rN' // 90.7%
+}
+
+** 2b. APEP pumps
+{
+use "$dirpath_data/pge_cleaned/apep_pump_gis.dta", clear
+drop crop-test_date_stata
+duplicates drop
+unique latlon_group
+assert r(unique)==r(N)
+gen temp_parcel_all = parcelid!=""
+gen temp_parcel_ec = parcelid_ec!=""
+gen temp_parcel_match = parcelid==parcelid_ec & parcelid!=""
+
+	// How many pumps have parcel assignments
+tab temp_parcel_all // 87%
+tab temp_parcel_ec // 86%
+tab temp_parcel_match if in_clu==1 & in_clu_ec==1 // 94.1%
+
+	// Has *a* parcel
+count if (parcelid!="" | parcelid_ec!="")
+di r(N)/_N // 86.6%
+	
+	// Assigned parcel is consistent across both CLU assignments
+count if parcelid_ec!="" & temp_parcel_match==1
+di r(N)/_N // 84.4%
+}
+
+** 2c. SCE SPs
+{
+use "$dirpath_data/sce_cleaned/sce_sp_premise_gis.dta", clear
+unique sp_uuid
+assert r(unique)==r(N)
+gen temp_parcel_all = parcelid!=""
+gen temp_parcel_ec = parcelid_ec!=""
+gen temp_parcel_match = parcelid==parcelid_ec & parcelid!=""
+
+	// How many pumps have parcel assignments
+tab temp_parcel_all // 54%
+tab temp_parcel_ec // 53%
+tab temp_parcel_match if in_clu==1 & in_clu_ec==1 // 99%
+
+	// Denominator
+count if bad_geocode_flag!=1 & missing_geocode_flag!=1 
+local rN = r(N)
+
+	// Has *a* parcel
+count if bad_geocode_flag!=1 & missing_geocode_flag!=1 & (parcelid!="" | parcelid_ec!="")
+di r(N)/`rN' // 66.4%
+	
+	// Assigned parcel is consistent across both CLU assignments
+count if bad_geocode_flag!=1 & missing_geocode_flag!=1 & parcelid_ec!="" & temp_parcel_match==1
+di r(N)/`rN' // 60.8%
+}
 
 }
 
@@ -876,3 +792,4 @@ save "$dirpath_data/pge_cleaned/apep_pump_gis.dta", replace
 
 *******************************************************************************
 *******************************************************************************
+
