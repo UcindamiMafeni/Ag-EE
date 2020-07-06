@@ -2,9 +2,10 @@ clear all
 version 13
 set more off
 
-****************************************************************************************
-**** Assign PGE (SPs & pump) coordinates and SCE (SP/SA) coordinates to CLU polygons ***
-****************************************************************************************
+***********************************************************************
+*** Assign PGE (SPs & pump) coordinates and SCE (SP/SA) coordinates ***
+*** to other polygons: counties, groundwater (sub)basins, parcels   ***
+***********************************************************************
 
 global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
@@ -731,36 +732,238 @@ save "$dirpath_data/sce_cleaned/sce_sp_premise_gis.dta", replace
 *******************************************************************************
 *******************************************************************************
 
+** 5. Assign parcels to points, based on their assigned CLUs
+if 1==1{
 
-
-LEFTOVER CODE
+** 5a. Collapse CLU-to-parcel conconrdance to max 1 parcel per CLU
 {
+	// start with CLU-to-parcel concordance
+use "$dirpath_data/cleaned_spatial/clu_parcel_conc.dta", clear
 
-	// Label
-la var wdist "Water district (assigned by GIS)"	
-la var wdist_dist_miles "Distance to water district (cut off at 2.13 miles)"	
-la var wdist_id "Water district ID (from shapefile)"
-la var wdist_area_sqmi "GIS-derived area of water district (sq miles)"
+	// keep modal parcel in each CLU only
+unique clu_id
+local uniq = r(unique)
+keep if largest_parcel==1
+unique clu_id
+assert r(unique)==`uniq'
 
+	// break the very few ties based on percent of parcel acres in CLU intersection
+duplicates t clu_id, gen(dup)
+tab dup
+sort clu_id
+br if dup>0
+egen double temp = max(pct_int_parcel), by(clu_id)
+unique clu_id
+local uniq = r(unique)
+drop if dup>0 & pct_int_parcel<temp
+unique clu_id
+assert r(unique)==`uniq'
+assert r(unique)==r(N)
 
-	// Label
-la var in_parcel "Dummy for SPs properly within parcel polygons, all parcels"
-la var parcelid "Unique parcel ID, all parcels (county, area, lon, lat)"	
-la var parcel_county "County of assigned parcel, all parcels"	
-la var parcel_acres "Area (acres) of assigned parcel, all parcels"
-la var parcel_dist_miles "Distance to assigned parcel, all parcels (cut off at 1 mile)"
+	// remove slivers
+assert drop_slivers==0 // this flag is for disambiguation only 
+sum pct_int_clu, detail
+sum intacres, detail
+sum pct_int_clu if drop_slivers, detail
+drop if pct_int_clu<0.05 // drop if intersection is less than 5% of CLU's acres
+sum pct_int_clu if pct_int_clu<0.5, detail
 
-	// Label
-la var in_parcel "Dummy for SPs properly within parcel polygons, CLU-merged parcels"
-la var parcelid "Unique parcel ID, CLU-merged parcels (county, area, lon, lat)"	
-la var parcel_county "County of assigned parcel, CLU-merged parcels"	
-la var parcel_acres "Area (acres) of assigned parcel, CLU-merged parcels"
-la var parcel_dist_miles "Distance to assigned parcel, CLU-merged parcels (cut off at 1 mile)"
+	// keep only essential variables to carry forward
+keep clu_id parcelid parcelacres pct_int_parcel pct_int_clu
+sort clu_id
+unique clu_id
+assert r(unique)==r(N)
+assert clu_id!="" & parcelid!=""
+compress
+save "$dirpath_data/cleaned_spatial/clu_parcel_conc_unique_by_clu.dta", replace
 
-	// Rename to differentiate from the all-parcel varaibles
-rename *parcel_* *parcel_conc_*
-rename in_parcel in_parcel_conc
-rename parcelid parcelid_conc
-	
-}	
+}
+
+** 5b. PGE SPs, all CLUs
+{
+	// merge in parcel concordance
+use "$dirpath_data/pge_cleaned/pge_sp_premise_gis.dta", clear
+merge m:1 clu_id using "$dirpath_data/cleaned_spatial/clu_parcel_conc_unique_by_clu.dta", ///
+	keep(1 3) nogen
+
+	// diagnostics
+unique clu_id
+local uniq = r(unique)
+unique clu_id if parcelid!=""
+di r(unique)/`uniq'	// 95% of CLUs matched to points also match to a parcel
+unique clu_id if parcelid!="" & pct_int_clu>0.5
+di r(unique)/`uniq'	// 89% of CLUs matched to points also match to a parcel with >50% of acreage
+drop pct_int_parcel pct_int_clu
+
+	// label
+la var parcelid "Unique parcel ID, as assigned via CLU (including never-cropped)"	
+rename parcelacres parcel_acres
+la var parcel_acres "Area (acres) of assigned parcel (including never-cropped)"
+
+	// save
+sort sp_uuid
+compress
+save "$dirpath_data/pge_cleaned/pge_sp_premise_gis.dta", replace
+}
+
+** 5c. PGE SPs, ever-crop CLUs
+{
+	// merge in parcel concordance
+use "$dirpath_data/pge_cleaned/pge_sp_premise_gis.dta", clear
+rename clu_id clu_idA
+rename parcelid parcelidA
+rename clu_id_ec clu_id
+merge m:1 clu_id using "$dirpath_data/cleaned_spatial/clu_parcel_conc_unique_by_clu.dta", ///
+	keep(1 3) nogen
+rename clu_id clu_id_ec
+rename parcelid parcelid_ec
+rename clu_idA clu_id
+rename parcelidA parcelid	
+
+	// diagnostics
+unique clu_id_ec
+local uniq = r(unique)
+unique clu_id_ec if parcelid_ec!=""
+di r(unique)/`uniq'	// 95% of CLUs matched to points also match to a parcel
+unique clu_id_ec if parcelid_ec!="" & pct_int_clu>0.5
+di r(unique)/`uniq'	// 89% of CLUs matched to points also match to a parcel with >50% of acreage
+drop pct_int_parcel pct_int_clu
+
+	// label
+la var parcelid_ec "Unique parcel ID, as assigned via CLU (ever-crop)"	
+rename parcelacres parcel_acres_ec
+la var parcel_acres_ec "Area (acres) of assigned parcel (ever-crop)"
+
+	// save
+sort sp_uuid
+compress
+save "$dirpath_data/pge_cleaned/pge_sp_premise_gis.dta", replace
+}
+
+** 5d. APEP pumps, all CLUs
+{
+	// merge in parcel concordance
+use "$dirpath_data/pge_cleaned/apep_pump_gis.dta", clear
+merge m:1 clu_id using "$dirpath_data/cleaned_spatial/clu_parcel_conc_unique_by_clu.dta", ///
+	keep(1 3) nogen
+
+	// diagnostics
+unique clu_id
+local uniq = r(unique)
+unique clu_id if parcelid!=""
+di r(unique)/`uniq'	// 95% of CLUs matched to points also match to a parcel
+unique clu_id if parcelid!="" & pct_int_clu>0.5
+di r(unique)/`uniq'	// 88% of CLUs matched to points also match to a parcel with >50% of acreage
+drop pct_int_parcel pct_int_clu
+
+	// label
+la var parcelid "Unique parcel ID, as assigned via CLU (including never-cropped)"	
+rename parcelacres parcel_acres
+la var parcel_acres "Area (acres) of assigned parcel (including never-cropped)"
+
+	// save
+sort latlon_group
+compress
+save "$dirpath_data/pge_cleaned/apep_pump_gis.dta", replace
+}
+
+** 5e. APEP pumps, ever-crop CLUs
+{
+	// merge in parcel concordance
+use "$dirpath_data/pge_cleaned/apep_pump_gis.dta", clear
+rename clu_id clu_idA
+rename parcelid parcelidA
+rename clu_id_ec clu_id
+merge m:1 clu_id using "$dirpath_data/cleaned_spatial/clu_parcel_conc_unique_by_clu.dta", ///
+	keep(1 3) nogen
+rename clu_id clu_id_ec
+rename parcelid parcelid_ec
+rename clu_idA clu_id
+rename parcelidA parcelid	
+
+	// diagnostics
+unique clu_id_ec
+local uniq = r(unique)
+unique clu_id_ec if parcelid_ec!=""
+di r(unique)/`uniq'	// 95% of CLUs matched to points also match to a parcel
+unique clu_id_ec if parcelid_ec!="" & pct_int_clu>0.5
+di r(unique)/`uniq'	// 88% of CLUs matched to points also match to a parcel with >50% of acreage
+drop pct_int_parcel pct_int_clu
+
+	// label
+la var parcelid_ec "Unique parcel ID, as assigned via CLU (ever-crop)"	
+rename parcelacres parcel_acres_ec
+la var parcel_acres_ec "Area (acres) of assigned parcel (ever-crop)"
+
+	// save
+sort latlon_group
+compress
+save "$dirpath_data/pge_cleaned/apep_pump_gis.dta", replace
+}
+
+** 5f. SCE SPs, all CLUs
+{
+	// merge in parcel concordance
+use "$dirpath_data/sce_cleaned/sce_sp_premise_gis.dta", clear
+merge m:1 clu_id using "$dirpath_data/cleaned_spatial/clu_parcel_conc_unique_by_clu.dta", ///
+	keep(1 3) nogen
+
+	// diagnostics
+unique clu_id
+local uniq = r(unique)
+unique clu_id if parcelid!=""
+di r(unique)/`uniq'	// 99% of CLUs matched to points also match to a parcel
+unique clu_id if parcelid!="" & pct_int_clu>0.5
+di r(unique)/`uniq'	// 90% of CLUs matched to points also match to a parcel with >50% of acreage
+drop pct_int_parcel pct_int_clu
+
+	// label
+la var parcelid "Unique parcel ID, as assigned via CLU (including never-cropped)"	
+rename parcelacres parcel_acres
+la var parcel_acres "Area (acres) of assigned parcel (including never-cropped)"
+
+	// save
+sort sp_uuid
+compress
+save "$dirpath_data/sce_cleaned/sce_sp_premise_gis.dta", replace
+}
+
+** 5g. SCE SPs, ever-crop CLUs
+{
+	// merge in parcel concordance
+use "$dirpath_data/sce_cleaned/sce_sp_premise_gis.dta", clear
+rename clu_id clu_idA
+rename parcelid parcelidA
+rename clu_id_ec clu_id
+merge m:1 clu_id using "$dirpath_data/cleaned_spatial/clu_parcel_conc_unique_by_clu.dta", ///
+	keep(1 3) nogen
+rename clu_id clu_id_ec
+rename parcelid parcelid_ec
+rename clu_idA clu_id
+rename parcelidA parcelid	
+
+	// diagnostics
+unique clu_id_ec
+local uniq = r(unique)
+unique clu_id_ec if parcelid_ec!=""
+di r(unique)/`uniq'	// 99% of CLUs matched to points also match to a parcel
+unique clu_id_ec if parcelid_ec!="" & pct_int_clu>0.5
+di r(unique)/`uniq'	// 91% of CLUs matched to points also match to a parcel with >50% of acreage
+drop pct_int_parcel pct_int_clu
+
+	// label
+la var parcelid_ec "Unique parcel ID, as assigned via CLU (ever-crop)"	
+rename parcelacres parcel_acres_ec
+la var parcel_acres_ec "Area (acres) of assigned parcel (ever-crop)"
+
+	// save
+sort sp_uuid
+compress
+save "$dirpath_data/sce_cleaned/sce_sp_premise_gis.dta", replace
+}
+
+}
+
+*******************************************************************************
+*******************************************************************************
 
