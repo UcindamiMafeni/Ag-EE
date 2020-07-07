@@ -337,7 +337,7 @@ la var mean_p_kw_partpeak "Avg partial peak demand charge ($/kW) for rate"
 ** Save
 rename rateschedule rt_sched_cd
 compress
-save "$dirpath_data/merged/ag_rates_avg_by_day.dta", replace
+save "$dirpath_data/merged_pge/ag_rates_avg_by_day.dta", replace
 
 }
 
@@ -396,7 +396,7 @@ drop if temp_wt==0.5 & date==bill_end_dt
 drop temp_new temp_wt
 
 ** Merge into averge daily rates data
-merge m:1 rt_sched_cd date using "$dirpath_data/merged/ag_rates_avg_by_day.dta"
+merge m:1 rt_sched_cd date using "$dirpath_data/merged_pge/ag_rates_avg_by_day.dta"
 assert (date>date("01sep2017","DMY") | year(date)==2007) if _merge==2
 drop if _merge==2
 
@@ -417,7 +417,7 @@ assert r(unique)==r(N)
 ** Save
 la var pull "Which data pull does this SA come from?"
 compress
-save "$dirpath_data/merged/bills_avg_prices_nomerge.dta", replace
+save "$dirpath_data/merged_pge/bills_avg_prices_nomerge.dta", replace
 
 }
 **********************************************************************
@@ -465,7 +465,7 @@ unique sa_uuid modate date
 assert r(unique)==r(N)
 
 ** Merge into averge daily rates data
-merge m:1 rt_sched_cd date using "$dirpath_data/merged/ag_rates_avg_by_day.dta"
+merge m:1 rt_sched_cd date using "$dirpath_data/merged_pge/ag_rates_avg_by_day.dta"
 assert (date>date("01sep2017","DMY") | year(date)==2007) if _merge==2
 drop if _merge==2
 
@@ -486,7 +486,7 @@ assert r(unique)==r(N)
 ** Save
 la var pull "Which data pull does this SA come from?"
 compress
-save "$dirpath_data/merged/monthified_avg_prices_nomerge.dta", replace
+save "$dirpath_data/merged_pge/monthified_avg_prices_nomerge.dta", replace
 
 }
 **********************************************************************

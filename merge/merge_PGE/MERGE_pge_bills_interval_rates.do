@@ -265,7 +265,7 @@ replace pdpenergycredit = 0 if pdpenergycredit==.
 unique rt_sched_cd group date hour
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/ag_rates_for_merge.dta", replace
+save "$dirpath_data/merged_pge/ag_rates_for_merge.dta", replace
 		
 }
 
@@ -355,7 +355,7 @@ forvalues YM = `YM_min'/`YM_max' {
 	** Merge in rate data by hour
 	preserve
 	clear
-	use "$dirpath_data/merged/ag_rates_for_merge.dta" if inrange(date,`dmin',`dmax')
+	use "$dirpath_data/merged_pge/ag_rates_for_merge.dta" if inrange(date,`dmin',`dmax')
 	tempfile temp_rates
 	save `temp_rates'
 	restore
@@ -377,7 +377,7 @@ forvalues YM = `YM_min'/`YM_max' {
 	keep sa_uuid date hour kwh p_kwh bill_start_dt group
 	la var p_kwh "Hourly (avg) marginal price ($/kWh)"
 	compress
-	save "$dirpath_data/merged/hourly_with_prices_`YM'_`tag'.dta", replace
+	save "$dirpath_data/merged_pge/hourly_with_prices_`YM'_`tag'.dta", replace
 	restore	
 		
 	** Check if max kW is missing anywhere where we need it
@@ -498,7 +498,7 @@ forvalues YM = `YM_min'/`YM_max' {
 
 	** Save monthly data of constructed bill components
 	compress
-	save "$dirpath_data/merged/bills_rates_constructed_`YM'_`tag'.dta", replace
+	save "$dirpath_data/merged_pge/bills_rates_constructed_`YM'_`tag'.dta", replace
 	
 	}
 	
@@ -507,7 +507,7 @@ forvalues YM = `YM_min'/`YM_max' {
 
 ** Append monthly files (hourly)
 clear 
-cd "$dirpath_data/merged"
+cd "$dirpath_data/merged_pge"
 local files_hourly : dir "." files "hourly_with_prices_*_`tag'.dta"
 foreach f in `files_hourly' {
 	append using "`f'"
@@ -522,11 +522,11 @@ drop dup
 unique sa_uuid date hour group
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/hourly_with_prices_`tag'.dta", replace
+save "$dirpath_data/merged_pge/hourly_with_prices_`tag'.dta", replace
 
 ** Append monthly files (bills)
 clear 
-cd "$dirpath_data/merged"
+cd "$dirpath_data/merged_pge"
 local files_bills : dir "." files "bills_rates_constructed_*_`tag'.dta"
 foreach f in `files_bills' {
 	append using "`f'"
@@ -536,17 +536,17 @@ sort sa_uuid bill_start_dt group
 unique sa_uuid bill_start_dt group
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/bills_rates_constructed_`tag'.dta", replace
+save "$dirpath_data/merged_pge/bills_rates_constructed_`tag'.dta", replace
 
 ** Delete monthly files (hourly)
-cd "$dirpath_data/merged"
+cd "$dirpath_data/merged_pge"
 local files_hourly : dir "." files "hourly_with_prices_*_`tag'.dta"
 foreach f in `files_hourly' {
 	erase "`f'"
 }
 
 ** Delete monthly files (bills)
-cd "$dirpath_data/merged"
+cd "$dirpath_data/merged_pge"
 local files_bills : dir "." files "bills_rates_constructed_*_`tag'.dta"
 foreach f in `files_bills' {
 	erase "`f'"
@@ -636,7 +636,7 @@ forvalues YM = `YM_min'/`YM_max' {
 	** Merge in rate data by hour
 	preserve
 	clear
-	use "$dirpath_data/merged/ag_rates_for_merge.dta" if inrange(date,`dmin',`dmax')
+	use "$dirpath_data/merged_pge/ag_rates_for_merge.dta" if inrange(date,`dmin',`dmax')
 	tempfile temp_rates
 	save `temp_rates'
 	restore
@@ -658,7 +658,7 @@ forvalues YM = `YM_min'/`YM_max' {
 	keep sa_uuid date hour kwh p_kwh bill_start_dt group
 	la var p_kwh "Hourly (avg) marginal price ($/kWh)"
 	compress
-	save "$dirpath_data/merged/hourly_with_prices_`YM'_`tag'.dta", replace
+	save "$dirpath_data/merged_pge/hourly_with_prices_`YM'_`tag'.dta", replace
 	restore	
 		
 	** Check if max kW is missing anywhere where we need it
@@ -779,7 +779,7 @@ forvalues YM = `YM_min'/`YM_max' {
 
 	** Save monthly data of constructed bill components
 	compress
-	save "$dirpath_data/merged/bills_rates_constructed_`YM'_`tag'.dta", replace
+	save "$dirpath_data/merged_pge/bills_rates_constructed_`YM'_`tag'.dta", replace
 	
 	}
 	
@@ -788,7 +788,7 @@ forvalues YM = `YM_min'/`YM_max' {
 
 ** Append monthly files (hourly)
 clear 
-cd "$dirpath_data/merged"
+cd "$dirpath_data/merged_pge"
 local files_hourly : dir "." files "hourly_with_prices_*_`tag'.dta"
 foreach f in `files_hourly' {
 	append using "`f'"
@@ -803,11 +803,11 @@ drop dup
 unique sa_uuid date hour group
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/hourly_with_prices_`tag'.dta", replace
+save "$dirpath_data/merged_pge/hourly_with_prices_`tag'.dta", replace
 
 ** Append monthly files (bills)
 clear 
-cd "$dirpath_data/merged"
+cd "$dirpath_data/merged_pge"
 local files_bills : dir "." files "bills_rates_constructed_*_`tag'.dta"
 foreach f in `files_bills' {
 	append using "`f'"
@@ -817,17 +817,17 @@ sort sa_uuid bill_start_dt group
 unique sa_uuid bill_start_dt group
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/bills_rates_constructed_`tag'.dta", replace
+save "$dirpath_data/merged_pge/bills_rates_constructed_`tag'.dta", replace
 
 ** Delete monthly files (hourly)
-cd "$dirpath_data/merged"
+cd "$dirpath_data/merged_pge"
 local files_hourly : dir "." files "hourly_with_prices_*_`tag'.dta"
 foreach f in `files_hourly' {
 	erase "`f'"
 }
 
 ** Delete monthly files (bills)
-cd "$dirpath_data/merged"
+cd "$dirpath_data/merged_pge"
 local files_bills : dir "." files "bills_rates_constructed_*_`tag'.dta"
 foreach f in `files_bills' {
 	erase "`f'"
@@ -918,7 +918,7 @@ forvalues YM = `YM_min'/`YM_max' {
 	** Merge in rate data by hour
 	preserve
 	clear
-	use "$dirpath_data/merged/ag_rates_for_merge.dta" if inrange(date,`dmin',`dmax')
+	use "$dirpath_data/merged_pge/ag_rates_for_merge.dta" if inrange(date,`dmin',`dmax')
 	tempfile temp_rates
 	save `temp_rates'
 	restore
@@ -940,7 +940,7 @@ forvalues YM = `YM_min'/`YM_max' {
 	keep sa_uuid date hour kwh p_kwh bill_start_dt group
 	la var p_kwh "Hourly (avg) marginal price ($/kWh)"
 	compress
-	save "$dirpath_data/merged/hourly_with_prices_`YM'_`tag'.dta", replace
+	save "$dirpath_data/merged_pge/hourly_with_prices_`YM'_`tag'.dta", replace
 	restore	
 		
 	** Check if max kW is missing anywhere where we need it
@@ -1061,7 +1061,7 @@ forvalues YM = `YM_min'/`YM_max' {
 
 	** Save monthly data of constructed bill components
 	compress
-	save "$dirpath_data/merged/bills_rates_constructed_`YM'_`tag'.dta", replace
+	save "$dirpath_data/merged_pge/bills_rates_constructed_`YM'_`tag'.dta", replace
 	
 	}
 	
@@ -1070,7 +1070,7 @@ forvalues YM = `YM_min'/`YM_max' {
 
 ** Append monthly files (hourly)
 clear 
-cd "$dirpath_data/merged"
+cd "$dirpath_data/merged_pge"
 local files_hourly : dir "." files "hourly_with_prices_*_`tag'.dta"
 foreach f in `files_hourly' {
 	append using "`f'"
@@ -1085,11 +1085,11 @@ drop dup
 unique sa_uuid date hour group
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/hourly_with_prices_`tag'.dta", replace
+save "$dirpath_data/merged_pge/hourly_with_prices_`tag'.dta", replace
 
 ** Append monthly files (bills)
 clear 
-cd "$dirpath_data/merged"
+cd "$dirpath_data/merged_pge"
 local files_bills : dir "." files "bills_rates_constructed_*_`tag'.dta"
 foreach f in `files_bills' {
 	append using "`f'"
@@ -1099,17 +1099,17 @@ sort sa_uuid bill_start_dt group
 unique sa_uuid bill_start_dt group
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/bills_rates_constructed_`tag'.dta", replace
+save "$dirpath_data/merged_pge/bills_rates_constructed_`tag'.dta", replace
 
 ** Delete monthly files (hourly)
-cd "$dirpath_data/merged"
+cd "$dirpath_data/merged_pge"
 local files_hourly : dir "." files "hourly_with_prices_*_`tag'.dta"
 foreach f in `files_hourly' {
 	erase "`f'"
 }
 
 ** Delete monthly files (bills)
-cd "$dirpath_data/merged"
+cd "$dirpath_data/merged_pge"
 local files_bills : dir "." files "bills_rates_constructed_*_`tag'.dta"
 foreach f in `files_bills' {
 	erase "`f'"
@@ -1124,13 +1124,13 @@ foreach f in `files_bills' {
 if 1==0 {
 
 ** Merge together bills for all 3 data pulls
-use "$dirpath_data/merged/bills_rates_constructed_20180719.dta", clear
+use "$dirpath_data/merged_pge/bills_rates_constructed_20180719.dta", clear
 gen pull = "20180719"
-merge 1:1 sa_uuid bill_start_dt group using "$dirpath_data/merged/bills_rates_constructed_20180322.dta"
+merge 1:1 sa_uuid bill_start_dt group using "$dirpath_data/merged_pge/bills_rates_constructed_20180322.dta"
 assert _merge!=3 // because Step 2 above drops SAs in both data pulls to save time
 replace pull = "20180322" if _merge==2
 drop _merge
-merge 1:1 sa_uuid bill_start_dt group using "$dirpath_data/merged/bills_rates_constructed_20180827.dta"
+merge 1:1 sa_uuid bill_start_dt group using "$dirpath_data/merged_pge/bills_rates_constructed_20180827.dta"
 unique sa_uuid if _merge==3 // 38 SAs overlap in otherwise disjoint data pulls
 replace pull = "20180827" if _merge==2
 drop _merge
@@ -1420,7 +1420,7 @@ sort sa_uuid bill_start_dt
 unique sa_uuid bill_start_dt
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/bills_rates_constructed.dta", replace
+save "$dirpath_data/merged_pge/bills_rates_constructed.dta", replace
  
 }
 
@@ -1431,9 +1431,9 @@ save "$dirpath_data/merged/bills_rates_constructed.dta", replace
 if 1==0 {
 
 foreach tag in "20180322" "20180719" "20180827" {
-	use "$dirpath_data/merged/bills_rates_constructed.dta", clear
+	use "$dirpath_data/merged_pge/bills_rates_constructed.dta", clear
 	keep if pull=="`tag'"
-	merge 1:m sa_uuid bill_start_dt group using "$dirpath_data/merged/bills_rates_constructed_`tag'.dta"
+	merge 1:m sa_uuid bill_start_dt group using "$dirpath_data/merged_pge/bills_rates_constructed_`tag'.dta"
 	assert _merge!=1
 	tab rt_sched_cd if _merge==2
 	unique sa_uuid bill_start_dt
@@ -1444,7 +1444,7 @@ foreach tag in "20180322" "20180719" "20180827" {
 	assert r(unique)==r(N)
 	assert r(unique)==`uniq' | "`tag'"=="20180827" // a few overlapping SAs get dropped in the August pull
 	compress
-	save "$dirpath_data/merged/bills_rates_constructed_`tag'.dta", replace
+	save "$dirpath_data/merged_pge/bills_rates_constructed_`tag'.dta", replace
 }
 
 }
@@ -1456,10 +1456,10 @@ foreach tag in "20180322" "20180719" "20180827" {
 if 1==0 {
 local tag = "20180322"
 
-use "$dirpath_data/merged/bills_rates_constructed.dta", clear
+use "$dirpath_data/merged_pge/bills_rates_constructed.dta", clear
 keep if pull=="`tag'"
 keep sa_uuid bill_start_dt group
-merge 1:m sa_uuid bill_start_dt group using "$dirpath_data/merged/hourly_with_prices_`tag'.dta"
+merge 1:m sa_uuid bill_start_dt group using "$dirpath_data/merged_pge/hourly_with_prices_`tag'.dta"
 assert _merge!=1
 unique sa_uuid date hour
 local uniq = r(unique)
@@ -1469,7 +1469,7 @@ unique sa_uuid date hour
 assert r(unique)==`uniq'
 compress
 duplicates drop sa_uuid date hour, force // for some reason there are still a few dups?
-save "$dirpath_data/merged/hourly_with_prices_`tag'.dta", replace
+save "$dirpath_data/merged_pge/hourly_with_prices_`tag'.dta", replace
 
 }
 
@@ -1480,10 +1480,10 @@ save "$dirpath_data/merged/hourly_with_prices_`tag'.dta", replace
 if 1==0 {
 local tag = "20180719"
 
-use "$dirpath_data/merged/bills_rates_constructed.dta", clear
+use "$dirpath_data/merged_pge/bills_rates_constructed.dta", clear
 keep if pull=="`tag'"
 keep sa_uuid bill_start_dt group
-merge 1:m sa_uuid bill_start_dt group using "$dirpath_data/merged/hourly_with_prices_`tag'.dta"
+merge 1:m sa_uuid bill_start_dt group using "$dirpath_data/merged_pge/hourly_with_prices_`tag'.dta"
 assert _merge!=1
 unique sa_uuid date hour
 local uniq = r(unique)
@@ -1493,7 +1493,7 @@ unique sa_uuid date hour
 assert r(unique)==`uniq'
 compress
 duplicates drop sa_uuid date hour, force // for some reason there are still a few dups?
-save "$dirpath_data/merged/hourly_with_prices_`tag'.dta", replace
+save "$dirpath_data/merged_pge/hourly_with_prices_`tag'.dta", replace
 
 }
 
@@ -1504,12 +1504,12 @@ save "$dirpath_data/merged/hourly_with_prices_`tag'.dta", replace
 if 1==1 {
 local tag = "20180827"
 
-use "$dirpath_data/merged/bills_rates_constructed.dta", clear
+use "$dirpath_data/merged_pge/bills_rates_constructed.dta", clear
 keep if pull=="`tag'"
 keep sa_uuid bill_start_dt group
 unique sa_uuid bill_start_dt
 assert r(unique)==r(N)
-merge 1:m sa_uuid bill_start_dt group using "$dirpath_data/merged/hourly_with_prices_`tag'.dta"
+merge 1:m sa_uuid bill_start_dt group using "$dirpath_data/merged_pge/hourly_with_prices_`tag'.dta"
 assert _merge!=1
 drop if _merge==2
 drop _merge
@@ -1517,7 +1517,7 @@ duplicates drop sa_uuid date hour, force
 unique sa_uuid date hour
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/hourly_with_prices_`tag'.dta", replace
+save "$dirpath_data/merged_pge/hourly_with_prices_`tag'.dta", replace
 
 }
 

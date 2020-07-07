@@ -69,7 +69,7 @@ assert p_kwh_e1_lo!=. & p_kwh_e1_mi!=. & p_kwh_e1_hi!=.
 ** Save
 sort date
 compress
-save "$dirpath_data/merged/e1_prices_daily.dta", replace
+save "$dirpath_data/merged_pge/e1_prices_daily.dta", replace
 
 ** Collapse to monthly level and save
 gen modate = ym(year(date),month(date))
@@ -86,7 +86,7 @@ assert r(unique)==r(N)
 order modate
 sort modate
 compress
-save "$dirpath_data/merged/e1_prices_monthly.dta", replace
+save "$dirpath_data/merged_pge/e1_prices_monthly.dta", replace
 
 }
 
@@ -301,7 +301,7 @@ sort date hour
 unique date hour
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/e20_prices_hourly.dta", replace
+save "$dirpath_data/merged_pge/e20_prices_hourly.dta", replace
 		
 }
 
@@ -543,7 +543,7 @@ sort modate
 unique modate
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/e20_prices_monthly.dta", replace
+save "$dirpath_data/merged_pge/e20_prices_monthly.dta", replace
 		
 }
 
@@ -554,7 +554,7 @@ save "$dirpath_data/merged/e20_prices_monthly.dta", replace
 if 1==1{
 
 ** Start with list of ag rates
-use "$dirpath_data/merged/ag_rates_for_merge.dta", clear
+use "$dirpath_data/merged_pge/ag_rates_for_merge.dta", clear
 keep rt_sched_cd
 duplicates drop
 sort rt_sched_cd
@@ -617,7 +617,7 @@ save `rt_default'
 ** Construct dataset of default rates at the hourly level
 
 	// Isolate only the rates serving as a default
-use "$dirpath_data/merged/ag_rates_for_merge.dta", clear
+use "$dirpath_data/merged_pge/ag_rates_for_merge.dta", clear
 rename rt_sched_cd rt_default
 joinby rt_default using `rt_default'
 drop rt_sched_cd tou group
@@ -655,7 +655,7 @@ sort rt_sched_cd date hour
 unique rt_sched_cd date hour
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/ag_default_prices_hourly.dta", replace
+save "$dirpath_data/merged_pge/ag_default_prices_hourly.dta", replace
 
 }
 *******************************************************************************
@@ -665,7 +665,7 @@ save "$dirpath_data/merged/ag_default_prices_hourly.dta", replace
 if 1==1{
 
 ** Start with list of ag rates
-use "$dirpath_data/merged/ag_rates_avg_by_day.dta", clear
+use "$dirpath_data/merged_pge/ag_rates_avg_by_day.dta", clear
 keep rt_sched_cd
 duplicates drop
 sort rt_sched_cd
@@ -728,7 +728,7 @@ save `rt_default'
 ** Construct dataset of default rates at the hourly level
 
 	// Isolate only the rates serving as a default
-use "$dirpath_data/merged/ag_rates_avg_by_day.dta", clear
+use "$dirpath_data/merged_pge/ag_rates_avg_by_day.dta", clear
 rename rt_sched_cd rt_default
 joinby rt_default using `rt_default'
 drop rt_sched_cd
@@ -768,7 +768,7 @@ sort rt_sched_cd modate
 unique rt_sched_cd modate
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/ag_default_prices_monthly.dta", replace
+save "$dirpath_data/merged_pge/ag_default_prices_monthly.dta", replace
 
 }
 
@@ -779,7 +779,7 @@ save "$dirpath_data/merged/ag_default_prices_monthly.dta", replace
 if 1==1{
 
 ** Start with list of ag rates
-use "$dirpath_data/merged/ag_rates_avg_by_day.dta", clear
+use "$dirpath_data/merged_pge/ag_rates_avg_by_day.dta", clear
 keep rt_sched_cd
 duplicates drop
 sort rt_sched_cd
@@ -878,7 +878,7 @@ save `rt_modal'
 ** Construct dataset of modal rates at the hourly level
 
 	// Isolate only the modal rates 
-use "$dirpath_data/merged/ag_rates_avg_by_day.dta", clear
+use "$dirpath_data/merged_pge/ag_rates_avg_by_day.dta", clear
 rename rt_sched_cd rt_modal
 joinby rt_modal using `rt_modal'
 drop rt_sched_cd
@@ -918,7 +918,7 @@ sort rt_sched_cd modate
 unique rt_sched_cd modate
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/ag_modal_prices_monthly.dta", replace
+save "$dirpath_data/merged_pge/ag_modal_prices_monthly.dta", replace
 
 }
 
@@ -929,12 +929,12 @@ save "$dirpath_data/merged/ag_modal_prices_monthly.dta", replace
 if 1==1{
 
 ** Merge ag rates with E-1 and E-20 hourly rates
-use "$dirpath_data/merged/ag_rates_for_merge.dta", clear
-merge m:1 date using "$dirpath_data/merged/e1_prices_daily.dta"
+use "$dirpath_data/merged_pge/ag_rates_for_merge.dta", clear
+merge m:1 date using "$dirpath_data/merged_pge/e1_prices_daily.dta"
 assert _merge!=1
 drop if _merge==2
 drop _merge
-merge m:1 date hour using "$dirpath_data/merged/e20_prices_hourly.dta"
+merge m:1 date hour using "$dirpath_data/merged_pge/e20_prices_hourly.dta"
 assert _merge==3
 drop _merge
 
@@ -989,7 +989,7 @@ la var date "Date"
 la var ctrl_fxn_levs "Residuals from hourly rate-specific time-series reg on E1/E20 prices (in levels)"
 la var ctrl_fxn_logs "Residuals from hourly rate-specific time-series reg on E1/E20 prices (in logs)"
 compress
-save "$dirpath_data/merged/ag_rates_ctrl_fxn_hourly.dta", replace
+save "$dirpath_data/merged_pge/ag_rates_ctrl_fxn_hourly.dta", replace
 }
 
 *******************************************************************************
@@ -999,7 +999,7 @@ save "$dirpath_data/merged/ag_rates_ctrl_fxn_hourly.dta", replace
 if 1==1{
 
 ** Collapse avg daily to avg monthly ag rates
-use "$dirpath_data/merged/ag_rates_avg_by_day.dta", clear
+use "$dirpath_data/merged_pge/ag_rates_avg_by_day.dta", clear
 gen modate = ym(year(date),month(date))
 format %tm modate
 egen double temp = mean(mean_p_kwh), by(rt_sched_cd modate)
@@ -1011,10 +1011,10 @@ assert r(unique)==r(N)
 drop if modate<ym(2008,1)
 
 ** Merge in monthly E-1 and E-20 rates
-merge m:1 modate using "$dirpath_data/merged/e1_prices_monthly.dta"
+merge m:1 modate using "$dirpath_data/merged_pge/e1_prices_monthly.dta"
 assert _merge==3
 drop _merge
-merge m:1 modate using "$dirpath_data/merged/e20_prices_monthly.dta"
+merge m:1 modate using "$dirpath_data/merged_pge/e20_prices_monthly.dta"
 assert _merge==3
 drop _merge
 
@@ -1058,7 +1058,7 @@ la var modate "Year-Month"
 la var ctrl_fxn_levs "Residuals from monthly rate-specific time-series reg on E1/E20 prices (in levels)"
 la var ctrl_fxn_logs "Residuals from monthly rate-specific time-series reg on E1/E20 prices (in logs)"
 compress
-save "$dirpath_data/merged/ag_rates_ctrl_fxn_monthly.dta", replace
+save "$dirpath_data/merged_pge/ag_rates_ctrl_fxn_monthly.dta", replace
 
 }
 
@@ -1069,7 +1069,7 @@ save "$dirpath_data/merged/ag_rates_ctrl_fxn_monthly.dta", replace
 if 1==1{
 
 ** Start with ag rages by day
-use "$dirpath_data/merged/ag_rates_avg_by_day.dta", clear
+use "$dirpath_data/merged_pge/ag_rates_avg_by_day.dta", clear
 drop mean_p_kw_*
 
 ** Collapse to the month level
@@ -1094,7 +1094,7 @@ la var modate "Year-Month"
 order rt_sched_cd modate *
 sort rt_sched_cd modate
 compress
-save "$dirpath_data/merged/ag_rates_avg_by_month.dta", replace
+save "$dirpath_data/merged_pge/ag_rates_avg_by_month.dta", replace
 
 }
 

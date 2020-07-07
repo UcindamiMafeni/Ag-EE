@@ -19,7 +19,7 @@ global dirpath_data "$dirpath/data"
 ** 1. Use AMI-matched bills to calculate average prices by day-rate
 {
 ** Start with merged billing data that actually have prices
-use "$dirpath_data/merged/bills_rates_constructed.dta", clear
+use "$dirpath_data/merged_pge/bills_rates_constructed.dta", clear
 keep sa_uuid bill_start_dt bill_end_dt bill_length rt_sched_cd p_kw*
 
 ** Expand whole dataset by bill length variable
@@ -87,7 +87,7 @@ drop _merge
 
 ** Keep subset of bills that haven't already merged into rate data
 tab flag_interval_merge
-merge 1:1 sa_uuid bill_start_dt using "$dirpath_data/merged/bills_rates_constructed.dta", ///
+merge 1:1 sa_uuid bill_start_dt using "$dirpath_data/merged_pge/bills_rates_constructed.dta", ///
 	keepusing(sa_uuid) keep(1) nogen
 tab rt_sched_cd flag_interval_merge
 
@@ -163,7 +163,7 @@ la var flag_p_from_ami_avgs "Flag for non-AMI bills, with prices assigned from r
 ** Save
 la var pull "Which data pull does this SA come from?"
 compress
-save "$dirpath_data/merged/bills_rates_nonami.dta", replace
+save "$dirpath_data/merged_pge/bills_rates_nonami.dta", replace
 
 }
 
