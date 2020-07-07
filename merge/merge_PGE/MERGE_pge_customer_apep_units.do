@@ -22,7 +22,6 @@ if 1==1{
 ** Load cleaned PGE customer data
 use "$dirpath_data/pge_cleaned/pge_cust_detail_20180719.dta", clear
 
-
 ** Merge in PGE meter data
 rename pge_badge_nbr pge_badge_nbrBAD
 joinby sa_uuid sp_uuid sa_sp_start sa_sp_stop using ///
@@ -39,7 +38,7 @@ drop pge_badge_nbrBAD
 
 ** Merge in APEP data
 preserve
-use "$dirpath_data/pge_cleaned/pump_test_data.dta", clear
+use "$dirpath_data/pge_cleaned/apep_pump_test_data.dta", clear
 unique apeptestid test_date_stata customertype farmtype waterenduse pge_badge_nbr
 assert r(unique)==r(N)
 keep apeptestid test_date_stata customertype farmtype waterenduse pge_badge_nbr
@@ -61,7 +60,7 @@ rename _merge merge_apep_test
 	
 	
 ** Merge in APEP project data
-joinby pge_badge_nbr using "$dirpath_data/pge_cleaned/pump_test_project_data.dta", ///
+joinby pge_badge_nbr using "$dirpath_data/pge_cleaned/apep_pump_test_project_data.dta", ///
 	unmatched(both)
 unique sp_uuid
 local uniq = r(unique)
@@ -553,12 +552,12 @@ drop sp_not_in_cust_detail
 preserve
 keep sp_uuid sa_uuid pge_badge_nbr apeptestid apeptestid_uniq test_date_stata
 compress
-save "$dirpath_data/merged/sp_apeptest_xwalk.dta", replace
+save "$dirpath_data/merged_pge/sp_apeptest_xwalk.dta", replace
 restore
 
 
 ** Merge back in APEP project data
-joinby pge_badge_nbr using "$dirpath_data/pge_cleaned/pump_test_project_data.dta", ///
+joinby pge_badge_nbr using "$dirpath_data/pge_cleaned/apep_pump_test_project_data.dta", ///
 	unmatched(both)
 unique sp_uuid
 local uniq = r(unique)
@@ -580,7 +579,7 @@ preserve
 keep if merge_apep_proj==2
 keep pge_badge_nbr
 duplicates drop
-merge 1:m pge_badge_nbr using "$dirpath_data/pge_cleaned/pump_test_data.dta"
+merge 1:m pge_badge_nbr using "$dirpath_data/pge_cleaned/apep_pump_test_data.dta"
 assert _merge!=3 // this confirms that these 11 badge numbers are also missing from the APEP test dataset
 restore
 
@@ -588,7 +587,7 @@ preserve
 keep if merge_apep_proj==2
 keep pge_badge_nbr
 duplicates drop
-merge 1:m pge_badge_nbr using "$dirpath_data/pge_cleaned/pump_test_project_data.dta"
+merge 1:m pge_badge_nbr using "$dirpath_data/pge_cleaned/apep_pump_test_project_data.dta"
 tab _merge flag_apep_mismatch
 assert flag_apep_mismatch==1 if _merge==3 // these 11 badge numbers were already flagged as problematic
 restore
@@ -689,7 +688,7 @@ la var apep_date_test_subs "Dummy for matches to APEP test on subs date"
 order sp_uuid apep_proj_id date* apep* est_savings subsidy
 sort apep_proj_id
 compress
-save "$dirpath_data/merged/apep_projects_sp_merge.dta", replace
+save "$dirpath_data/merged_pge/apep_projects_sp_merge.dta", replace
 restore	
 
 
@@ -827,7 +826,7 @@ duplicates drop
 unique sp_uuid apeptestid_uniq
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/sp_apep_proj_merged.dta", replace
+save "$dirpath_data/merged_pge/sp_apep_proj_merged.dta", replace
 
 }
 
@@ -835,10 +834,10 @@ save "$dirpath_data/merged/sp_apep_proj_merged.dta", replace
 *******************************************************************************
 
 ** 2. Create anonymized APEP test/project dataset for determining APEP eligibility/subsidies
-if 1==1{
+if 1==0{
 
 ** Start with harmonized pump test and project dataset
-use "$dirpath_data/merged/sp_apep_proj_merged.dta", clear
+use "$dirpath_data/merged_pge/sp_apep_proj_merged.dta", clear
 
 ** Create anonymized SP ID
 preserve
@@ -859,7 +858,7 @@ drop prsn_uuid-mtr_remove_date
 
 ** Merge in APEP-specific variables
 merge 1:1 customertype farmtype waterenduse apeptestid using ///
-	"$dirpath_data/pge_cleaned/pump_test_data.dta", keep(3) nogen
+	"$dirpath_data/pge_cleaned/apep_pump_test_data.dta", keep(3) nogen
 	
 ** Drop non-essential and/or identifying variables
 drop farmtype apeptestid crop pumplatnew pumplongnew pge_badge_nbr mtrsn ratesch ///
@@ -900,7 +899,7 @@ la var apeptestid_uniq_anon "Anonymized unique ID for observatiosn in APEP test 
 sort apeptestid_uniq
 preserve 
 keep apeptestid_uniq apeptestid_uniq_anon
-save "$dirpath_data/merged/apep_proj_merged_anon_xwalk.dta", replace
+save "$dirpath_data/merged_pge/apep_proj_merged_anon_xwalk.dta", replace
 restore
 drop apeptestid_uniq temp
 
@@ -947,8 +946,7 @@ drop proj_date_test_subs proj_date_test_subs2
 unique apeptestid_uniq_anon
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/apep_proj_merged_anon.dta", replace
-save "$dirpath_data/merged/data.dta", replace
+save "$dirpath_data/merged_pge/apep_proj_merged_anon.dta", replace
 
 
 }
@@ -960,22 +958,23 @@ save "$dirpath_data/merged/data.dta", replace
 if 1==1{
 
 ** Start with SP-APEP merge
-use "$dirpath_data/merged/sp_apep_proj_merged.dta", clear
+use "$dirpath_data/merged_pge/sp_apep_proj_merged.dta", clear
 
 ** Merge in SP-level GIS data
-merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/sp_premise_gis.dta", keep(1 3) nogen ///
-	keepusing(prem_lat prem_long bad_geocode_flag missing_geocode_flag wdist_id county_fips ///
+merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/pge_sp_premise_gis.dta", keep(1 3) nogen ///
+	keepusing(prem_lat prem_long bad_geocode_flag missing_geocode_flag wdist_user_id_list fips ///
 	basin_id basin_sub_id)
-foreach v of varlist bad_geocode_flag missing_geocode_flag wdist_id county_fips basin_id basin_sub_id {
+foreach v of varlist bad_geocode_flag missing_geocode_flag wdist_user_id_list fips basin_id basin_sub_id {
 	rename `v' `v'SP
 }
 
 ** Merge in pump-level GIS data
 merge 1:1 apeptestid customertype farmtyp waterenduse test_date_stata using ///
-	"$dirpath_data/pge_cleaned/pump_test_data.dta", keep(1 3) nogen //keepusing(crop totlift pwl swl rwl)
+	"$dirpath_data/pge_cleaned/apep_pump_test_data.dta", keep(1 3) nogen //keepusing(crop totlift pwl swl rwl)
 merge m:1 apeptestid crop using "$dirpath_data/pge_cleaned/apep_pump_gis.dta", keep(1 3) nogen ///
-	keepusing(pumplatnew pumplongnew latlon_group bad_geocode_flag wdist_id county_fips basin_id basin_sub_id)
-
+	keepusing(pumplatnew pumplongnew latlon_group wdist_user_id_list fips basin_id basin_sub_id)
+cap gen bad_geocode_flag = fips==""
+	
 ** Create numeric groups	
 egen temp_basin_id_group = group(basin_id)
 egen temp_basin_sub_id_group = group(basin_sub_id)
@@ -992,8 +991,6 @@ sum sp_miles_from_pump, detail // median is 10.6 miles, which is Not Great Bob!
 hist sp_miles_from_pump if bad_geocode_flagSP==0
 sum sp_miles_from_pump if bad_geocode_flagSP==0, detail
 
-hist sp_miles_from_pump if bad_geocode_flagSP==0 & bad_geocode_flag==0
-sum sp_miles_from_pump if bad_geocode_flagSP==0 & bad_geocode_flag==0, detail
 
 egen temp_tagSP = tag(sp_uuid)
 hist sp_miles_from_pump if bad_geocode_flagSP==0 & bad_geocode_flag==0 & temp_tagSP // not really an over/under sampling issue
@@ -1016,10 +1013,10 @@ sum sp_miles_from_pump if bad_geocode_flagSP==0 & bad_geocode_flag==0 & temp_tag
 	// keeping only farms that received projects, median falls to 5.9 miles
 
 ** See if 2 competing geocodes are assign to the same polygons
-gen temp_county_match = county_fipsSP==county_fips
+gen temp_county_match = fipsSP==fips
 gen temp_basin_match = basin_idSP==basin_id
 gen temp_basin_sub_match = basin_idSP==basin_id & basin_sub_idSP==basin_sub_id
-gen temp_wdist_match = wdist_idSP==wdist_id
+gen temp_wdist_match = wdist_user_id_listSP==wdist_user_id_list
 
 sum temp_*_match // ehhhhhh Not Great Bob
 sum temp_*_match if temp_tagSP
@@ -1031,7 +1028,7 @@ sum temp_*_match if temp_tagSP & bad_geocode_flagSP==0 & bad_geocode_flag==0 & /
 	customertype=="Individ Farms" & waterenduse=="agriculture"
 sum temp_*_match if temp_tagSP & bad_geocode_flagSP==0 & bad_geocode_flag==0 & ///
 	customertype=="Individ Farms" & waterenduse=="agriculture" & subsidy_proj!=.
-	// Water Districts NEVER get over 50%, dammit.
+	// Water Districts are always around 50%
 
 ** Create month and quarter variables for test date
 gen modate = ym(year(test_date_stata),month(test_date_stata))
@@ -1047,9 +1044,9 @@ hist modate, width(1) freq
 hist qtr, width(1) freq
 
 ** Merge in monthly and quarterly groundwater depths at the SP-level
-merge m:1 sp_uuid modate using "$dirpath_data/groundwater/groundwater_depth_sp_month_rast.dta", ///
+merge m:1 sp_uuid modate using "$dirpath_data/groundwater/groundwater_depth_pge_sp_month_rast.dta", ///
 	keep(1 3) nogen keepusing(gw_*)
-merge m:1 sp_uuid qtr using "$dirpath_data/groundwater/groundwater_depth_sp_quarter_rast.dta", ///
+merge m:1 sp_uuid qtr using "$dirpath_data/groundwater/groundwater_depth_pge_sp_quarter_rast.dta", ///
 	keep(1 3) nogen keepusing(gw_*)
 rename gw_* gw_*SP
 
@@ -1192,7 +1189,7 @@ foreach v of varlist gw_rast_depth_???_?s {
 	local vd = substr(subinstr("`v'","_depth_","_dist_",1),1,18)
 	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
 		& waterenduse=="agriculture" & sp_miles_from_pump<10 & `vd'<20
-	di "`v'  " round(r(rho),0.001) // MUCH better!
+	di "`v'  " round(r(rho),0.001) // better!
 }
 		
 ** Correlations with standing water level (SP lat/lons)
@@ -1205,7 +1202,7 @@ foreach v of varlist gw_rast_depth_???_?sSP {
 	local vd = substr(subinstr("`v'","_depth_","_dist_",1),1,18) + "SP"
 	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
 		& waterenduse=="agriculture" & sp_miles_from_pump<10 & `vd'<20
-	di "`v'  " round(r(rho),0.001) // MUCH better!
+	di "`v'  " round(r(rho),0.001) // better!
 }
 
 	
@@ -1227,7 +1224,7 @@ foreach v of varlist gw_rast_depth_???_?s {
 	di "`v'  " r(N) "  " round(r(rho),0.001) 
 	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
 		& waterenduse=="agriculture" & sp_miles_from_pump<10 & `vd'<10
-	di "`v'  " r(N) "  " round(r(rho),0.001) // MUCH better!
+	di "`v'  " r(N) "  " round(r(rho),0.001) // better yet!
 }
 		
 ** Correlations with standing water level (SP lat/lons)
@@ -1243,7 +1240,7 @@ foreach v of varlist gw_rast_depth_???_?sSP {
 	di "`v'  " r(N) "  " round(r(rho),0.001) 
 	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
 		& waterenduse=="agriculture" & sp_miles_from_pump<10 & `vd'<10
-	di "`v'  " r(N) "  " round(r(rho),0.001) // MUCH better!
+	di "`v'  " r(N) "  " round(r(rho),0.001) // better yet!
 }
 
 	
@@ -1260,7 +1257,7 @@ foreach v of varlist gw_rast_depth_???_?s {
 	di "`v'  " r(N) "  " round(r(rho),0.001) 
 	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
 		& waterenduse=="agriculture" & `vd'<10
-	di "`v'  " r(N) "  " round(r(rho),0.001) // we need low sp_miles_from_pump!
+	di "`v'  " r(N) "  " round(r(rho),0.001) // better yet!
 }
 		
 ** Correlations with standing water level (SP lat/lons)
@@ -1271,7 +1268,7 @@ foreach v of varlist gw_rast_depth_???_?sSP {
 	di "`v'  " r(N) "  " round(r(rho),0.001) 
 	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
 		& waterenduse=="agriculture" & `vd'<10
-	di "`v'  " r(N) "  " round(r(rho),0.001) // only *slightly* worse!
+	di "`v'  " r(N) "  " round(r(rho),0.001) // better yet!
 }
 
 
@@ -1337,7 +1334,10 @@ foreach v of varlist gw_rast_depth_???_?s {
 	di "`v'  " r(N) "  " round(r(rho),0.001) 
 	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
 		& waterenduse=="agriculture" & sp_miles_from_pump<50 & `vd'<1
-	di "`v'  " r(N) "  " round(r(rho),0.001) // drops off, but still pretty good, corr > 0.7 for monthly
+	di "`v'  " r(N) "  " round(r(rho),0.001) 
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<. & `vd'<1
+	di "`v'  " r(N) "  " round(r(rho),0.001) // all of these are good!
 }
 
 ** Correlations with standing water level (SP lat/lons; releasing closeness criterion)
@@ -1357,7 +1357,10 @@ foreach v of varlist gw_rast_depth_???_?sSP {
 	di "`v'  " r(N) "  " round(r(rho),0.001) 
 	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
 		& waterenduse=="agriculture" & sp_miles_from_pump<50 & `vd'<1
-	di "`v'  " r(N) "  " round(r(rho),0.001) // hardly drops off at all!!
+	di "`v'  " r(N) "  " round(r(rho),0.001) // 
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<. & `vd'<1
+	di "`v'  " r(N) "  " round(r(rho),0.001) // no drop offs; this is clearly working!
 }
 
 
@@ -1378,7 +1381,10 @@ foreach v of varlist gw_rast_depth_???_?sSP {
 	di "`v'  " r(N) "  " round(r(rho),0.001) 
 	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
 		& waterenduse=="agriculture" & sp_miles_from_pump<50 & `vd'<10
-	di "`v'  " r(N) "  " round(r(rho),0.001) // hardly drops off at all!!
+	di "`v'  " r(N) "  " round(r(rho),0.001) 
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<. & `vd'<10
+	di "`v'  " r(N) "  " round(r(rho),0.001) 
 }
 
 ** Correlations with standing water level (SP lat/lons; releasing closeness criterion)
@@ -1398,7 +1404,10 @@ foreach v of varlist gw_rast_depth_???_?sSP {
 	di "`v'  " r(N) "  " round(r(rho),0.001) 
 	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
 		& waterenduse=="agriculture" & sp_miles_from_pump<50 & `vd'<20
-	di "`v'  " r(N) "  " round(r(rho),0.001) // actually gets better...
+	di "`v'  " r(N) "  " round(r(rho),0.001) 
+	qui correlate swl `v' if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<. & `vd'<20
+	di "`v'  " r(N) "  " round(r(rho),0.001) 
 }
 
 	
@@ -1408,16 +1417,16 @@ foreach v of varlist gw_rast_depth_???_?s* {
 }
 sum diff_gw_*s
 sum diff_gw_*sSP
-sum diff_gw_*sSP if  bad_geocode_flag==0 
-sum diff_gw_*sSP if  bad_geocode_flag==0 & customertype=="Individ Farms"
-sum diff_gw_*sSP if  bad_geocode_flag==0 & customertype=="Individ Farms" ///
+sum diff_gw_*sSP if bad_geocode_flagSP==0 
+sum diff_gw_*sSP if bad_geocode_flagSP==0 & customertype=="Individ Farms"
+sum diff_gw_*sSP if bad_geocode_flagSP==0 & customertype=="Individ Farms" ///
 	& waterenduse=="agriculture" 
-sum diff_gw_*sSP if  bad_geocode_flag==0 & customertype=="Individ Farms" ///
+sum diff_gw_*sSP if bad_geocode_flagSP==0 & customertype=="Individ Farms" ///
 	& waterenduse=="agriculture" & sp_miles_from_pump<20 
 foreach v of varlist gw_rast_depth_???_?sSP {
 	local vd = substr(subinstr("`v'","_depth_","_dist_",1),1,18) + "SP"
-	sum diff_`v' if  bad_geocode_flag==0 & customertype=="Individ Farms" ///
-		& waterenduse=="agriculture" & sp_miles_from_pump<5 & `vd'<3, detail
+	sum diff_`v' if  bad_geocode_flagSP==0 & customertype=="Individ Farms" ///
+		& waterenduse=="agriculture" & sp_miles_from_pump<. & `vd'<3, detail
 }
 
 hist diff_gw_rast_depth_qtr_1sSP // at least it's centered on zero!
@@ -1442,25 +1451,29 @@ hist diff_gw_rast_depth_mth_1sSP if gw_rast_dist_mth_1SP<1 & sp_miles_from_pump<
 hist diff_gw_rast_depth_mth_1sSP if gw_rast_dist_mth_1SP<1 & sp_miles_from_pump<1 & inrange(diff_gw_rast_depth_mth_1sSP,-100,100)
 
 twoway (scatter swl gw_rast_depth_mth_1sSP ///
-	if gw_rast_dist_mth_1SP<1 & sp_miles_from_pump<1 & inrange(diff_gw_rast_depth_mth_1sSP,-100,100)) ///
+	if gw_rast_dist_mth_1SP<1 & sp_miles_from_pump<. & inrange(diff_gw_rast_depth_mth_1sSP,-100,100), msize(tiny)) ///
 	(function y=x, range (0 500))
 twoway (scatter swl gw_rast_depth_mth_2sSP ///
-	if gw_rast_dist_mth_2SP<1 & sp_miles_from_pump<1 & inrange(diff_gw_rast_depth_mth_2sSP,-100,100)) ///
+	if gw_rast_dist_mth_2SP<1 & sp_miles_from_pump<. & inrange(diff_gw_rast_depth_mth_2sSP,-100,100), msize(tiny)) ///
 	(function y=x, range (0 500))
 twoway (scatter swl gw_rast_depth_qtr_1sSP ///
-	if gw_rast_dist_qtr_1SP<1 & sp_miles_from_pump<1 & inrange(diff_gw_rast_depth_qtr_1sSP,-100,100)) ///
+	if gw_rast_dist_qtr_1SP<1 & sp_miles_from_pump<. & inrange(diff_gw_rast_depth_qtr_1sSP,-100,100), msize(tiny)) ///
 	(function y=x, range (0 500))
 twoway (scatter swl gw_rast_depth_qtr_2sSP ///
-	if gw_rast_dist_qtr_2SP<1 & sp_miles_from_pump<1 & inrange(diff_gw_rast_depth_qtr_2sSP,-100,100)) ///
+	if gw_rast_dist_qtr_2SP<1 & sp_miles_from_pump<. & inrange(diff_gw_rast_depth_qtr_2sSP,-100,100), msize(tiny)) ///
 	(function y=x, range (0 500))
 
 ** Some regressions to turn correlations into predictions
 gen test_year = year(test_date_stata)
+reghdfe swl gw_rast_depth_mth_1sSP ///
+	if bad_geocode_flag==0 & customertype=="Individ Farms" ///
+	& waterenduse=="agriculture" & sp_miles_from_pump<. & gw_rast_dist_mth_1SP<5, ///
+	absorb(temp_basin_id_group#test_year)
 reghdfe swl gw_rast_depth_mth_2sSP ///
 	if bad_geocode_flag==0 & customertype=="Individ Farms" ///
-	& waterenduse=="agriculture" & sp_miles_from_pump<50 & gw_rast_dist_mth_1SP<5, ///
+	& waterenduse=="agriculture" & sp_miles_from_pump<. & gw_rast_dist_mth_1SP<5, ///
 	absorb(temp_basin_id_group#test_year)
-	// Not a super convincing case for overturning the simple default: swl_hat = raster value!
+	// Not really any case for overturning the simple default: swl_hat = raster value!
 
 
 ***** 
@@ -1473,29 +1486,29 @@ count if swl==. & rwl==.
 gen temp_swl_missing = swl==.
 tab test_year temp_swl_missing
 tabstat temp_swl_missing, by(test_year)
-tabstat temp_swl_missing if bad_geocode_flag==0, by(test_year)
-tabstat temp_swl_missing if bad_geocode_flag==0 & customertype=="Individ Farms", by(test_year)
-tabstat temp_swl_missing if bad_geocode_flag==0 & customertype=="Individ Farms" & ///
+tabstat temp_swl_missing if bad_geocode_flagSP==0, by(test_year)
+tabstat temp_swl_missing if bad_geocode_flagSP==0 & customertype=="Individ Farms", by(test_year)
+tabstat temp_swl_missing if bad_geocode_flagSP==0 & customertype=="Individ Farms" & ///
 	& waterenduse=="agriculture", by(test_year)
-tabstat temp_swl_missing if bad_geocode_flag==0 & customertype=="Individ Farms" & ///
+tabstat temp_swl_missing if bad_geocode_flagSP==0 & customertype=="Individ Farms" & ///
 	& waterenduse=="agriculture" & sp_miles_from_pump<20, by(test_year)
 tab test_year if swl==. 
-tab test_year if swl==. & bad_geocode_flag==0 & customertype=="Individ Farms" & ///
-	& waterenduse=="agriculture" // 4,404 missings 
-tab test_year if swl==. & bad_geocode_flag==0 & customertype=="Individ Farms" & ///
+tab test_year if swl==. & bad_geocode_flagSP==0 & customertype=="Individ Farms" & ///
+	& waterenduse=="agriculture" // 4,353 missings 
+tab test_year if swl==. & bad_geocode_flagSP==0 & customertype=="Individ Farms" & ///
 	& waterenduse=="agriculture" & gw_rast_dist_qtr_1SP>20 
-	// only 638 missings more than 20 miles from a GW measurement point, not bad
+	// only 306 missings more than 20 miles from a GW measurement point, not bad
 	
 egen temp_swl_missing_min = min(temp_swl_missing), by(latlon_group)
 egen temp_swl_missing_min_sp = min(temp_swl_missing), by(latlon_group sp_uuid)
 count if temp_swl_missing==1
 count if temp_swl_missing_min_sp==1
 count if temp_swl_missing_min==1
-di r(N)/_N
+di r(N)/_N // 20.9%
 unique sp_uuid
 local uniq = r(unique)
 unique sp_uuid if temp_swl_missing_min==1
-di r(unique)/`uniq'
+di r(unique)/`uniq' // 18.6%
 
 
 
@@ -1513,6 +1526,8 @@ gen rwl_3 = rwl^3
 gen rwl_4 = rwl^4
 gen rwl_5 = rwl^5
 gen rwl_6 = rwl^6
+encode wdist_user_id_listSP, gen(wdist_groupSP)
+encode wdist_user_id_list, gen(wdist_group)
 
 reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_id_group)
 reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_id_group#test_year)
@@ -1523,7 +1538,7 @@ reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absor
 reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_sub_idSP_group#test_year##c.rwl)	
 reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_sub_idSP_group#c.rwl)	
 reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_id_group#c.rwl)	
-reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_sub_id_group#c.rwl wdist_id#c.rwl)	
+reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_sub_id_group#c.rwl wdist_group#c.rwl)	
 
 reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_sub_id_group)	
 reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_sub_id_group#c.rwl)	
@@ -1542,10 +1557,10 @@ reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absor
 reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_sub_id_group#test_year##c.(rwl rwl_2))		
 reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_sub_idSP_group#test_year##c.(rwl rwl_2 rwl_3))	
 reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(temp_basin_sub_id_group#test_year##c.(rwl rwl_2 rwl_3))		
-reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(wdist_idSP#test_year##c.(rwl rwl_2 rwl_3))	
-reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(wdist_id#test_year##c.(rwl rwl_2 rwl_3))		
-reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(wdist_idSP#test_year##c.(rwl rwl_2 ))	
-reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(wdist_id#test_year##c.(rwl rwl_2 ))		
+reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(wdist_groupSP#test_year##c.(rwl rwl_2 rwl_3))	
+reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(wdist_group#test_year##c.(rwl rwl_2 rwl_3))		
+reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(wdist_groupSP#test_year##c.(rwl rwl_2 ))	
+reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(wdist_group#test_year##c.(rwl rwl_2 ))		
 	// SP > APEP FEs, wdist > sub basin > basin, diminishing returns after quadratic
 
 egen sp_group = group(sp_uuid)	
@@ -1562,11 +1577,11 @@ reghdfe temp_depvar if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(sp_group
 reghdfe temp_depvar if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(latlon_group##c.rwl)		
 	
 	
-reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(wdist_idSP#test_year##c.(rwl rwl_2 ))	
-reghdfe temp_depvar if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(wdist_idSP#test_year##c.(rwl rwl_2 ))	
+reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(wdist_groupSP#test_year##c.(rwl rwl_2 ))	
+reghdfe temp_depvar if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(wdist_groupSP#test_year##c.(rwl rwl_2 ))	
 
-reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(wdist_id#test_year##c.(rwl rwl_2 ))		
-reghdfe temp_depvar if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(wdist_id#test_year##c.(rwl rwl_2 ))		
+reghdfe ln_drwdwn ln_flow_gpm if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(wdist_group#test_year##c.(rwl rwl_2 ))		
+reghdfe temp_depvar if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(wdist_group#test_year##c.(rwl rwl_2 ))		
 	
 	// THIS IS WHAT WE'RE DOING, BEST YET
 	// ONLY VERY MINOR DIFFERENCES BETWEEN SP VS PUMP GIS ASSIGNMENTS
@@ -1577,12 +1592,13 @@ reghdfe temp_depvar if flag_bad_drwdwn==0 & temp_swl_missing==0, absorb(wdist_id
 /* 
 
 Takeaway 1: Lots of discrepancies between SP vs. APEP coordinates. Median distance apart is 8.4 miles.
-            Half of SPs are in different water district than matched APEP coordinates.
+            Half of SPs are in different water district than matched APEP coordinates. SP coordinates appear
+			to be measured with less error, and I trust them more
 			
 Takeaway 2: SP premise lat/lons	out-perform APEP pump lat/lons in comparing SWL with groundwater rasters!
-            This is very surprising, but the correlations are speaking loud and clear.
+            The correlations are speaking loud and clear.
 			
-Takeaway 3: SWL is highly correlated with rasterize groundwater levels, when DWR measurements are close to
+Takeaway 3: SWL is highly correlated with rasterized groundwater levels, when DWR measurements are close to
             SP lat/lons (rho>0.9). Monthly>quarterly when measurements are close, quarterly>monthly otherwise.
 
 Takeaway 4: Despite many attempts to dig for a convincing complicating wrinkle that would help translate 
@@ -1590,12 +1606,12 @@ Takeaway 4: Despite many attempts to dig for a convincing complicating wrinkle t
             function: swl_hat = gw_rast_depth_mth_1SP (or qtr)
 			
 Takeaway 5: For estimating drawdown, physics wins again! With SP/farm FEs to control for physical characteristics at
-            each location, flow_gpm almost perfectly predicts drawdown! The coefficient on ln_flow_gpm
-            is very stable across specifications with increasingly gransular FEs + slopes in rwl. HOWEVER, the physics imply
-            that the drawdown function is homogeneous of degree 1 in flow --- i.e. that this coefficient on ln_flow_gpm is 1.
-            So, taking this serious, we want to force the coefficient to be 1, which barely affects unadjusted R2. The plan  
-            of attack will be to run a bunch of decreasingly granular models and grabbing drwdwn_hat for an increaing number
-            of non-singleton pump tests.
+            each location, flow_gpm predicts drawdown quite well! The coefficient on ln_flow_gpm is very stable 
+            across specifications with increasingly granular FEs + slopes in rwl. HOWEVER, the physics imply that the
+             drawdown function is homogeneous of degree 1 in flow --- i.e. that this coefficient on ln_flow_gpm is 1.
+            So, taking this seriously, we want to force the coefficient to be 1, which barely affects unadjusted R2.   
+            The plan of attack will be to run a bunch of decreasingly granular models and grabbing drwdwn_hat for 
+            an increaing number of non-singleton pump tests.
 			
 */
 
