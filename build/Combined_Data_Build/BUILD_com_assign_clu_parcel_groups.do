@@ -280,7 +280,7 @@ la var polygon_check_A "Check A: clu_id_ec exists"
 	// CHECK B: Does parcelid_ec exist?
 gen polygon_check_B = parcelid_ec!=""
 sum polygon_check_B
-la var polygon_check_B "Check B: parcelid_conc matches county"
+la var polygon_check_B "Check B: parcelid_ec exists"
 	
 	// CHECK C: Does clu_id_ec exist, and match the group of clu_id_unr?
 foreach s in 0 10 25 50 75 {
@@ -393,7 +393,7 @@ la var polygon_check_A "Check A: clu_id_ec exists"
 	// CHECK B: Does parcelid_ec exist?
 gen polygon_check_B = parcelid_ec!=""
 sum polygon_check_B
-la var polygon_check_B "Check B: parcelid_conc matches county"
+la var polygon_check_B "Check B: parcelid_ec exists"
 	
 	// CHECK C: Does clu_id_ec exist, and match the group of clu_id_unr?
 foreach s in 0 10 25 50 75 {
@@ -505,7 +505,7 @@ la var polygon_check_A "Check A: clu_id_ec exists"
 	// CHECK B: Does parcelid_ec exist?
 gen polygon_check_B = parcelid_ec!=""
 sum polygon_check_B
-la var polygon_check_B "Check B: parcelid_conc matches county"
+la var polygon_check_B "Check B: parcelid_ec exists"
 	
 	// CHECK C: Does clu_id_ec exist, and match the group of clu_id_unr?
 foreach s in 0 10 25 50 75 {
