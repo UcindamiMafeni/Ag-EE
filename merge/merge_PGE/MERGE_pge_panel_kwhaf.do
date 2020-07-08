@@ -9,43 +9,43 @@ set more off
 global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
-	***** COME BACK AND FIX THIS STUFF LATER:
-	
-	*1. Deal with the SPs with multiple APEP projets (right now, I'm ignoring project #2)
-	
 *******************************************************************************
 *******************************************************************************
 
 ** Construct SP-by-month panel of kwh/af conversion rates!
 
 ** Start with SP-APEP merge
-use "$dirpath_data/merged/sp_apep_proj_merged.dta", clear
+use "$dirpath_data/merged_pge/sp_apep_proj_merged.dta", clear
 
 ** Keep essential variables only
 keep sp_uuid customertype farmtype waterenduse apeptestid test_date_stata apeptestid_uniq apep_proj_count ///
 	date_proj_finish* est_savings_kwh_yr*
 
 ** Merge in SP-level GIS data
-merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/sp_premise_gis.dta", keep(1 3) nogen ///
-	keepusing(prem_lat prem_long bad_geocode_flag missing_geocode_flag wdist_id ///
+merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/pge_sp_premise_gis.dta", keep(1 3) nogen ///
+	keepusing(prem_lat prem_long bad_geocode_flag missing_geocode_flag wdist_user_id_list ///
 	basin_id basin_sub_id)
-foreach v of varlist bad_geocode_flag missing_geocode_flag wdist_id basin_id basin_sub_id {
+foreach v of varlist bad_geocode_flag missing_geocode_flag wdist_user_id_list basin_id basin_sub_id {
 	rename `v' `v'SP
 }
 
 ** Merge in pump test variables
 merge 1:1 apeptestid customertype farmtyp waterenduse test_date_stata using ///
-	"$dirpath_data/pge_cleaned/pump_test_data.dta", keep(1 3) nogen	
+	"$dirpath_data/pge_cleaned/apep_pump_test_data.dta", keep(1 3) nogen	
 
 ** Merge in pump-level GIS data
 merge m:1 apeptestid crop using "$dirpath_data/pge_cleaned/apep_pump_gis.dta", keep(1 3) nogen ///
-	keepusing(pumplatnew pumplongnew latlon_group bad_geocode_flag wdist_id basin_id basin_sub_id)
-
+	keepusing(pumplatnew pumplongnew latlon_group wdist_user_id_list basin_id basin_sub_id fips)
+gen bad_geocode_flag = fips==""
+drop fips
+	
 ** Create numeric groups	
 egen basin_id_group = group(basin_id)
 egen basin_sub_id_group = group(basin_sub_id)
+egen wdist_id_group = group(wdist_user_id_list)
 egen basin_idSP_group = group(basin_idSP)
 egen basin_sub_idSP_group = group(basin_sub_idSP)
+egen wdist_idSP_group = group(wdist_user_id_listSP)
 
 ** Create test modate
 gen test_modate = ym(year(test_date_stata),month(test_date_stata))
@@ -280,7 +280,7 @@ drop temp*
 ** Expand to full test-by-month panel, and construct month variable
 unique apeptestid_uniq
 assert r(unique)==r(N)
-expand 117, gen(temp_new)
+expand 117, gen(temp_new) // change this to the number of sample months
 sort apeptestid_uniq temp_new
 gen modate = ym(2008,1) if temp_new==0
 replace modate = modate[_n-1]+1 if apeptestid_uniq==apeptestid_uniq[_n-1]
@@ -419,9 +419,9 @@ assert qtr!=.
 drop quarter	
 	
 ** Merge in monthly and quarterly groundwater depths at the SP-level
-merge m:1 sp_uuid modate using "$dirpath_data/groundwater/groundwater_depth_sp_month_rast.dta", ///
+merge m:1 sp_uuid modate using "$dirpath_data/groundwater/groundwater_depth_pge_sp_month_rast.dta", ///
 	keep(1 3) nogen keepusing(gw_*)
-merge m:1 sp_uuid qtr using "$dirpath_data/groundwater/groundwater_depth_sp_quarter_rast.dta", ///
+merge m:1 sp_uuid qtr using "$dirpath_data/groundwater/groundwater_depth_pge_sp_quarter_rast.dta", ///
 	keep(1 3) nogen keepusing(gw_*)
 rename gw_* gw_*SP
 
@@ -489,7 +489,7 @@ twoway ///
 	(scatter TEMPa_drwdwn_hat drwdwn if temp_drwdwn_sample==1 & drwdwn<100 & TEMP_count==3, color(red) msize(vsmall))
 	// The first model is overfit with only 2 observations per pump location, because it's loading 
 	// basically all changes in drawdown onto chagnes in water level. 
-	// With 3+ observations per pump, water level probably  tells us something (crude) about how
+	// With 3+ observations per pump, water level probably tells us something (crude) about how
 	// transmissivity (etc) changes at a specific location when the water level rises/falls
 egen TEMP_count2 = mean(TEMP_count), by(latlon_group)	
 assert mod(TEMP_count2,1)==0 if TEMP_count2!=. // constant within group
@@ -607,7 +607,7 @@ assert mod(TEMP_count2,1)==0 if TEMP_count2!=. // constant within group
 twoway ///
 	(scatter TEMP_drwdwn_hat drwdwn if temp_drwdwn_sample==1 & drwdwn<100 & TEMP_drwdwn_hat<300 & drwdwn_predict_step!=., color(blue) msize(vsmall)) ///
 	(scatter TEMP_drwdwn_hat drwdwn if temp_drwdwn_sample==1 & drwdwn<100 & TEMP_drwdwn_hat<300 & drwdwn_predict_step==., color(red) msize(vsmall))
-	// shrug emoji; both look like buckshot, but R^2 of model is 0.67, so...?
+	// shrug emoji; both look like buckshot, but R^2 of model is 0.73, so...?
 
 	// Create flag always-missings, since this will pick a whole bunch of SP-months with missing GW readings
 gen TEMP_allmissing = 1
@@ -667,7 +667,7 @@ assert mod(TEMP_count2,1)==0 if TEMP_count2!=. // constant within group
 twoway ///
 	(scatter TEMP_drwdwn_hat drwdwn if temp_drwdwn_sample==1 & drwdwn<100 & TEMP_drwdwn_hat<300 & drwdwn_predict_step!=., color(blue) msize(vsmall)) ///
 	(scatter TEMP_drwdwn_hat drwdwn if temp_drwdwn_sample==1 & drwdwn<100 & TEMP_drwdwn_hat<300 & drwdwn_predict_step==., color(red) msize(vsmall))
-	// shrug emoji; both look like buckshot, but R^2 of model is 0.59, so...?
+	// shrug emoji; both look like buckshot, but R^2 of model is 0.68, so...?
 
 	// Create flag always-missings, since this will pick a whole bunch of SP-months with missing GW readings
 gen TEMP_allmissing = 1
@@ -727,7 +727,7 @@ assert mod(TEMP_count2,1)==0 if TEMP_count2!=. // constant within group
 twoway ///
 	(scatter TEMP_drwdwn_hat drwdwn if temp_drwdwn_sample==1 & drwdwn<100 & TEMP_drwdwn_hat<300 & drwdwn_predict_step!=., color(blue) msize(vsmall)) ///
 	(scatter TEMP_drwdwn_hat drwdwn if temp_drwdwn_sample==1 & drwdwn<100 & TEMP_drwdwn_hat<300 & drwdwn_predict_step==., color(red) msize(vsmall))
-	// shrug emoji; both look like buckshot, but R^2 of model is 0.62, so...?
+	// shrug emoji; both look like buckshot, but R^2 of model is 0.63, so...?
 
 	// Create flag always-missings, since this will pick a whole bunch of SP-months with missing GW readings
 gen TEMP_allmissing = 1
@@ -787,7 +787,7 @@ assert mod(TEMP_count2,1)==0 if TEMP_count2!=. // constant within group
 twoway ///
 	(scatter TEMP_drwdwn_hat drwdwn if temp_drwdwn_sample==1 & drwdwn<100 & TEMP_drwdwn_hat<300 & drwdwn_predict_step!=., color(blue) msize(vsmall)) ///
 	(scatter TEMP_drwdwn_hat drwdwn if temp_drwdwn_sample==1 & drwdwn<100 & TEMP_drwdwn_hat<300 & drwdwn_predict_step==., color(red) msize(vsmall))
-	// shrug emoji; both look like buckshot, but R^2 of model is 0.59, so...?
+	// shrug emoji; both look like buckshot, but R^2 of model is 0.56, so...?
 
 	// Create flag always-missings, since this will pick a whole bunch of SP-months with missing GW readings
 gen TEMP_allmissing = 1
@@ -847,7 +847,7 @@ assert mod(TEMP_count2,1)==0 if TEMP_count2!=. // constant within group
 twoway ///
 	(scatter TEMP_drwdwn_hat drwdwn if temp_drwdwn_sample==1 & drwdwn<100 & TEMP_drwdwn_hat<300 & drwdwn_predict_step!=., color(blue) msize(vsmall)) ///
 	(scatter TEMP_drwdwn_hat drwdwn if temp_drwdwn_sample==1 & drwdwn<100 & TEMP_drwdwn_hat<300 & drwdwn_predict_step==., color(red) msize(vsmall))
-	// shrug emoji; both look like buckshot, but R^2 of model is 0.62, so...?
+	// shrug emoji; both look like buckshot, but R^2 of model is 0.63, so...?
 
 	// Create flag always-missings, since this will pick a whole bunch of SP-months with missing GW readings
 gen TEMP_allmissing = 1
@@ -907,7 +907,7 @@ assert mod(TEMP_count2,1)==0 if TEMP_count2!=. // constant within group
 twoway ///
 	(scatter TEMP_drwdwn_hat drwdwn if temp_drwdwn_sample==1 & drwdwn<100 & TEMP_drwdwn_hat<300 & drwdwn_predict_step!=., color(blue) msize(vsmall)) ///
 	(scatter TEMP_drwdwn_hat drwdwn if temp_drwdwn_sample==1 & drwdwn<100 & TEMP_drwdwn_hat<300 & drwdwn_predict_step==., color(red) msize(vsmall))
-	// shrug emoji; both look like buckshot, but R^2 of model is 0.62, so...?
+	// R^2 of model is 0.56
 
 	// Create flag always-missings, since this will pick a whole bunch of SP-months with missing GW readings
 gen TEMP_allmissing = 1
@@ -1425,7 +1425,7 @@ foreach v of varlist KW_* {
 }
 sum kwhaf KWHAF_rast_DRWDWNhat_qtr_1sSP if modate==test_modate, detail
 correlate kwhaf KWHAF_rast_DRWDWN_qtr_1sSP if modate==test_modate
-	// rho = 0.49, pretty decent?
+	// rho = 0.50, pretty decent?
 
 	
 ** Prepare to collapse by keeping only relevant variables
@@ -1807,7 +1807,7 @@ order sp_uuid modate months_until_test months_since_test months_to_nearest_test 
 unique sp_uuid modate
 assert r(unique)==r(N)	
 compress
-save "$dirpath_data/merged/sp_month_kwhaf_panel.dta", replace
+save "$dirpath_data/merged_pge/sp_month_kwhaf_panel.dta", replace
 
 
 *******************************************************************************
