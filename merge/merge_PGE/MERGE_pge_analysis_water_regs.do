@@ -16,7 +16,7 @@ global dirpath_data "$dirpath/data"
 if 1==1{
 
 ** Load monthly dataset for electricity regressions
-use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
+use "$dirpath_data/merged_pge/sp_month_elec_panel.dta", clear
 
 ** Drop versions of variables I want to overwrite, and then merge back into electricity panel (below)
 cap drop flag_bad_drwdwn
@@ -32,10 +32,13 @@ cap drop flag_clu_match
 cap drop flag_clu_group*_match 
 cap drop spcount_*
 cap drop apep_proj_count
+cap drop hp_bin*
+cap drop kw_bin*
+cap drop ope_bin*
 cap drop merge_sp_water_panel
 
 ** Merge in SP-month panel of constructed KWHAF conversions
-merge 1:1 sp_uuid modate using "$dirpath_data/merged/sp_month_kwhaf_panel.dta"
+merge 1:1 sp_uuid modate using "$dirpath_data/merged_pge/sp_month_kwhaf_panel.dta"
 egen temp = mode(pull), by(sp_uuid)
 replace pull = temp if _merge==2 & pull==""
 tab pull _merge, missing
@@ -107,7 +110,7 @@ foreach v of varlist af_rast_dd_mth_2SP {
 	la var `v2' "`v2lab'"
 }
 
-** Calcualte water prices: $/AF = $/kwh * kwh/AF
+** Calcualte mean water prices: $/AF = $/kwh * kwh/AF
 foreach v of varlist kwhaf* {
 	local v2 = subinstr("`v'","kwhaf_","mean_p_af_",1)
 	gen `v2' = mean_p_kwh * `v'
@@ -117,8 +120,18 @@ foreach v of varlist kwhaf* {
 	la var `v2' "`v2lab'"
 }
 
+** Calcualte min water prices: $/AF = $/kwh * kwh/AF
+foreach v of varlist kwhaf* {
+	local v2 = subinstr("`v'","kwhaf_","min_p_af_",1)
+	gen `v2' = min_p_kwh * `v'
+	replace `v2' = . if `v2'<0
+	local vlab: variable label `v'
+	local v2lab = subinstr("`vlab'","Predicted KWH/AF","Min marg P_water $/AF",1)
+	la var `v2' "`v2lab'"
+}
+
 ** Log-transform water price composite variables
-foreach v of varlist mean_p_af_* {
+foreach v of varlist mean_p_af_* min_p_af_* {
 	gen ln_`v' = ln(`v') // I actually want the zeros to become missings
 	local vlab: variable label `v'
 	la var ln_`v' "Log `vlab'"
@@ -138,7 +151,7 @@ foreach v of varlist gw_mean_* {
 	la var ln_`v' "Log `vlab'"
 }
 
-** Deal with extreme values prices (driven by crazy pump tests)
+** Deal with extreme price values (driven by crazy pump tests)
 hist mean_p_kwh 
 hist mean_p_af_rast_dd_qtr_1SP
 hist mean_p_af_rast_dd_qtr_1SP if mean_p_af_rast_dd_qtr_1SP<150
@@ -172,11 +185,11 @@ drop temp*
 ** Construct distance between SP and APEP coordinates, and merge in APEP CLU assignments
 preserve 
 use "$dirpath_data/pge_cleaned/apep_pump_gis.dta", clear
-keep latlon_group pumplatnew pumplongnew parcelid_conc clu_id_ec clu_group*_ec
+keep latlon_group pumplatnew pumplongnew parcelid_ec clu_id_ec clu_group*_ec
 duplicates drop
 unique latlon_group
 assert r(unique)==r(N)
-foreach v of varlist parcelid_conc clu* {
+foreach v of varlist parcelid_ec clu* {
 	rename `v' `v'APEP // rename APEP-assigned gis variables to make distinct from SP-assigned versions
 }
 tempfile latlon_pump
@@ -189,27 +202,28 @@ la var pumplongnew "APEP pump longitude"
 la var latlon_miles_apart "Miles b/tw matched SP lat/lon and APEP lat/lon"
 
 ** Encode parcel/CLU assignemnts
-foreach v of varlist parcelid_concAPEP {
+foreach v of varlist parcelid_ecAPEP {
 	rename `v' temp
-	encode temp, gen(`v') label(parcelid_conc)
+	encode temp, gen(`v') label(parcelid)
 	drop temp
 }
 foreach v of varlist clu_id_ecAPEP {
 	rename `v' temp
-	encode temp, gen(`v') label(clu_id_ec)
+	encode temp, gen(`v') label(clu_id)
 	drop temp
 }
 foreach v of varlist clu_group*_ecAPEP {
 	rename `v' temp
-	encode temp, gen(`v') label(clu_group0_ec)
+	encode temp, gen(`v') label(clu_group0)
 	drop temp
 }
+rename *_ecAPEP *_APEP
 
 **Compare parcel/CLU assignments
-gen flag_parcel_match = parcelid_conc==parcelid_concAPEP
-gen flag_clu_match = clu_id_ec==clu_id_ecAPEP
+gen flag_parcel_match = parcelid==parcelid_APEP
+gen flag_clu_match = clu_id==clu_id_APEP
 foreach s in 0 10 25 50 75 {
-	gen flag_clu_group`s'_match = clu_group`s'_ec==clu_group`s'_ecAPEP
+	gen flag_clu_group`s'_match = clu_group`s'==clu_group`s'_APEP
 }
 egen temp_tag = tag(sp_uuid)
 sum flag*match if temp_tag // at best 30% matches here
@@ -225,11 +239,11 @@ foreach s in 0 10 25 50 75 {
 
 ** Number of pump-matched SPs per CLU[group]
 preserve
-keep sp_uuid modate parcelid_conc* clu_id_ec* clu_group*_ec*
+keep sp_uuid modate parcelid* clu_id* clu_group*
 duplicates drop sp_uuid, force
 unique sp_uuid
 assert r(unique)==r(N)
-foreach v of varlist parcelid_conc* clu_id_ec* clu_group*_ec* {
+foreach v of varlist parcelid* clu_id* clu_group* {
 	egen spcount_`v' = count(modate), by(`v')
 	replace spcount_`v' = . if `v'==.
 	la var spcount_`v' "Count of unique SPs by `v'"
@@ -242,7 +256,7 @@ merge m:1 sp_uuid using `spcounts', nogen
 
 ** Lag depth instrument(s)
 preserve
-use "$dirpath_data/groundwater/groundwater_depth_sp_month_rast.dta", clear
+use "$dirpath_data/groundwater/groundwater_depth_pge_sp_month_rast.dta", clear
 keep basin_id gw_mth_bsn_mean2 modate
 duplicates drop
 unique basin_id modate
@@ -252,9 +266,7 @@ tsset temp modate
 gen L6_gw_mth_bsn_mean2 = L6.gw_mth_bsn_mean2
 gen L12_gw_mth_bsn_mean2 = L12.gw_mth_bsn_mean2
 drop temp
-tempfile basins
-save `basins'
-merge 1:m basin_id modate using "$dirpath_data/groundwater/groundwater_depth_sp_month_rast.dta" 
+merge 1:m basin_id modate using "$dirpath_data/groundwater/groundwater_depth_pge_sp_month_rast.dta" 
 keep sp_uuid modate L6 L12
 tempfile lagged_depth
 save `lagged_depth'
@@ -306,7 +318,7 @@ assert r(unique)==r(N)
 sort sp_uuid modate
 tsset sp_group modate
 compress
-save "$dirpath_data/merged/sp_month_water_panel.dta", replace
+save "$dirpath_data/merged_pge/sp_month_water_panel.dta", replace
 
 	
 }
@@ -318,7 +330,7 @@ save "$dirpath_data/merged/sp_month_water_panel.dta", replace
 if 1==1{
 
 	// Load electricity panel
-use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
+use "$dirpath_data/merged_pge/sp_month_elec_panel.dta", clear
 
 	// Drop variables I may have regenerated and want to re-merge in
 cap drop flag_bad_drwdwn
@@ -334,14 +346,17 @@ cap drop flag_clu_match
 cap drop flag_clu_group*_match 
 cap drop spcount_*
 cap drop apep_proj_count
+cap drop hp_bin*
+cap drop kw_bin*
+cap drop ope_bin*
 cap drop merge_sp_water_panel
 
 	// Merge them in
-merge 1:1 sp_uuid modate using "$dirpath_data/merged/sp_month_water_panel.dta", ///
+merge 1:1 sp_uuid modate using "$dirpath_data/merged_pge/sp_month_water_panel.dta", ///
 	keepusing(flag_bad_drwdwn flag_weird_pump flag_weird_cust ///
 	months_until_test months_since_test months_to_nearest_test ///
 	latlon_group latlon_miles_apart flag_parcel_match flag_clu_match ///
-	flag_clu_group*_match spcount_* apep_proj_count hp* kw_* ope*) ///
+	flag_clu_group*_match spcount_* apep_proj_count hp_bin* kw_bin* ope_bin*) ///
 	keep(1 3) gen(merge_sp_water_panel)
 la var merge_sp_water_panel "3 = merges into corresponding SP-month panel for water regressions"	
 cap drop spcount_*APEP
@@ -351,7 +366,7 @@ sort sp_uuid modate
 unique sp_uuid modate
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/sp_month_elec_panel.dta", replace
+save "$dirpath_data/merged_pge/sp_month_elec_panel.dta", replace
 
 }
 
