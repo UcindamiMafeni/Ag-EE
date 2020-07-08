@@ -10,15 +10,13 @@ global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 ** PENDING:
-
-** Files for hourly regressions (at SA and SP levels)
-** Add GIS variables
+** Daily datasets, and maybe also put yearlyhere?
 
 *******************************************************************************
 *******************************************************************************
 
 ** 1. Monthified billing data with prices, at SA and SP levels
-if 1==1{
+if 1==0{
 
 ** Start with cleaned customer + monthified billing data (all three data pulls)
 foreach tag in 20180719 20180322 20180827 {
@@ -79,7 +77,7 @@ drop _merge
 
 ** Merge in monthified billing data
 rename rt_sched_cd RT_sched_cd 
-merge m:1 sa_uuid modate pull using "$dirpath_data/merged/monthified_avg_prices_nomerge"
+merge m:1 sa_uuid modate pull using "$dirpath_data/merged_pge/monthified_avg_prices_nomerge.dta"
 tab RT_sched_cd if _merge==1 // non-AG rates
 drop if _merge==1
 drop RT_sched_cd _merge
@@ -126,9 +124,10 @@ drop dup* temp*
 ** Save uncollapsed version at the SA-month level (allowing us to play with tariffs in regressions)
 sort sp_uuid modate sa_uuid
 compress
-save "$dirpath_data/merged/sa_month_elec_panel.dta", replace
+save "$dirpath_data/merged_pge/sa_month_elec_panel.dta", replace
 
 ** Collapse to SP-month level
+use "$dirpath_data/merged_pge/sa_month_elec_panel.dta", clear
 duplicates t sp_uuid modate, gen(dup)
 sort sp_uuid modate sa_sp_start sa_uuid
 br if dup>0 // lots of mid-month bill changeovers, also lots of multi-SA SPs
@@ -162,7 +161,7 @@ foreach v of varlist dr_program pou_name rt_sched_cd {
 }
 
 	// Take weight-averages of mean price variables
-foreach v of varlist  mean_p_kwh mean_p_kw_max mean_p_kw_peak mean_p_kw_partpeak {
+foreach v of varlist mean_p_kwh mean_p_kw_max mean_p_kw_peak mean_p_kw_partpeak {
 	egen double temp_num1 = sum(`v'*mnth_bill_kwh) if `v'!=. & mnth_bill_kwh!=. & mnth_bill_kwh>=0, by(sp_uuid modate)
 	egen double temp_num2 = mean(temp_num1), by(sp_uuid modate)
 	egen double temp_denom1 = sum(mnth_bill_kwh) if `v'!=. & mnth_bill_kwh!=. & mnth_bill_kwh>=0, by(sp_uuid modate)
@@ -201,7 +200,7 @@ assert r(unique)==r(N)
 ** Save
 sort sp_uuid modate
 compress
-save "$dirpath_data/merged/sp_month_elec_panel.dta", replace
+save "$dirpath_data/merged_pge/sp_month_elec_panel.dta", replace
 
 }
 
@@ -309,7 +308,7 @@ drop dup* temp*
 	
 ** Save panel unique by SA-bill
 compress
-save "$dirpath_data/merged/sa_bill_elec_panel.dta", replace
+save "$dirpath_data/merged_pge/sa_bill_elec_panel.dta", replace
 
 }
 
@@ -323,7 +322,7 @@ if 1==0{
 foreach tag in "20180719" "20180322" "20180827" {
 
 	** Load full SA-bill panel dataset
-	use "$dirpath_data/merged/sa_bill_elec_panel.dta", clear
+	use "$dirpath_data/merged_pge/sa_bill_elec_panel.dta", clear
 
 	** Keep SAs in interval data
 	keep if in_interval==1
@@ -336,7 +335,7 @@ foreach tag in "20180719" "20180322" "20180827" {
 	keep sp_uuid sa_uuid bill_start_dt pull
 
 	** Merge into hourly interval data with prices
-	merge 1:m sa_uuid bill_start_dt using "$dirpath_data/merged/hourly_with_prices_`tag'.dta", ///
+	merge 1:m sa_uuid bill_start_dt using "$dirpath_data/merged_pge/hourly_with_prices_`tag'.dta", ///
 		keep(2 3)
 	assert _merge!=2
 	cap drop group
@@ -364,7 +363,7 @@ foreach tag in "20180719" "20180322" "20180827" {
 	** Save
 	sort sp_uuid date hour
 	compress
-	save "$dirpath_data/merged/sp_hourly_elec_panel_`tag'.dta", replace
+	save "$dirpath_data/merged_pge/sp_hourly_elec_panel_`tag'.dta", replace
 
 }
 
@@ -378,70 +377,118 @@ if 1==0{
 
 foreach tag in "20180719" "20180322" "20180827" {
 
-	** Load SP-hourly datasets
-	use "$dirpath_data/merged/sp_hourly_elec_panel_`tag'.dta", clear
+	** Loop over years
+	forvalues y = 2011/2017 {
+	
+		** Load SP-hourly datasets
+		if 	`y'==2011 {
+			use "$dirpath_data/merged_pge/sp_hourly_elec_panel_`tag'.dta" if date<=mdy(12,31,`y'), clear
+			assert year(date)==`y'
+		}
+		else if `y'>2011 & `y'<2017 {
+			use "$dirpath_data/merged_pge/sp_hourly_elec_panel_`tag'.dta" if inrange(date,mdy(1,1,`y'),mdy(12,31,`y')), clear			
+		}
+		else `y'==2017 {
+			use "$dirpath_data/merged_pge/sp_hourly_elec_panel_`tag'.dta" if date>=mdy(1,1,`y'), clear			
+			assert year(date)==`y'
+		}
 
-	** Drop negative kWh hours before transform/collapse
-	drop if kwh<0
-	
-	** Log-transform marginal electricity price
-	gen log_p = ln(p_kwh)
+		** Drop negative kWh hours before transform/collapse
+		drop if kwh<0
+		
+		** Log-transform marginal electricity price
+		gen log_p = ln(p_kwh)
 
-	** Inverse hyperbolic sine transorm electricity quantity
-	gen ihs_kwh =  ln(1000000*kwh + sqrt((1000000*kwh)^2+1))
+		** Inverse hyperbolic sine transorm electricity quantity
+		gen ihs_kwh =  ln(1000000*kwh + sqrt((1000000*kwh)^2+1))
 
-	** Month and year varialbes
-	gen modate = ym(year(date), month(date))
-	format %tm modate
-	gen year = year(date)
-	gen month = month(date)
-	la var modate "Year-Month"
-	la var year "Year"
-	la var month "Month"
-	
-	** Weekend dummy
-	gen weekend = inlist(dow(date),0,6)
-	la var weekend "Dummy for weekend days"
-	
-	** Merge in instrument: E1 tariffs by day
-	merge m:1 date using "$dirpath_data/merged/e1_prices_daily.dta", ///
-		nogen keep(1 3)
-	
-	** Merge in instrument: E20 tariffs by hour
-	merge m:1 date hour using "$dirpath_data/merged/e20_prices_hourly.dta", ///
-		nogen keep(1 3)
-	
-	** Merge in instrument: default ag rates
-	preserve
-	keep sp_uuid modate
-	duplicates drop
-	merge 1:1 sp_uuid modate using "$dirpath_data/merged/sp_month_elec_panel.dta", ///
-		nogen keep(1 3) keepusing(rt_sched_cd)
-	joinby rt_sched_cd modate using "$dirpath_data/merged/ag_default_prices_hourly.dta", ///
-		unmatched(master)
-	drop _merge rt_sched_cd rt_default
-	duplicates drop sp_uuid date hour, force // not sure why this is necessary; shouldn't be dups!
-	tempfile sp_rates
-	save `sp_rates'
-	restore
-	merge 1:1 sp_uuid date hour using `sp_rates', nogen keep(1 3)
+		** Log transform of electricity quantity
+		gen log_kwh = ln(kwh)
+		gen log1_kwh = ln(kwh+1)
+		gen log1_100kwh = ln(100*kwh+1)
+		
+		** Month and year varialbes
+		gen modate = ym(year(date), month(date))
+		format %tm modate
+		gen year = year(date)
+		gen month = month(date)
+		la var modate "Year-Month"
+		la var year "Year"
+		la var month "Month"
+		
+		** Weekend dummy
+		gen weekend = inlist(dow(date),0,6)
+		la var weekend "Dummy for weekend days"
+		
+		** Merge in instrument: E1 tariffs by day
+		merge m:1 date using "$dirpath_data/merged_pge/e1_prices_daily.dta", ///
+			nogen keep(1 3)
+		
+		** Merge in instrument: E20 tariffs by hour
+		merge m:1 date hour using "$dirpath_data/merged_pge/e20_prices_hourly.dta", ///
+			nogen keep(1 3)
+		
+		** Merge in instrument: default ag rates
+		preserve 
+		use "$dirpath_data/merged_pge/sp_month_elec_panel.dta" if year==`y', clear
+		keep sp_uuid modate rt_sched
+		tempfile ratesched
+		save `ratesched'
+		restore
+		preserve
+		keep sp_uuid modate
+		duplicates drop
+		merge 1:1 sp_uuid modate using `ratesched', nogen keep(1 3)
+		joinby rt_sched_cd modate using "$dirpath_data/merged_pge/ag_default_prices_hourly.dta", ///
+			unmatched(master)
+		drop _merge rt_sched_cd rt_default
+		duplicates drop sp_uuid date hour, force // not sure why this is necessary; shouldn't be dups!
+		tempfile sp_rates
+		save `sp_rates'
+		restore
+		merge 1:1 sp_uuid date hour using `sp_rates', nogen keep(1 3)
 
-	** Collapse
-	gen fwt = 1
-	collapse (sum) fwt (mean) ihs_kwh, by(sp_uuid hour log_p modate year month ///
-		weekend p_kwh_e1_?? p_kwh_e20 p_kwh_ag_default) fast
+		** Merge in daily temperatures and precipitation
+		merge m:1 sp_uuid date using "$dirpath_data/prism/cleaned_daily/pge_sp_temperature_daily_`y'.dta", ///
+			nogen keep(1 3) update 
+		
+		** Collapse
+		gen fwt = 1
+		collapse (sum) fwt (mean) ihs_kwh log_kwh log1_kwh log1_100kwh precip_mm degreesC_max degreesC_min, ///
+			by(sp_uuid hour log_p modate year month weekend p_kwh_e1_?? p_kwh_e20 p_kwh_ag_default) fast
+		
+		** Label
+		la var log_p "Log of marginal electricity price ($/kWh)"
+		la var ihs_kwh "Inverse hyperbolic sine of 1e6*kWh avg elec consumption"
+		la var log_kwh "Log of kWh avg elec consumption"
+		la var log1_kwh "Log+1 of kWh avg elec consumption"
+		la var log1_100kwh "Log+1 of 100*kWh avg elec consumption"
+		la var precip_mm "Daily precipitation (mm) at premise"
+		la var degreesC_max "Daily max temperature (C) at premise"
+		la var degreesC_min "Daily max temperature (C) at premise"
+		la var fwt "Frequency weight (post-collapse)"
+
+		** Save 
+		order sp_uuid modate hour ihs_kwh log_p year month weekend fwt  
+		sort *
+		compress
+		save "$dirpath_data/merged_pge/sp_hourly_elec_panel_collapsed_`tag'_`y'.dta", replace
+	}	
 	
-	** Label
-	la var log_p "Log of marginal electricity price ($/kWh)"
-	la var ihs_kwh "Inverse hyperbolic sine of 1e6*kWh avg elec consumption"
-	la var fwt "Frequency weight (post-collapse)"
-	
-	** Save 
-	order sp_uuid modate hour ihs_kwh log_p year month weekend fwt  
+	** Append yearly collapsed files
+	clear
+	forvalues y = 2011/2017 {
+		append using "$dirpath_data/merged_pge/sp_hourly_elec_panel_collapsed_`tag'_`y'.dta"
+	}
 	sort *
-	compress
-	save "$dirpath_data/merged/sp_hourly_elec_panel_collapsed_`tag'.dta", replace
+	comperss
+	save "$dirpath_data/merged_pge/sp_hourly_elec_panel_collapsed_`tag'.dta", replace
 	
+	** Delete yearly collapsed files
+	forvalues y = 2011/2017 {
+		erase "$dirpath_data/merged_pge/sp_hourly_elec_panel_collapsed_`tag'_`y'.dta"
+	}
+
 }
 
 }
@@ -453,7 +500,7 @@ foreach tag in "20180719" "20180322" "20180827" {
 if 1==0{
 
 ** Start with SP-month panel
-use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
+use "$dirpath_data/merged_pge/sp_month_elec_panel.dta", clear
 	// Note: I checked for cases of multiple rates within an SP-month, and they
 	// are EXCEEDINGLY rare. That means that identifying switchers at the SP 
 	// level will be virtually identical to identifying switchers at the SA levels
@@ -576,7 +623,7 @@ la var sp_same_rate_dumbsmart "Flag for SPs with same tariff always, incl dumb-t
 la var sp_same_rate_in_cat "Flag for SPs with no rate switches w/in category"
 sort sp_uuid
 compress
-save "$dirpath_data/merged/sp_rate_switchers.dta", replace
+save "$dirpath_data/merged_pge/sp_rate_switchers.dta", replace
 
 }
 
@@ -587,7 +634,7 @@ save "$dirpath_data/merged/sp_rate_switchers.dta", replace
 if 1==1{
 
 ** Load monthly dataset
-use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
+use "$dirpath_data/merged_pge/sp_month_elec_panel.dta", clear
 
 ** Log-transform marginal electricity price
 cap drop log_p_mean log_p_min log_p_max
@@ -626,62 +673,88 @@ la var month "Month"
 		
 ** Merge in instrument: E1 tariffs by month
 cap drop p_kwh_e1_??
-merge m:1 modate using "$dirpath_data/merged/e1_prices_monthly.dta", nogen keep(1 3)
+merge m:1 modate using "$dirpath_data/merged_pge/e1_prices_monthly.dta", nogen keep(1 3)
 	
 ** Merge in instrument: average E20 tariffs by month
 cap drop *_p_kwh_e20
-merge m:1 modate using "$dirpath_data/merged/e20_prices_monthly.dta", nogen keep(1 3)
+merge m:1 modate using "$dirpath_data/merged_pge/e20_prices_monthly.dta", nogen keep(1 3)
 	
 ** Merge in instrument: default ag rates
 cap drop rt_default *_p_kwh_ag_default
-merge m:1 rt_sched_cd modate using "$dirpath_data/merged/ag_default_prices_monthly.dta", ///
+merge m:1 rt_sched_cd modate using "$dirpath_data/merged_pge/ag_default_prices_monthly.dta", ///
 	nogen keep(1 3)
 
 ** Merge in instrument: modal ag rates
 cap drop rt_modal *_p_kwh_ag_modal
-merge m:1 rt_sched_cd modate using "$dirpath_data/merged/ag_modal_prices_monthly.dta", ///
+merge m:1 rt_sched_cd modate using "$dirpath_data/merged_pge/ag_modal_prices_monthly.dta", ///
 	nogen keep(1 3)
 	
 ** Merge in assigned GIS variables
-cap drop wdist_group
+cap drop clu_id
+cap drop clu_ec_edge_dist_m
+cap drop clu_ec_nearest_dist_m
+cap drop neighbor_clu_ec_dist_m
 cap drop county_group
 cap drop basin_group
-cap drop parcelid_conc
-cap drop clu_id_ec
-cap drop clu_group*_ec
+cap drop basin_sub_group
+cap drop parcelid
+cap drop clu_group*
 cap drop flag_clu_inconsistency
-merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/sp_premise_gis.dta", ///
-	nogen keep(1 3) keepusing(wdist_group county_fips basin_id parcelid_conc ///
-	clu_id_ec clu_group*_ec polygon_check*)
-encode county_fips, gen(county_group)
+cap drop wdist_group
+cap drop flag_wdist_ques
+merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/pge_sp_premise_gis.dta", ///
+	nogen keep(1 3) keepusing(clu_id_ec clu_ec_edge_dist_m clu_ec_nearest_dist_m ///
+	neighbor_clu_ec_dist_m fips basin_id basin_sub_id parcelid_ec clu_group*_ec ///
+	polygon_check* wdist_user_id_list wdist_confidence_rank)
+	// Make CLU identifier numeric, to save memory
+encode clu_id_ec, gen(clu_id)
+la var clu_id "CLU identifier, ever-crop (numeric)"
+drop clu_id_ec
+	// Make county FIPS numeric, to save memory
+encode fips, gen(county_group)
 la var county_group "County FIPS (numeric)"
-drop county_fips
-egen basin_group = group(basin_id)
+drop fips
+	// Make basin and sub-basin IDs numeric, to save memory
+encode basin_id, gen(basin_group)
+encode basin_sub_id, gen(basin_sub_group)
 la var basin_group "Groundwater basin (numeric)"
-rename clu_id_ec clu_id
-rename clu_group*_ec clu_group*
+la var basin_sub_group "Groundwater sub-basin (numeric)"
+drop basin_id basin_sub_id
 	// Make parcel identifier numeric, to save memory
-rename parcelid_conc temp
-encode temp, gen(parcelid_conc)
-drop temp
+encode parcelid_ec, gen(parcelid)
+la var parcelid "Parcel identifier, ever-crop (numeric)"
+drop parcelid_ec
 	// Make CLU group identifiers numeric too, with a common encoding
+rename clu_group*_ec clu_group*
 foreach v of varlist clu_group* {
 	rename `v' temp
 	encode temp, gen(`v') label(clu_group0)
 	drop temp
 }
-	// Make flag combining CLU-related polygon checks
-egen temp = rowmin(poly*A poly*C* poly*D* poly*E* poly*F poly*G)
+	// Make flag that consolidates CLU-related polygon checks
+egen temp = rowmin(poly*A poly*C* poly*D* poly*E*)
 gen flag_clu_inconsistency = 1-temp
-la var flag_clu_inconsistency "Dummy=1 if CLU doesn't match county, unrestricted, concordance, etc."
+la var flag_clu_inconsistency "Dummy=1 if ever-crop CLU doesn't match unrestricted, concordance, etc."
 drop temp polygon_check*
+	// Make water district ID list numeric, to save memory
+encode wdist_user_id_list, gen(wdist_group)
+la var wdist_group "Group by (set of) assigned water district polygons (numeric)"
+drop wdist_user_id_list
+	// Consolidate water district confidence flag
+gen flag_wdist_ques = wdist_confidence_rank>3
+la var flag_wdist_ques "Dummy=1 if water district confidence is less than 3 (in wdist_confience_rank)"
+drop wdist_confidence_rank
 
 ** Merge CDL crop data
-merge m:1 clu_id year using "$dirpath_data/cleaned_spatial/CDL_panel_clu_bigcat_year_wide.dta", nogen keep(1 3)
-	// Make CLU identifier numeric, to save memory
+cap drop cluacres fraction_crop* ever_crop_pct *_Annual *_FruitNutPerennial *_OtherPerennial *_Noncrop ///
+	mode_switcher mode50_switcher
 rename clu_id temp
-encode temp, gen(clu_id)
-drop temp
+decode temp, gen(clu_id) 
+merge m:1 clu_id year using "$dirpath_data/cleaned_spatial/CDL_panel_clu_bigcat_year_wide.dta", nogen keep(1 3) ///
+	keepusing(cluacres fraction_crop* ever_crop_pct frac_* mode_* mode50_* ever_* ever50_*)
+	// Make CLU identifier numeric, to save memory
+drop clu_id
+rename temp clu_id
 
 /*
 ** Merge Davis cost study data
@@ -696,7 +769,7 @@ merge m:1 Number using "$dirpath_data/Davis cost studies/Davis_cost_studies_proc
 
 ** Merge in switchers indicators
 cap drop sp_same_rate_*
-merge m:1 sp_uuid using "$dirpath_data/merged/sp_rate_switchers.dta", nogen ///
+merge m:1 sp_uuid using "$dirpath_data/merged_pge/sp_rate_switchers.dta", nogen ///
 	keep(1 3) keepusing(sp_same_rate_always sp_same_rate_dumbsmart sp_same_rate_in_cat)
 		
 ** Merge in average groundwater depths (basin-by-quarter)
@@ -706,11 +779,20 @@ replace quarter = 1 if inlist(month,1,2,3)
 replace quarter = 2 if inlist(month,4,5,6)
 replace quarter = 3 if inlist(month,7,8,9)
 replace quarter = 4 if inlist(month,10,11,12)
+decode(basin_group), gen(basin_id)
 merge m:1 basin_id year quarter using ///
 	"$dirpath_data/groundwater/avg_groundwater_depth_basin_quarter_full.dta", ///
 	nogen keep(1 3) keepusing(gw_qtr_bsn_mean1 gw_qtr_bsn_mean2)
 drop quarter basin_id
-	
+
+** Merge in average groundwater depths (basin-by-month)
+cap drop gw_mth_bsn_*
+decode(basin_group), gen(basin_id)
+merge m:1 basin_id modate using ///
+	"$dirpath_data/groundwater/avg_groundwater_depth_basin_month_full.dta", ///
+	nogen keep(1 3) keepusing(gw_mth_bsn_mean1 gw_mth_bsn_mean2)
+drop basin_id
+
 ** Create numeric versions of SP, climate zone, and rate
 cap drop sp_group
 cap drop rt_group
@@ -813,7 +895,7 @@ foreach v of varlist rt_sched_cd mean_p_kwh min_p_kwh max_p_kwh {
 	rename `v' `v'_TEMP
 }
 rename temp_first_rt2 rt_sched_cd
-merge m:1 rt_sched_cd modate using "$dirpath_data/merged/ag_rates_avg_by_month.dta", ///
+merge m:1 rt_sched_cd modate using "$dirpath_data/merged_pge/ag_rates_avg_by_month.dta", ///
 	nogen keep(1 3)
 foreach v of varlist rt_sched_cd mean_p_kwh min_p_kwh max_p_kwh {
 	rename `v' `v'_init
@@ -835,13 +917,13 @@ drop temp*
 
 ** Merge in residuals for control function (actual and initial rates)
 cap drop ctrl_fxn*
-merge m:1 rt_sched_cd modate using "$dirpath_data/merged/ag_rates_ctrl_fxn_monthly.dta", ///
+merge m:1 rt_sched_cd modate using "$dirpath_data/merged_pge/ag_rates_ctrl_fxn_monthly.dta", ///
 	nogen keep(1 3)
 foreach v of varlist rt_sched_cd ctrl_fxn* {
 	rename `v' TEMP_`v'
 }
 rename rt_sched_cd_init rt_sched_cd
-merge m:1 rt_sched_cd modate using "$dirpath_data/merged/ag_rates_ctrl_fxn_monthly.dta", ///
+merge m:1 rt_sched_cd modate using "$dirpath_data/merged_pge/ag_rates_ctrl_fxn_monthly.dta", ///
 	nogen keep(1 3)
 foreach v of varlist rt_sched_cd ctrl_fxn* {
 	rename `v' `v'_init
@@ -853,9 +935,9 @@ foreach v of varlist TEMP_* {
 	rename `v' `v2'
 }
 	
-** Merge in monthly average temperature at SP level
-cap drop degreesC_*
-merge 1:1 sp_uuid modate using "$dirpath_data/prism/sp_temperature_monthly.dta", ///
+** Merge in monthly temperature and precipitation at SP level
+cap drop precip_mm degreesC_*
+merge 1:1 sp_uuid modate using "$dirpath_data/prism/pge_sp_temperature_monthly.dta", ///
 	nogen keep(1 3)
 
 ** Define rate categories and large/small ag categories
@@ -894,27 +976,27 @@ sort sp_uuid modate
 unique sp_uuid modate
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/sp_month_elec_panel.dta", replace
+save "$dirpath_data/merged_pge/sp_month_elec_panel.dta", replace
 
 }
 
 *******************************************************************************
 *******************************************************************************
-
+RERUN (AFTER RERUNNING STEP 4 ABOVE) TO INCORPORATE UPDATED GIS VARIABLES)
 ** 7. Merge GIS vars, SP vars, gw depth, and switchers in to collapsed SP-hour panels
 if 1==0{
 
 foreach tag in "20180719" "20180322" "20180827" {
 	
 	** Load collapsed hourly dataset
-	use "$dirpath_data/merged/sp_hourly_elec_panel_collapsed_`tag'.dta", clear
+	use "$dirpath_data/merged_pge/sp_hourly_elec_panel_collapsed_`tag'.dta", clear
 	
 	** Merge in variables from PGE customer details
 	cap drop flag_nem
 	cap drop cz_group
 	cap drop rt_group
 	cap drop flag_geocode_badmiss
-	merge m:1 sp_uuid modate using "$dirpath_data/merged/sp_month_elec_panel.dta", ///
+	merge m:1 sp_uuid modate using "$dirpath_data/merged_pge/sp_month_elec_panel.dta", ///
 		nogen keep(1 3) keepusing(flag_nem climate_zone_cd rt_sched_cd ///
 		bad_geocode_flag missing_geocode_flag)
 	encode rt_sched_cd, gen(rt_group)
@@ -926,20 +1008,24 @@ foreach tag in "20180719" "20180322" "20180827" {
 	drop rt_sched_cd climate_zone_cd bad_geocode_flag missing_geocode_flag
 
 	** Merge in GIS variables
-	cap drop wdist_group
 	cap drop county_group
 	cap drop basin_group
-	merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/sp_premise_gis.dta", ///
-		nogen keep(1 3) keepusing(wdist_group county_fips basin_id)
-	encode county_fips, gen(county_group)
+	cap drop wdist_group
+	merge m:1 sp_uuid using "$dirpath_data/pge_cleaned/pge_sp_premise_gis.dta", ///
+		nogen keep(1 3) keepusing(fips basin_id wdist_user_id_list)
+	encode fips, gen(county_group)
 	la var county_group "County FIPS (numeric)"
-	egen basin_group = group(basin_id)
+	drop fips
+	encode basin_id, gen(basin_group)
 	la var basin_group "Groundwater basin (numeric)"
-	drop county_fips
+	drop basin_id
+	encode wdist_user_id_list, gen(wdist_group)
+	la var wdist_group "Group by (set of) assigned water district polygons (numeric)"
+	drop wdist_user_id_list
 	
 	** Merge in switchers indicators
 	cap drop sp_same_rate_*
-	merge m:1 sp_uuid using "$dirpath_data/merged/sp_rate_switchers.dta", nogen ///
+	merge m:1 sp_uuid using "$dirpath_data/merged_pge/sp_rate_switchers.dta", nogen ///
 		keep(1 3) keepusing(sp_same_rate_always sp_same_rate_dumbsmart sp_same_rate_in_cat)
 		
 	** Merge in average groundwater depths (basin-by-quarter)
@@ -949,6 +1035,7 @@ foreach tag in "20180719" "20180322" "20180827" {
 	replace quarter = 2 if inlist(month,4,5,6)
 	replace quarter = 3 if inlist(month,7,8,9)
 	replace quarter = 4 if inlist(month,10,11,12)
+	decode(basin_group), gen(basin_id)
 	merge m:1 basin_id year quarter using ///
 		"$dirpath_data/groundwater/avg_groundwater_depth_basin_quarter_full.dta", ///
 		nogen keep(1 3) keepusing(gw_qtr_bsn_mean1 gw_qtr_bsn_mean2)
@@ -997,13 +1084,13 @@ foreach tag in "20180719" "20180322" "20180827" {
 
 	** Merge in flag for interval disparities with billed kWh
 	cap drop flag_interval_disp20
-	merge m:1 sp_uuid modate using "$dirpath_data/merged/sp_month_elec_panel.dta", nogen keep(1 3) ///
+	merge m:1 sp_uuid modate using "$dirpath_data/merged_pge/sp_month_elec_panel.dta", nogen keep(1 3) ///
 		keepusing(flag_interval_disp20)
 		
 	** Merge in average SA-wise correlation b/tw billing and interval kWh
 	cap drop interval_bill_corr
 	preserve
-	use sp_uuid interval_bill_corr using "$dirpath_data/merged/sp_month_elec_panel.dta", clear
+	use sp_uuid interval_bill_corr using "$dirpath_data/merged_pge/sp_month_elec_panel.dta", clear
 	duplicates drop
 	egen temp = mean(interval_bill_corr), by(sp_uuid)
 	replace interval_bill_corr = temp
@@ -1020,7 +1107,7 @@ foreach tag in "20180719" "20180322" "20180827" {
 	unique sp_uuid hour log_p modate year month weekend log_p_kwh_e1_?? log_p_kwh_e20 log_p_kwh_ag_default
 	assert r(unique)==r(N)
 	compress
-	save "$dirpath_data/merged/sp_hourly_elec_panel_collapsed_`tag'.dta", replace
+	save "$dirpath_data/merged_pge/sp_hourly_elec_panel_collapsed_`tag'.dta", replace
 		
 }
 
