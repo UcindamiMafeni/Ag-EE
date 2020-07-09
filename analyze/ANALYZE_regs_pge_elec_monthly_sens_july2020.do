@@ -12,8 +12,7 @@ global dirpath_data "$dirpath/data"
 ************************************************
 ************************************************
 
-** 1. Monthly regressions (main set of sensitivities)
-{ 
+** Monthly regressions (main set of sensitivities)
 
 // Load monthly panel
 use "$dirpath_data/merged_pge/sp_month_elec_panel.dta", clear
@@ -68,6 +67,7 @@ global FEs = "sp_group#month sp_group#rt_large_ag modate"
 global VCE = "sp_group modate"	
 
 // Create empty variables to populate for storing results
+gen sens_id = .
 gen panel = ""
 gen pull = ""
 gen sens = ""
@@ -279,7 +279,7 @@ foreach c of numlist 1/61 {
 	}
 	if `c'==41 {
 		local sens = "Cluster by CLU_group75 and month-of-sample"
-		local VCE = "clu_group0 modate"
+		local VCE = "clu_group75 modate"
 	}
 	if `c'==42 {
 		local sens = "CLU matches (SP-APEP) only"
@@ -323,7 +323,7 @@ foreach c of numlist 1/61 {
 	}
 	if `c'==52 {
 		local sens = "SP lat/lon is <=20m from CLU edge"
-		local ifs_sample = " & clu_ec_edge_dist_m<=20"
+		local ifs_sample = " & clu_ec_edge_dist_m<=20" // roughly the median
 	}
 	if `c'==53 {
 		local sens = "SP lat/lon is >20m from CLU edge"
@@ -331,11 +331,11 @@ foreach c of numlist 1/61 {
 	}
 	if `c'==54 {
 		local sens = "SP lat/lon is inside CLU"
-		local ifs_sample = " & clu_ec_edge_dist_m<=20" // roughly the median
+		local ifs_sample = " & clu_ec_nearest_dist_m==0" 
 	}
 	if `c'==55 {
 		local sens = "SP lat/lon is inside or w/in 20m of CLU"
-		local ifs_sample = " & clu_ec_nearest_dist_m<=20" // 20 to be consistennt with above
+		local ifs_sample = " & clu_ec_nearest_dist_m<=20" // 20 to be consistent with above
 	}
 	if `c'==56 {
 		local sens = "SP lat/lon is <=50m from nearest non-assigned CLU"
@@ -370,6 +370,7 @@ foreach c of numlist 1/61 {
 		reghdfe `DEPVAR' `RHS' `ifs_base' `ifs_sample' , absorb(`FEs') vce(cluster `VCE')
 		
 		// Store results
+		replace sens_id = `c' in `c'
 		replace panel = "`panel'" in `c'
 		replace pull = "`pull'" in `c'
 		replace sens = "`sens'" in `c'
@@ -396,6 +397,7 @@ foreach c of numlist 1/61 {
 		ivreghdfe `DEPVAR' `RHS' `ifs_base' `ifs_sample' , absorb(`FEs') cluster(`VCE')
 		
 		// Store results
+		replace sens_id = `c' in `c'
 		replace panel = "`panel'" in `c'
 		replace pull = "`pull'" in `c'
 		replace sens = "`sens'" in `c'
@@ -454,10 +456,8 @@ foreach c of numlist 1/61 {
 		cap erase "$dirpath_data/results/regs_pge_elec_monthly_sens_july2020.dta"
 	}
 	preserve
-	keep panel-fs_t_modlag6
+	keep sens_id-fs_t_modlag6
 	dropmiss, obs force
-	gen sens_id = `c'
-	order sens_id
 	cap append using "$dirpath_data/results/regs_pge_elec_monthly_sens_july2020.dta"
 	duplicates drop
 	sort sens_id
@@ -467,7 +467,6 @@ foreach c of numlist 1/61 {
 		
 }
 
-}
 
 ************************************************
 ************************************************
