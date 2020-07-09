@@ -507,7 +507,8 @@ foreach c of numlist 1/82 {
 				cap replace fs_beta_var`v' = _b[`var'] in `c'
 				cap replace fs_se_var`v' = _se[`var'] in `c'
 				cap replace fs_t_var`v' =  _b[`var']/_se[`var'] in `c'
-			}	
+			}
+		}	
 	}
 
 	// Intermediate output
