@@ -19,6 +19,13 @@ global dirpath_data "$dirpath/data"
 use "$dirpath_data/merged_pge/sp_month_elec_panel.dta", clear
 local panel = "monthly"
 
+// Create lags of precipitaion and temperature variables
+sort sp_group modate
+gen Lprecip_mm = L.precip_mm
+gen LdegreesC_min = L.degreesC_min
+gen LdegreesC_max = L.degreesC_max
+gen LdegreesC_mean = L.degreesC_mean
+
 // Drop solar NEM customers
 keep if flag_nem==0 
 
@@ -60,13 +67,6 @@ global FEs = "sp_group#month sp_group#rt_large_ag modate"
 // Define default global: cluster variables
 global VCE = "sp_group modate"	
 
-// Create lags of precipitaion and temperature variables
-sort sp_group modate
-gen Lprecip_mm = L.precip_mm
-gen LdegreesC_min = L.degreesC_min
-gen LdegreesC_max = L.degreesC_max
-gen LdegreesC_mean = L.degreesC_mean
-
 // Create empty variables to populate for storing results
 gen panel = ""
 gen pull = ""
@@ -106,7 +106,7 @@ gen fs_t_modlag6 = .
 
 	
 // Loop over sensitivities
-foreach c of numlist 60/61 {
+foreach c of numlist 1/61 {
 
 	// Reset default locals
 	local ifs_sample = ""
@@ -456,6 +456,8 @@ foreach c of numlist 60/61 {
 	preserve
 	keep panel-fs_t_modlag6
 	dropmiss, obs force
+	gen sens_id = `c'
+	order sens_id
 	cap append using "$dirpath_data/results/regs_pge_elec_monthly_sens_july2020.dta"
 	duplicates drop
 	compress
