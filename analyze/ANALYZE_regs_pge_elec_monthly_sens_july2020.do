@@ -460,6 +460,7 @@ foreach c of numlist 1/61 {
 	order sens_id
 	cap append using "$dirpath_data/results/regs_pge_elec_monthly_sens_july2020.dta"
 	duplicates drop
+	sort sens_id
 	compress
 	save "$dirpath_data/results/regs_pge_elec_monthly_sens_july2020.dta", replace
 	restore
