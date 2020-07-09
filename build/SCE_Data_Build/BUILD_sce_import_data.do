@@ -11,15 +11,11 @@ version 12
 global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
-*** CHANGE ME LATER
-global dirpath_raw "T:/Projects/Pump Data/data/sce_raw"
-
-** additional directory paths to make things easier
-
 ************************************************
 ************************************************
 
 ** SEPTEMBER 16 2019 DATA
+global dirpath_raw "T:/Raw Data/PumpData/Data09132019"
 
 *** load customer data and save as dta file
 insheet using "$dirpath_raw/ADHQ1376_EDRP/adhq1376_1.csv", comma clear
@@ -40,8 +36,6 @@ save "$dirpath_data/sce_raw/energy_efficiency_data_20190916.dta", replace
 insheet using "$dirpath_raw/ADHQ1376_EDRP/adhq1376_6_dr.csv", comma clear
 tostring *, replace
 save "$dirpath_data/sce_raw/demand_resposne_data_20190916.dta", replace
-
-
 
 *** load pump test project data and save as dta file
 import excel "$dirpath_raw/Pump Overhauls 2011 to 2018_Rebate.xlsx", firstrow allstring clear
@@ -76,9 +70,10 @@ foreach year in "2016" "2017" "2018" "2019" {
 ************************************************
 
 ** MAY 4 2020 DATA
+global dirpath_raw "T:/Raw Data/PumpData/SCE05042020"
 
 ** Extract raw xwalk
-import excel "$dirpath_raw/SCE05042020/SA to CA Table SCE29202610522.xlsx", clear sheet("ADHQ1376_1_updated") firstrow
+import excel "$dirpath_raw/SA to CA Table SCE29202610522.xlsx", clear sheet("ADHQ1376_1_updated") firstrow
 dropmiss, force
 compress
 save "$dirpath_data/sce_raw/customer_id_xwalk_20200504.dta", replace
