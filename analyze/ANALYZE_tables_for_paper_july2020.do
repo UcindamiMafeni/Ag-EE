@@ -572,7 +572,7 @@ use "$dirpath_data/results/regs_pge_water_combined_monthly_july2020.dta" , clear
 
 keep if pull=="PGE 20180719"
 keep if panel=="monthly"
-keep if ifs_base=="if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0"
+keep if ifs_base=="if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0"
 gen col = .			
 
 replace col = 1 if depvar=="ihs_af_rast_dd_mth_2SP" ///

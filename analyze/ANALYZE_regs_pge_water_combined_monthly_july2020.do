@@ -35,7 +35,7 @@ keep if flag_weird_pump==0
 keep if flag_weird_cust==0 
 
 // Define baseline sample criteria (common to all regressions)
-local ifs_base = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0"
+local ifs_base = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0"
 
 // Keep APEP data pull only
 cap drop if pull!="20180719" 

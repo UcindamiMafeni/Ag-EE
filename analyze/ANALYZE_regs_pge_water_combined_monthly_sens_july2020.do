@@ -42,7 +42,7 @@ keep if flag_weird_pump==0
 keep if flag_weird_cust==0 
 
 // Define baseline sample criteria (common to all regressions)
-local ifs_base = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0"
+local ifs_base = "if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0"
 
 // Keep APEP data pull only
 cap drop if pull!="20180719" 
@@ -68,6 +68,7 @@ global FEs = "sp_group#month sp_group#rt_large_ag modate"
 global VCE = "sp_group modate"	
 
 // Create empty variables to populate for storing results
+gen sens_id = .
 gen panel = ""
 gen pull = ""
 gen sens = ""
@@ -92,7 +93,7 @@ forvalues v = 1/4 {
 }
 	
 // Loop over sensitivities
-foreach c of numlist 1/82 {
+foreach c of numlist 40 53 {
 
 	// Reset default locals
 	local ifs_sample = ""
@@ -262,7 +263,7 @@ foreach c of numlist 1/82 {
 	}
 	if `c'==40 {
 		local sens = "Cluster by CLU_group75 and month-of-sample"
-		local VCE = "clu_group0 modate"
+		local VCE = "clu_group75 modate"
 	}
 	if `c'==41 {
 		local sens = "CLU matches (SP-APEP) only"
@@ -306,7 +307,7 @@ foreach c of numlist 1/82 {
 	}
 	if `c'==51 {
 		local sens = "SP lat/lon is <=20m from CLU edge"
-		local ifs_sample = " & clu_ec_edge_dist_m<=20"
+		local ifs_sample = " & clu_ec_edge_dist_m<=20" // roughly the median
 	}
 	if `c'==52 {
 		local sens = "SP lat/lon is >20m from CLU edge"
@@ -314,7 +315,7 @@ foreach c of numlist 1/82 {
 	}
 	if `c'==53 {
 		local sens = "SP lat/lon is inside CLU"
-		local ifs_sample = " & clu_ec_edge_dist_m<=20" // roughly the median
+		local ifs_sample = " & clu_ec_nearest_dist_m==0"
 	}
 	if `c'==54 {
 		local sens = "SP lat/lon is inside or w/in 20m of CLU"
@@ -452,6 +453,7 @@ foreach c of numlist 1/82 {
 		local p_water_var = subinstr(word("`RHS'",1),"(","",1)
 		
 		// Store results
+		replace sens_id = `c' in `c'
 		replace panel = "`panel'" in `c'
 		replace pull = "`pull'" in `c'
 		replace sens = "`sens'" in `c'
@@ -479,6 +481,7 @@ foreach c of numlist 1/82 {
 		local p_water_var = subinstr(word("`RHS'",1),"(","",1)
 
 		// Store results
+		replace sens_id = `c' in `c'
 		replace panel = "`panel'" in `c'
 		replace pull = "`pull'" in `c'
 		replace sens = "`sens'" in `c'
@@ -519,10 +522,8 @@ foreach c of numlist 1/82 {
 		cap erase "$dirpath_data/results/regs_pge_water_combined_monthly_sens_july2020.dta"
 	}
 	preserve
-	keep panel-fs_t_var4
+	keep sens_id-fs_t_var4
 	dropmiss, obs force
-	gen sens_id = `c'
-	order sens_id
 	cap append using "$dirpath_data/results/regs_pge_water_combined_monthly_sens_july2020.dta"
 	duplicates drop
 	sort sens_id
