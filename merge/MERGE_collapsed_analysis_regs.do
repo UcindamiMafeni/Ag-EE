@@ -16,7 +16,7 @@ global dirpath_data "$dirpath/data"
 if 1==0{
 
 ** Start with monthly electricity dataset
-use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
+use "$dirpath_data/merged_pge/sp_month_elec_panel.dta", clear
 
 ** Collapse to SP-year level
 duplicates report sp_group year
@@ -198,6 +198,20 @@ foreach v of varlist degreesC* {
 	replace `v' = temp
 	drop temp
 }
+
+	// Take sum of precipitation for year and for summer/winter
+foreach s of varlist summer winter {
+	gen temp = precip_mm if `s'
+	local v2 = "precip_mm_`s'"
+	egen `v2' = sum(temp), by(sp_group year)
+	local vlab1: variable label precip_mm
+	local vlab2 = "`vlab1', `s'"
+	la var `v2' "`vlab2'"
+	drop temp
+}
+egen temp = sum(precip_mm), by(sp_group year)
+replace precip_mm = temp
+drop temp
 
 	// Take mean of groundwater variables for year and for summer/winter
 foreach v of varlist gw* {
@@ -398,7 +412,7 @@ sort sp_uuid year
 unique sp_uuid year
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/sp_annual_elec_panel.dta", replace
+save "$dirpath_data/merged_pge/sp_annual_elec_panel.dta", replace
 
 }
 
@@ -409,7 +423,7 @@ save "$dirpath_data/merged/sp_annual_elec_panel.dta", replace
 if 1==0{
 
 ** Start with monthly electricity dataset
-use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
+use "$dirpath_data/merged_pge/sp_month_elec_panel.dta", clear
 
 ** Keep only SP-months that merge to water data and have a CLU ID
 keep if merge_sp_water_panel==3
@@ -576,7 +590,7 @@ foreach v of varlist rt_group rt_category rt_large_ag hp* kw* ope* {
 }
 
 	// Take mode of group variables
-foreach v of varlist wdist_group county_group basin_group cz_group {
+foreach v of varlist wdist_group county_group basin*group cz_group {
 	egen temp = mode(`v'), maxmode by(clu_id year)
 	replace `v' = temp
 	drop temp
@@ -624,6 +638,20 @@ foreach v of varlist degreesC* {
 	replace `v' = temp
 	drop temp
 }
+
+	// Take sum of precipitation for year and for summer/winter
+foreach s of varlist summer winter {
+	gen temp = precip_mm if `s'
+	local v2 = "precip_mm_`s'"
+	egen `v2' = sum(temp), by(clu_id year)
+	local vlab1: variable label precip_mm
+	local vlab2 = "`vlab1', `s'"
+	la var `v2' "`vlab2'"
+	drop temp
+}
+egen temp = sum(precip_mm), by(clu_id year)
+replace precip_mm = temp
+drop temp
 
 	// Take mean of groundwater variables for year and for summer/winter
 foreach v of varlist gw* {
@@ -706,7 +734,7 @@ la var clu_sp_group "Identifier for group of SPs comprising the CLU"
 
 	// Drop remaining monthly variables
 drop modate month summer winter days ctrl_fxn* log* ihs* sp_uuid sp_group ///
-     prem* sa_sp* *dt* parcelid_conc latlon* spcount_parcelid_conc months*
+     prem* sa_sp* *dt* parcelid latlon* spcount_parcelid months* *clu_ec*
 
 	// Collapse
 duplicates drop
@@ -830,7 +858,7 @@ sort clu_id year
 unique clu_id year
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/clu_annual_elec_panel.dta", replace
+save "$dirpath_data/merged_pge/clu_annual_elec_panel.dta", replace
 
 }
 
@@ -838,17 +866,17 @@ save "$dirpath_data/merged/clu_annual_elec_panel.dta", replace
 *****************************************************************************
 
 ** 3. Parcel-by-year electricity regression dataset
-if 1==1{
+if 1==0{
 
 ** Start with monthly electricity dataset
-use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
+use "$dirpath_data/merged_pge/sp_month_elec_panel.dta", clear
 
 ** Keep only SP-months that merge to water data and have a parcel ID
 keep if merge_sp_water_panel==3
-keep if parcelid_conc!=.
+keep if parcelid!=.
 
 ** Collapse to parcel-year level
-duplicates report parcelid_conc year
+duplicates report parcelid year
 gen winter = 1-summer
 gen days = .
 replace days = 31 if inlist(month,1,3,5,7,8,10,12)
@@ -860,13 +888,13 @@ replace days = 28 if month==2 & !inlist(year,2008,2012,2016)
 foreach v of varlist mnth* {
 	foreach s of varlist summer winter {
 		local v2 = subinstr("`v'","mnth","`s'",1)
-		egen `v2' = sum(`v'*`s'), by(parcelid_conc year)
+		egen `v2' = sum(`v'*`s'), by(parcelid year)
 		local vlab1: variable label `v'
 		local vlab2 = subinstr("`vlab1'","monthified","`s'",1)
 		la var `v2' "`vlab2'"
 	}
 	local v2 = subinstr("`v'","mnth","ann",1)
-	egen `v2' = sum(`v'), by(parcelid_conc year)
+	egen `v2' = sum(`v'), by(parcelid year)
 	local vlab1: variable label `v'
 	local vlab2 = subinstr("`vlab1'","monthified","annual",1)
 	la var `v2' "`vlab2'"
@@ -878,13 +906,13 @@ foreach v of varlist mean_p_kwh* {
 	foreach s of varlist summer winter {
 		gen temp = `v' if `s'
 		local v2 = "`v'_`s'"
-		egen `v2' = wtmean(temp), by(parcelid_conc year) weight(days)
+		egen `v2' = wtmean(temp), by(parcelid year) weight(days)
 		local vlab1: variable label `v'
 		local vlab2 = "`vlab1', `s'"
 		la var `v2' "`vlab2'"
 		drop temp
 	}
-	egen temp = wtmean(`v'), by(parcelid_conc year) weight(days)
+	egen temp = wtmean(`v'), by(parcelid year) weight(days)
 	replace `v' = temp
 	drop temp
 }
@@ -894,13 +922,13 @@ foreach v of varlist min_p_kwh* {
 	foreach s of varlist summer winter {
 		gen temp = `v' if `s'
 		local v2 = "`v'_`s'"
-		egen `v2' = min(temp), by(parcelid_conc year)
+		egen `v2' = min(temp), by(parcelid year)
 		local vlab1: variable label `v'
 		local vlab2 = "`vlab1', `s'"
 		la var `v2' "`vlab2'"
 		drop temp
 	}
-	egen temp = min(`v'), by(parcelid_conc year)
+	egen temp = min(`v'), by(parcelid year)
 	replace `v' = temp
 	drop temp
 }
@@ -910,13 +938,13 @@ foreach v of varlist max_p_kwh* {
 	foreach s of varlist summer winter {
 		gen temp = `v' if `s'
 		local v2 = "`v'_`s'"
-		egen `v2' = max(temp), by(parcelid_conc year)
+		egen `v2' = max(temp), by(parcelid year)
 		local vlab1: variable label `v'
 		local vlab2 = "`vlab1', `s'"
 		la var `v2' "`vlab2'"
 		drop temp
 	}
-	egen temp = max(`v'), by(parcelid_conc year)
+	egen temp = max(`v'), by(parcelid year)
 	replace `v' = temp
 	drop temp
 }
@@ -926,14 +954,14 @@ foreach v of varlist p_kwh* {
 	foreach s of varlist summer winter {
 		gen temp = `v' if `s'
 		local v2 = "mean_`v'_`s'"
-		egen `v2' = wtmean(temp), by(parcelid_conc year) weight(days)
+		egen `v2' = wtmean(temp), by(parcelid year) weight(days)
 		local vlab1: variable label `v'
 		local vlab2 = "Avg daily `vlab1', `s'"
 		la var `v2' "`vlab2'"
 		drop temp
 	}
 	local v2 = "mean_`v'"
-	egen `v2' = wtmean(`v'), by(parcelid_conc year) weight(days)
+	egen `v2' = wtmean(`v'), by(parcelid year) weight(days)
 	local vlab1: variable label `v'
 	local vlab2 = "Avg daily `vlab1'"
 	la var `v2' "`vlab2'"
@@ -945,20 +973,20 @@ foreach v of varlist mean_p_kw_* {
 	foreach s of varlist summer winter {
 		gen temp = `v' if `s'
 		local v2 = "`v'_`s'"
-		egen `v2' = wtmean(temp), by(parcelid_conc year) weight(days)
+		egen `v2' = wtmean(temp), by(parcelid year) weight(days)
 		local vlab1: variable label `v'
 		local vlab2 = "`vlab1', `s'"
 		la var `v2' "`vlab2'"
 		drop temp
 	}
-	egen temp = wtmean(`v'), by(parcelid_conc year) weight(days)
+	egen temp = wtmean(`v'), by(parcelid year) weight(days)
 	replace `v' = temp
 	drop temp
 }
 
 	// Take max of flag variables
 foreach v of varlist *flag* {
-	egen temp = max(`v'), by(parcelid_conc year)
+	egen temp = max(`v'), by(parcelid year)
 	replace `v' = temp
 	drop temp
 }
@@ -969,7 +997,7 @@ foreach v of varlist rt_sched_cd rt_category rt_large_ag hp_bin_dec kw_bin_dec o
 	egen temp_sp = sum(temp_tag), by(sp_group year)
 	gen temp_flag = (temp_sp>1)
 	local v2 = "flag_`v'_switch"
-	egen `v2' = max(temp_flag), by(parcelid_conc year)
+	egen `v2' = max(temp_flag), by(parcelid year)
 	drop temp*
 }
 la var flag_rt_sched_cd_switch "Flag indicating SP in parcel switched rate within year"
@@ -982,14 +1010,14 @@ la var flag_ope_bin_dec_switch "Flag indicating SP in parcel switched OPE decile
 	// Create a flag for SP-years with < 12 months
 egen temp = count(modate), by(sp_group year)
 gen temp_flag = (temp<12)
-egen flag_partial_year = max(temp_flag), by(parcelid_conc year)
+egen flag_partial_year = max(temp_flag), by(parcelid year)
 drop temp*
 la var flag_partial_year "Flag indicating a parcel-year includes an SP-year with <12 months of bills"
 replace flag_irregular_bill = max(flag_irregular_bill,flag_partial_year)
 
 	// Take mode of string rate variables
 foreach v of varlist rt_sched_cd rt_default rt_modal rt_sched_cd_init {
-	egen temp = mode(`v'), by(parcelid_conc year)
+	egen temp = mode(`v'), by(parcelid year)
 	replace `v' = temp
 	local vlab1: variable label `v'
 	local vlab2 = "`vlab1', mode of SP-months in parcel-year"
@@ -999,7 +1027,7 @@ foreach v of varlist rt_sched_cd rt_default rt_modal rt_sched_cd_init {
 
 	// Take mode of numeric rate and bin variables
 foreach v of varlist rt_group rt_category rt_large_ag hp* kw* ope* {
-	egen temp = mode(`v'), maxmode by(parcelid_conc year)
+	egen temp = mode(`v'), maxmode by(parcelid year)
 	replace `v' = temp
 	drop temp
 	local vlab1: variable label `v'
@@ -1008,8 +1036,8 @@ foreach v of varlist rt_group rt_category rt_large_ag hp* kw* ope* {
 }
 
 	// Take mode of group variables
-foreach v of varlist wdist_group county_group basin_group cz_group {
-	egen temp = mode(`v'), maxmode by(parcelid_conc year)
+foreach v of varlist wdist_group county_group basin*group cz_group {
+	egen temp = mode(`v'), maxmode by(parcelid year)
 	replace `v' = temp
 	drop temp
 	local vlab1: variable label `v'
@@ -1018,13 +1046,13 @@ foreach v of varlist wdist_group county_group basin_group cz_group {
 }
 
 	// Take mode of county
-egen temp = mode(county), maxmode by(parcelid_conc year)
+egen temp = mode(county), maxmode by(parcelid year)
 replace county = temp
 drop temp
 
 	// Take min of rate indicator variables
 foreach v of varlist sp_same_rate* {
-	egen temp = min(`v'), by(parcelid_conc year)
+	egen temp = min(`v'), by(parcelid year)
 	replace `v' = temp
 	drop temp
 	local vlab1: variable label `v'
@@ -1034,14 +1062,14 @@ foreach v of varlist sp_same_rate* {
 
 	// Take max of other indicator variables
 foreach v of varlist in_calif in_pge in_pou in_interval net_mtr_ind dr_ind elec_binary {
-	egen temp = max(`v'), by(parcelid_conc year)
+	egen temp = max(`v'), by(parcelid year)
 	replace `v' = temp
 	drop temp
 }
 
 	// Calculate fraction of parcel-months with electricity consumption
-egen temp_mo = max(elec_binary), by(parcelid_conc modate)
-egen temp_mean = mean(temp_mo), by(parcelid_conc)
+egen temp_mo = max(elec_binary), by(parcelid modate)
+egen temp_mean = mean(temp_mo), by(parcelid)
 replace elec_binary_frac = temp_mean
 la var elec_binary_frac "Fraction of parcel's months with kwh>0"
 drop temp*
@@ -1051,52 +1079,66 @@ foreach v of varlist degreesC* {
 	foreach s of varlist summer winter {
 		gen temp = `v' if `s'
 		local v2 = "`v'_`s'"
-		egen `v2' = wtmean(temp), by(parcelid_conc year) weight(days)
+		egen `v2' = wtmean(temp), by(parcelid year) weight(days)
 		local vlab1: variable label `v'
 		local vlab2 = "`vlab1', `s'"
 		la var `v2' "`vlab2'"
 		drop temp
 	}
-	egen temp = wtmean(`v'), by(parcelid_conc year) weight(days)
+	egen temp = wtmean(`v'), by(parcelid year) weight(days)
 	replace `v' = temp
 	drop temp
 }
+
+	// Take sum of precipitation for year and for summer/winter
+foreach s of varlist summer winter {
+	gen temp = precip_mm if `s'
+	local v2 = "precip_mm_`s'"
+	egen `v2' = sum(temp), by(parcelid year)
+	local vlab1: variable label precip_mm
+	local vlab2 = "`vlab1', `s'"
+	la var `v2' "`vlab2'"
+	drop temp
+}
+egen temp = sum(precip_mm), by(parcelid year)
+replace precip_mm = temp
+drop temp
 
 	// Take mean of groundwater variables for year and for summer/winter
 foreach v of varlist gw* {
 	foreach s of varlist summer winter {
 		gen temp = `v' if `s'
 		local v2 = "`v'_`s'"
-		egen `v2' = wtmean(temp), by(parcelid_conc year) weight(days)
+		egen `v2' = wtmean(temp), by(parcelid year) weight(days)
 		local vlab1: variable label `v'
 		local vlab2 = "`vlab1', `s'"
 		la var `v2' "`vlab2'"
 		drop temp
 	}
-	egen temp = wtmean(`v'), by(parcelid_conc year) weight(days)
+	egen temp = wtmean(`v'), by(parcelid year) weight(days)
 	replace `v' = temp
 	drop temp
 }
 
 	// Take mean of other numeric variables
 foreach v of varlist interval_bill_corr {
-	egen temp = wtmean(`v'), by(parcelid_conc year) weight(days)
+	egen temp = wtmean(`v'), by(parcelid year) weight(days)
 	replace `v' = temp
 	drop temp
 }
 
 	// Take max of EE measures
-egen temp_tag = tag(sp_group parcelid_conc)
+egen temp_tag = tag(sp_group parcelid)
 egen temp_count = max(ee_measure_count), by(sp_group)
 gen temp_prod = temp_tag*temp_count
-egen temp_parc = sum(temp_prod), by(parcelid_conc)
+egen temp_parc = sum(temp_prod), by(parcelid)
 replace ee_measure_count = temp_parc
 drop temp*
 
 	// Take sum of APEP projects
-egen temp_tag = tag(sp_group parcelid_conc)
+egen temp_tag = tag(sp_group parcelid)
 gen temp_count = temp_tag*apep_proj_count
-egen temp_parc = sum(temp_count), by(parcelid_conc)
+egen temp_parc = sum(temp_count), by(parcelid)
 replace apep_proj_count = temp_parc
 drop temp*
 
@@ -1105,52 +1147,52 @@ levelsof pull, local(pulls)
 foreach p of local pulls {
 	local v = "pull_`p'"
 	gen temp = (pull=="`p'")
-	egen `v' = max(temp), by(parcelid_conc year)
+	egen `v' = max(temp), by(parcelid year)
 	la var `v' "parcel-year contains data from `p' pull"
 	drop temp
 }	
-egen temp = mode(pull), by(parcelid_conc year)
+egen temp = mode(pull), by(parcelid year)
 replace pull = temp
 drop temp
 la var pull "Modal data pull for parcel-year"
 
 	// Count SPs in parcel and parcel-year
-egen temp_parc = tag(sp_group parcelid_conc)
-egen spcount_parcel = sum(temp_parc), by(parcelid_conc)
-egen temp_py = tag(sp_group parcelid_conc year)
-egen spcount_parcel_year = sum(temp_py), by(parcelid_conc year)
+egen temp_parc = tag(sp_group parcelid)
+egen spcount_parcel = sum(temp_parc), by(parcelid)
+egen temp_py = tag(sp_group parcelid year)
+egen spcount_parcel_year = sum(temp_py), by(parcelid year)
 la var spcount_parcel "Number of SPs in parcel over all years"
 la var spcount_parcel_year "Number of SPs in parcel in a year"
 drop temp*
 
 	// Create indicator for set of SPs within a parcel for each year
 preserve
-keep sp_uuid parcelid_conc year
+keep sp_uuid parcelid year
 duplicates drop
-sort parcelid_conc year sp_uuid
-egen parc_year_group = group(parcelid_conc year)
+sort parcelid year sp_uuid
+egen parc_year_group = group(parcelid year)
 bysort parc_year_group (sp_uuid) : gen parc_year_n = _n
-reshape wide sp_uuid, i(parcelid_conc year) j(parc_year_n)
-egen parcel_sp_group = group(parcelid_conc sp_uuid*), missing
-keep parcelid_conc year parcel_sp_group
+reshape wide sp_uuid, i(parcelid year) j(parc_year_n)
+egen parcel_sp_group = group(parcelid sp_uuid*), missing
+keep parcelid year parcel_sp_group
 tempfile parcel_sp_group
 save `parcel_sp_group'
 restore
-merge m:1 parcelid_conc year using `parcel_sp_group'
+merge m:1 parcelid year using `parcel_sp_group'
 assert _merge==3
 drop _merge
 la var parcel_sp_group "Identifier for group of SPs comprising the parcel"
 
 	// Drop CLU-specific variables
-drop clu* crop* frac* ever* acres* mode* 
+drop clu* frac* ever* mode* neighbor_clu* spcount_clu*
 
 	// Drop remaining monthly variables
 drop modate month summer winter days ctrl_fxn* log* ihs* sp_uuid sp_group ///
-     prem* sa_sp* *dt* latlon* spcount_parcelid_conc months*
+     prem* sa_sp* *dt* latlon* spcount_parcelid months*
 
 	// Collapse
 duplicates drop
-unique parcelid_conc year
+unique parcelid year
 assert r(unique)==r(N)
 
 ** Inverse hyperbolic sine and log transform electricity quantity
@@ -1206,7 +1248,7 @@ foreach v of varlist *p_kwh_e1* *p_kwh_e20* *p_kwh_ag_default* *p_kwh_ag_modal* 
 }	
 
 ** Construct instruments of lagged electricity prices
-tsset parcelid_conc year
+tsset parcelid year
 foreach v of varlist log_p* {
 	local vpre = subinstr(subinstr(substr("`v'",7,.),"_summer","",1),"_winter","",1)
 	local v2 = subinstr("`v'","`vpre'","`vpre'_lag",1)
@@ -1265,12 +1307,12 @@ foreach v of varlist log*modal* {
 }
 
 ** Save
-order parcelid_conc year
-sort parcelid_conc year
-unique parcelid_conc year
+order parcelid year
+sort parcelid year
+unique parcelid year
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/parcel_annual_elec_panel.dta", replace
+save "$dirpath_data/merged_pge/parcel_annual_elec_panel.dta", replace
 
 }
 
@@ -1281,7 +1323,7 @@ save "$dirpath_data/merged/parcel_annual_elec_panel.dta", replace
 if 1==0{
 
 ** Start with monthly electricity dataset
-use "$dirpath_data/merged/sp_month_elec_panel.dta", clear
+use "$dirpath_data/merged_pge/sp_month_elec_panel.dta", clear
 
 ** Keep only SP-months that merge to water data and have a CLU group75 ID
 keep if merge_sp_water_panel==3
@@ -1448,7 +1490,7 @@ foreach v of varlist rt_group rt_category rt_large_ag hp* kw* ope* {
 }
 
 	// Take mode of group variables
-foreach v of varlist wdist_group county_group basin_group cz_group {
+foreach v of varlist wdist_group county_group basin*group cz_group {
 	egen temp = mode(`v'), maxmode by(clu_group75 year)
 	replace `v' = temp
 	drop temp
@@ -1496,6 +1538,20 @@ foreach v of varlist degreesC* {
 	replace `v' = temp
 	drop temp
 }
+
+	// Take sum of precipitation for year and for summer/winter
+foreach s of varlist summer winter {
+	gen temp = precip_mm if `s'
+	local v2 = "precip_mm_`s'"
+	egen `v2' = sum(temp), by(clu_group75 year)
+	local vlab1: variable label precip_mm
+	local vlab2 = "`vlab1', `s'"
+	la var `v2' "`vlab2'"
+	drop temp
+}
+egen temp = sum(precip_mm), by(clu_group75 year)
+replace precip_mm = temp
+drop temp
 
 	// Take mean of groundwater variables for year and for summer/winter
 foreach v of varlist gw* {
@@ -1577,11 +1633,11 @@ drop _merge
 la var clu75_sp_group "Identifier for group of SPs comprising the CLU75"
 
 	// Drop CLU-specific variables
-drop clu_id clu_group0 clu_group10 clu_group25 clu_group50 cluacres crop* frac* ever* acres* mode* 
+drop clu_id clu_group0 clu_group10 clu_group25 clu_group50 cluacres frac* ever* mode* neighbor_clu* spcount_clu* clu_ec*
 
 	// Drop remaining monthly variables
 drop modate month summer winter days ctrl_fxn* log* ihs* sp_uuid sp_group ///
-     prem* sa_sp* *dt* parcelid_conc latlon* spcount_parcelid_conc months*
+     prem* sa_sp* *dt* parcelid latlon* spcount_parcelid months*
 
 	// Collapse
 duplicates drop
@@ -1713,7 +1769,7 @@ sort clu_group75 year
 unique clu_group75 year
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/clu75_annual_elec_panel.dta", replace
+save "$dirpath_data/merged_pge/clu75_annual_elec_panel.dta", replace
 
 }
 
@@ -1724,7 +1780,7 @@ save "$dirpath_data/merged/clu75_annual_elec_panel.dta", replace
 if 1==0{
 
 ** Start with monthly water dataset
-use "$dirpath_data/merged/sp_month_water_panel.dta", clear
+use "$dirpath_data/merged_pge/sp_month_water_panel.dta", clear
 
 ** Collapse to SP-year level
 duplicates report sp_group year
@@ -1852,7 +1908,7 @@ foreach v of varlist kwhaf* {
 }
 
 	// Take mean of groundwater depth for year and summer/winter
-foreach v of varlist gw*depth* {
+foreach v of varlist gw*depth* gw*bsn_mean* {
 	foreach s of varlist summer winter {
 		gen temp = `v' if `s'
 		local v2 = "`v'_`s'"
@@ -1974,6 +2030,23 @@ foreach v of varlist mean_p_af* {
 	drop temp
 }
 
+	// Take min of water prices for year and for summer/winter
+foreach v of varlist min_p_af* {
+	foreach s of varlist summer winter {
+		local s2 = substr("`s'",1,2)
+		gen temp = `v' if `s'
+		local v2 = "`v'_`s2'"
+		egen `v2' = min(temp), by(sp_group year)
+		local vlab1: variable label `v'
+		local vlab2 = "`vlab1', `s'"
+		la var `v2' "`vlab2'"
+		drop temp
+	}
+	egen temp = min(`v'), by(sp_group year)
+	replace `v' = temp
+	drop temp
+}
+
 	// Take max of flag variables
 foreach v of varlist flag_* {
 	egen temp = max(`v'), by(sp_group year)
@@ -2060,6 +2133,20 @@ foreach v of varlist degreesC* {
 	drop temp
 }
 
+	// Take sum of precipitation for year and for summer/winter
+foreach s of varlist summer winter {
+	gen temp = precip_mm if `s'
+	local v2 = "precip_mm_`s'"
+	egen `v2' = sum(temp), by(sp_group year)
+	local vlab1: variable label precip_mm
+	local vlab2 = "`vlab1', `s'"
+	la var `v2' "`vlab2'"
+	drop temp
+}
+egen temp = sum(precip_mm), by(sp_group year)
+replace precip_mm = temp
+drop temp
+
 	// Take mean of other numeric variables
 foreach v of varlist interval_bill_corr {
 	egen temp = wtmean(`v'), by(sp_group year) weight(days)
@@ -2068,14 +2155,14 @@ foreach v of varlist interval_bill_corr {
 }
 
 	// Take mode of location variables and IDs
-foreach v of varlist prem* latlon* pump* parcelid_concAPEP clu_*_ecAPEP {
+foreach v of varlist prem* latlon* pump* parcelid_APEP clu_*_APEP {
 	egen temp = mode(`v'), maxmode by(sp_group year)
 	replace `v' = temp
 	drop temp
 }
 
 	// Assign SP counts for APEP location IDs
-foreach v of varlist parcelid_concAPEP clu_*_ecAPEP {
+foreach v of varlist parcelid_APEP clu_*_APEP {
 	local v2 = "spcount_`v'"
 	egen temp = tag(sp_group `v')
 	egen temp_sum = sum(temp), by(`v')
@@ -2307,8 +2394,8 @@ foreach v of varlist af_rast_dd_mth_2SP* {
 }
 
 ** Log-transform water price composite variables
-foreach v of varlist mean_p_af_* {
-	local v2 = subinstr("ln_`v'","mean","mn",1)
+foreach v of varlist mean_p_af_* min_p_af_* {
+	local v2 = subinstr(subinstr("ln_`v'","mean","mn",1),"min","mi",1)
 	gen `v2' = ln(`v') // I actually want the zeros to become missings
 	local vlab: variable label `v'
 	la var `v2' "Log `vlab'"
@@ -2343,7 +2430,7 @@ sort sp_uuid year
 unique sp_uuid year
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/sp_annual_water_panel.dta", replace
+save "$dirpath_data/merged_pge/sp_annual_water_panel.dta", replace
 
 }
 
@@ -2354,7 +2441,7 @@ save "$dirpath_data/merged/sp_annual_water_panel.dta", replace
 if 1==0{
 
 ** Start with monthly water dataset
-use "$dirpath_data/merged/sp_month_water_panel.dta", clear
+use "$dirpath_data/merged_pge/sp_month_water_panel.dta", clear
 
 ** Keep only SP-months that have a CLU ID
 keep if clu_id!=.
@@ -2485,7 +2572,7 @@ foreach v of varlist kwhaf* {
 }
 
 	// Take mean of groundwater depth for year and summer/winter
-foreach v of varlist gw*depth* {
+foreach v of varlist gw*depth* gw*bsn_mean* {
 	foreach s of varlist summer winter {
 		gen temp = `v' if `s'
 		local v2 = "`v'_`s'"
@@ -2607,6 +2694,23 @@ foreach v of varlist mean_p_af* {
 	drop temp
 }
 
+	// Take min of water prices for year and for summer/winter
+foreach v of varlist min_p_af* {
+	foreach s of varlist summer winter {
+		local s2 = substr("`s'",1,2)
+		gen temp = `v' if `s'
+		local v2 = "`v'_`s2'"
+		egen `v2' = min(temp), by(clu_id year)
+		local vlab1: variable label `v'
+		local vlab2 = "`vlab1', `s'"
+		la var `v2' "`vlab2'"
+		drop temp
+	}
+	egen temp = min(`v'), by(clu_id year)
+	replace `v' = temp
+	drop temp
+}
+
 	// Take max of flag variables
 foreach v of varlist *flag* {
 	egen temp = max(`v'), by(clu_id year)
@@ -2659,7 +2763,7 @@ foreach v of varlist rt_group rt_category rt_large_ag hp* kw* ope* {
 }
 
 	// Take mode of group variables
-foreach v of varlist wdist_group county_group basin_group cz_group {
+foreach v of varlist wdist_group county_group basin*group cz_group {
 	egen temp = mode(`v'), maxmode by(clu_id year)
 	replace `v' = temp
 	drop temp
@@ -2721,6 +2825,20 @@ foreach v of varlist degreesC* {
 	replace `v' = temp
 	drop temp
 }
+
+	// Take sum of precipitation for year and for summer/winter
+foreach s of varlist summer winter {
+	gen temp = precip_mm if `s'
+	local v2 = "precip_mm_`s'"
+	egen `v2' = sum(temp), by(clu_id year)
+	local vlab1: variable label precip_mm
+	local vlab2 = "`vlab1', `s'"
+	la var `v2' "`vlab2'"
+	drop temp
+}
+egen temp = sum(precip_mm), by(clu_id year)
+replace precip_mm = temp
+drop temp
 
 	// Take mean of other numeric variables
 foreach v of varlist interval_bill_corr {
@@ -2796,8 +2914,8 @@ la var clu_sp_group "Identifier for group of SPs comprising the CLU"
 
 	// Drop remaining monthly variables
 drop modate month summer winter days ctrl_fxn* log* ln* ihs* L12* L6* gw_qtr_bsn* ///
-	 sp_uuid sp_group prem* sa_sp* *dt* parcelid_conc* latlon* pump* ///
-	 spcount_parcelid_conc* *clu*APEP* months* *test_modate*
+	 sp_uuid sp_group prem* sa_sp* *dt* parcelid* latlon* pump* ///
+	 spcount_parcelid* *clu*APEP* months* *test_modate* *clu_ec*
 
 	// Collapse
 duplicates drop
@@ -2954,8 +3072,8 @@ foreach v of varlist af_rast_dd_mth_2SP* {
 }
 
 ** Log-transform water price composite variables
-foreach v of varlist mean_p_af_* {
-	local v2 = subinstr("ln_`v'","mean","mn",1)
+foreach v of varlist mean_p_af_* min_p_af_* {
+	local v2 = subinstr(subinstr("ln_`v'","mean","mn",1),"min","mi",1)
 	gen `v2' = ln(`v') // I actually want the zeros to become missings
 	local vlab: variable label `v'
 	la var `v2' "Log `vlab'"
@@ -2990,7 +3108,7 @@ sort clu_id year
 unique clu_id year
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/clu_annual_water_panel.dta", replace
+save "$dirpath_data/merged_pge/clu_annual_water_panel.dta", replace
 
 }
 
@@ -2998,16 +3116,16 @@ save "$dirpath_data/merged/clu_annual_water_panel.dta", replace
 *****************************************************************************
 
 ** 7. Parcel-by-year water regression dataset
-if 1==1{
+if 1==0{
 
 ** Start with monthly water dataset
-use "$dirpath_data/merged/sp_month_water_panel.dta", clear
+use "$dirpath_data/merged_pge/sp_month_water_panel.dta", clear
 
 ** Keep only SP-months that have a parcel ID
-keep if parcelid_conc!=.
+keep if parcelid!=.
 
 ** Collapse to parcel-year level
-duplicates report parcelid_conc year
+duplicates report parcelid year
 gen winter = 1-summer
 gen days = .
 replace days = 31 if inlist(month,1,3,5,7,8,10,12)
@@ -3019,13 +3137,13 @@ replace days = 28 if month==2 & !inlist(year,2008,2012,2016)
 foreach v of varlist mnth* {
 	foreach s of varlist summer winter {
 		local v2 = subinstr("`v'","mnth","`s'",1)
-		egen `v2' = sum(`v'*`s'), by(parcelid_conc year)
+		egen `v2' = sum(`v'*`s'), by(parcelid year)
 		local vlab1: variable label `v'
 		local vlab2 = subinstr("`vlab1'","monthified","`s'",1)
 		la var `v2' "`vlab2'"
 	}
 	local v2 = subinstr("`v'","mnth","ann",1)
-	egen `v2' = sum(`v'), by(parcelid_conc year)
+	egen `v2' = sum(`v'), by(parcelid year)
 	local vlab1: variable label `v'
 	local vlab2 = subinstr("`vlab1'","monthified","annual",1)
 	la var `v2' "`vlab2'"
@@ -3037,13 +3155,13 @@ foreach v of varlist mean_p_kwh* {
 	foreach s of varlist summer winter {
 		gen temp = `v' if `s'
 		local v2 = "`v'_`s'"
-		egen `v2' = wtmean(temp), by(parcelid_conc year) weight(days)
+		egen `v2' = wtmean(temp), by(parcelid year) weight(days)
 		local vlab1: variable label `v'
 		local vlab2 = "`vlab1', `s'"
 		la var `v2' "`vlab2'"
 		drop temp
 	}
-	egen temp = wtmean(`v'), by(parcelid_conc year) weight(days)
+	egen temp = wtmean(`v'), by(parcelid year) weight(days)
 	replace `v' = temp
 	drop temp
 }
@@ -3053,13 +3171,13 @@ foreach v of varlist min_p_kwh* {
 	foreach s of varlist summer winter {
 		gen temp = `v' if `s'
 		local v2 = "`v'_`s'"
-		egen `v2' = min(temp), by(parcelid_conc year)
+		egen `v2' = min(temp), by(parcelid year)
 		local vlab1: variable label `v'
 		local vlab2 = "`vlab1', `s'"
 		la var `v2' "`vlab2'"
 		drop temp
 	}
-	egen temp = min(`v'), by(parcelid_conc year)
+	egen temp = min(`v'), by(parcelid year)
 	replace `v' = temp
 	drop temp
 }
@@ -3069,13 +3187,13 @@ foreach v of varlist max_p_kwh* {
 	foreach s of varlist summer winter {
 		gen temp = `v' if `s'
 		local v2 = "`v'_`s'"
-		egen `v2' = max(temp), by(parcelid_conc year)
+		egen `v2' = max(temp), by(parcelid year)
 		local vlab1: variable label `v'
 		local vlab2 = "`vlab1', `s'"
 		la var `v2' "`vlab2'"
 		drop temp
 	}
-	egen temp = max(`v'), by(parcelid_conc year)
+	egen temp = max(`v'), by(parcelid year)
 	replace `v' = temp
 	drop temp
 }
@@ -3085,14 +3203,14 @@ foreach v of varlist p_kwh* {
 	foreach s of varlist summer winter {
 		gen temp = `v' if `s'
 		local v2 = "mean_`v'_`s'"
-		egen `v2' = wtmean(temp), by(parcelid_conc year) weight(days)
+		egen `v2' = wtmean(temp), by(parcelid year) weight(days)
 		local vlab1: variable label `v'
 		local vlab2 = "Avg daily `vlab1', `s'"
 		la var `v2' "`vlab2'"
 		drop temp
 	}
 	local v2 = "mean_`v'"
-	egen `v2' = wtmean(`v'), by(parcelid_conc year) weight(days)
+	egen `v2' = wtmean(`v'), by(parcelid year) weight(days)
 	local vlab1: variable label `v'
 	local vlab2 = "Avg daily `vlab1'"
 	la var `v2' "`vlab2'"
@@ -3104,13 +3222,13 @@ foreach v of varlist mean_p_kw_* {
 	foreach s of varlist summer winter {
 		gen temp = `v' if `s'
 		local v2 = "`v'_`s'"
-		egen `v2' = wtmean(temp), by(parcelid_conc year) weight(days)
+		egen `v2' = wtmean(temp), by(parcelid year) weight(days)
 		local vlab1: variable label `v'
 		local vlab2 = "`vlab1', `s'"
 		la var `v2' "`vlab2'"
 		drop temp
 	}
-	egen temp = wtmean(`v'), by(parcelid_conc year) weight(days)
+	egen temp = wtmean(`v'), by(parcelid year) weight(days)
 	replace `v' = temp
 	drop temp
 }
@@ -3120,29 +3238,29 @@ foreach v of varlist kwhaf* {
 	foreach s of varlist summer winter {
 		gen temp = `v' if `s'
 		local v2 = "`v'_`s'"
-		egen `v2' = wtmean(temp), by(parcelid_conc year) weight(days)
+		egen `v2' = wtmean(temp), by(parcelid year) weight(days)
 		local vlab1: variable label `v'
 		local vlab2 = "`vlab1', `s'"
 		la var `v2' "`vlab2'"
 		drop temp
 	}
-	egen temp = wtmean(`v'), by(parcelid_conc year) weight(days)
+	egen temp = wtmean(`v'), by(parcelid year) weight(days)
 	replace `v' = temp
 	drop temp
 }
 
 	// Take mean of groundwater depth for year and summer/winter
-foreach v of varlist gw*depth* {
+foreach v of varlist gw*depth* gw*bsn_mean* {
 	foreach s of varlist summer winter {
 		gen temp = `v' if `s'
 		local v2 = "`v'_`s'"
-		egen `v2' = wtmean(temp), by(parcelid_conc year) weight(days)
+		egen `v2' = wtmean(temp), by(parcelid year) weight(days)
 		local vlab1: variable label `v'
 		local vlab2 = "`vlab1', `s'"
 		la var `v2' "`vlab2'"
 		drop temp
 	}
-	egen temp = wtmean(`v'), by(parcelid_conc year) weight(days)
+	egen temp = wtmean(`v'), by(parcelid year) weight(days)
 	replace `v' = temp
 	drop temp
 }
@@ -3152,9 +3270,9 @@ foreach v of varlist gw*dist* {
 	local v_mean = subinstr("`v'","dist","distmean",1)
 	local v_min = subinstr("`v'","dist","distmin",1)
 	local v_max = subinstr("`v'","dist","distmax",1)
-	egen `v_mean' = wtmean(`v'), by(parcelid_conc year) weight(days)
-	egen `v_min' = min(`v'), by(parcelid_conc year)
-	egen `v_max' = max(`v'), by(parcelid_conc year)
+	egen `v_mean' = wtmean(`v'), by(parcelid year) weight(days)
+	egen `v_min' = min(`v'), by(parcelid year)
+	egen `v_max' = max(`v'), by(parcelid year)
 	local vlab1: variable label `v'
 	local vlab2 = subinstr(lower("`vlab1'"),"measurement","meas",1)
 	if strpos("`v'","mth")>0 {
@@ -3174,9 +3292,9 @@ foreach v of varlist gw*dist* {
 		local v2_mean = "`v_mean'_`s'"
 		local v2_min = "`v_min'_`s'"
 		local v2_max = "`v_max'_`s'"
-		egen `v2_mean' = wtmean(temp), by(parcelid_conc year) weight(days)
-		egen `v2_min' = min(temp), by(parcelid_conc year)
-		egen `v2_max' = max(temp), by(parcelid_conc year)
+		egen `v2_mean' = wtmean(temp), by(parcelid year) weight(days)
+		egen `v2_min' = min(temp), by(parcelid year)
+		egen `v2_max' = max(temp), by(parcelid year)
 		local vlab2_mean = "`vlab_mean', `s'"
 		local vlab2_min = "`vlab_min', `s'"
 		local vlab2_max = "`vlab_max', `s'"
@@ -3193,9 +3311,9 @@ foreach v of varlist gw*cnt* {
 	local v_mean = subinstr("`v'","cnt","cntmean",1)
 	local v_min = subinstr("`v'","cnt","cntmin",1)
 	local v_max = subinstr("`v'","cnt","cntmax",1)
-	egen `v_mean' = wtmean(`v'), by(parcelid_conc year) weight(days)
-	egen `v_min' = min(`v'), by(parcelid_conc year)
-	egen `v_max' = max(`v'), by(parcelid_conc year)
+	egen `v_mean' = wtmean(`v'), by(parcelid year) weight(days)
+	egen `v_min' = min(`v'), by(parcelid year)
+	egen `v_max' = max(`v'), by(parcelid year)
 	local vlab1: variable label `v'
 	local vlab2 = subinstr(subinstr(subinstr(lower("`vlab1'"),"measurements","meas",1),"questionable","ques",1),"observation","obs",1)
 	local vlab_mean = "Mean `vlab2'"
@@ -3209,9 +3327,9 @@ foreach v of varlist gw*cnt* {
 		local v2_mean = "`v_mean'_`s'"
 		local v2_min = "`v_min'_`s'"
 		local v2_max = "`v_max'_`s'"
-		egen `v2_mean' = wtmean(temp), by(parcelid_conc year) weight(days)
-		egen `v2_min' = min(temp), by(parcelid_conc year)
-		egen `v2_max' = max(temp), by(parcelid_conc year)
+		egen `v2_mean' = wtmean(temp), by(parcelid year) weight(days)
+		egen `v2_min' = min(temp), by(parcelid year)
+		egen `v2_max' = max(temp), by(parcelid year)
 		local vlab2_mean = "`vlab_mean', `s'"
 		local vlab2_min = "`vlab_min', `s'"
 		local vlab2_max = "`vlab_max', `s'"
@@ -3227,12 +3345,12 @@ foreach v of varlist gw*cnt* {
 foreach v of varlist af* {
 	foreach s of varlist summer winter {
 		local v2 = "`v'_`s'"
-		egen `v2' = sum(`v'*`s'), by(parcelid_conc year)
+		egen `v2' = sum(`v'*`s'), by(parcelid year)
 		local vlab1: variable label `v'
 		local vlab2 = "`vlab1', `s'"
 		la var `v2' "`vlab2'"
 	}
-	egen temp = sum(`v'), by(parcelid_conc year)
+	egen temp = sum(`v'), by(parcelid year)
 	replace `v' = temp
 	drop temp
 }
@@ -3243,20 +3361,37 @@ foreach v of varlist mean_p_af* {
 		local s2 = substr("`s'",1,2)
 		gen temp = `v' if `s'
 		local v2 = "`v'_`s2'"
-		egen `v2' = wtmean(temp), by(parcelid_conc year) weight(days)
+		egen `v2' = wtmean(temp), by(parcelid year) weight(days)
 		local vlab1: variable label `v'
 		local vlab2 = "`vlab1', `s'"
 		la var `v2' "`vlab2'"
 		drop temp
 	}
-	egen temp = wtmean(`v'), by(parcelid_conc year) weight(days)
+	egen temp = wtmean(`v'), by(parcelid year) weight(days)
+	replace `v' = temp
+	drop temp
+}
+
+	// Take min of water prices for year and for summer/winter
+foreach v of varlist min_p_af* {
+	foreach s of varlist summer winter {
+		local s2 = substr("`s'",1,2)
+		gen temp = `v' if `s'
+		local v2 = "`v'_`s2'"
+		egen `v2' = min(temp), by(parcelid year)
+		local vlab1: variable label `v'
+		local vlab2 = "`vlab1', `s'"
+		la var `v2' "`vlab2'"
+		drop temp
+	}
+	egen temp = min(`v'), by(parcelid year)
 	replace `v' = temp
 	drop temp
 }
 
 	// Take max of flag variables
 foreach v of varlist *flag* {
-	egen temp = max(`v'), by(parcelid_conc year)
+	egen temp = max(`v'), by(parcelid year)
 	replace `v' = temp
 	drop temp
 }
@@ -3267,7 +3402,7 @@ foreach v of varlist rt_sched_cd rt_category rt_large_ag hp_bin_dec kw_bin_dec o
 	egen temp_sp = sum(temp_tag), by(sp_group year)
 	gen temp_flag = (temp_sp>1)
 	local v2 = "flag_`v'_switch"
-	egen `v2' = max(temp_flag), by(parcelid_conc year)
+	egen `v2' = max(temp_flag), by(parcelid year)
 	drop temp*
 }
 la var flag_rt_sched_cd_switch "Flag indicating SP in parcel switched rate within year"
@@ -3280,14 +3415,14 @@ la var flag_ope_bin_dec_switch "Flag indicating SP in parcel switched OPE decile
 	// Create a flag for SP-years with < 12 months
 egen temp = count(modate), by(sp_group year)
 gen temp_flag = (temp<12)
-egen flag_partial_year = max(temp_flag), by(parcelid_conc year)
+egen flag_partial_year = max(temp_flag), by(parcelid year)
 drop temp*
 la var flag_partial_year "Flag indicating a parcel-year includes an SP-year with <12 months of bills"
 replace flag_irregular_bill = max(flag_irregular_bill,flag_partial_year)
 
 	// Take mode of string rate variables
 foreach v of varlist rt_sched_cd rt_default rt_modal rt_sched_cd_init {
-	egen temp = mode(`v'), by(parcelid_conc year)
+	egen temp = mode(`v'), by(parcelid year)
 	replace `v' = temp
 	local vlab1: variable label `v'
 	local vlab2 = "`vlab1', mode of SP-months in parcel-year"
@@ -3297,7 +3432,7 @@ foreach v of varlist rt_sched_cd rt_default rt_modal rt_sched_cd_init {
 
 	// Take mode of numeric rate and bin variables
 foreach v of varlist rt_group rt_category rt_large_ag hp* kw* ope* {
-	egen temp = mode(`v'), maxmode by(parcelid_conc year)
+	egen temp = mode(`v'), maxmode by(parcelid year)
 	replace `v' = temp
 	drop temp
 	local vlab1: variable label `v'
@@ -3306,8 +3441,8 @@ foreach v of varlist rt_group rt_category rt_large_ag hp* kw* ope* {
 }
 
 	// Take mode of group variables
-foreach v of varlist wdist_group county_group basin_group cz_group {
-	egen temp = mode(`v'), maxmode by(parcelid_conc year)
+foreach v of varlist wdist_group county_group basin*group cz_group {
+	egen temp = mode(`v'), maxmode by(parcelid year)
 	replace `v' = temp
 	drop temp
 	local vlab1: variable label `v'
@@ -3316,13 +3451,13 @@ foreach v of varlist wdist_group county_group basin_group cz_group {
 }
 
 	// Take mode of county
-egen temp = mode(county), maxmode by(parcelid_conc year)
+egen temp = mode(county), maxmode by(parcelid year)
 replace county = temp
 drop temp
 
 	// Take min of rate indicator variables
 foreach v of varlist sp_same_rate* {
-	egen temp = min(`v'), by(parcelid_conc year)
+	egen temp = min(`v'), by(parcelid year)
 	replace `v' = temp
 	drop temp
 	local vlab1: variable label `v'
@@ -3331,10 +3466,10 @@ foreach v of varlist sp_same_rate* {
 }
 
 	// Take mode of drawdown prediction variables
-egen temp = mode(drwdwn_predict_step), maxmode by(parcelid_conc year)
+egen temp = mode(drwdwn_predict_step), maxmode by(parcelid year)
 gen temp_desc = drwdwn_predict_step_desc if temp==drwdwn_predict_step
 replace drwdwn_predict_step = temp
-egen temp_mode = mode(temp_desc), by(parcelid_conc year)
+egen temp_mode = mode(temp_desc), by(parcelid year)
 replace drwdwn_predict_step_desc = temp_mode
 local vlab1: variable label drwdwn_predict_step
 local vlab2 = "`vlab1', mode of SP-months in parcel-year"
@@ -3346,14 +3481,14 @@ drop temp*
 
 	// Take max of other indicator variables
 foreach v of varlist in_calif in_pge in_pou in_interval net_mtr_ind dr_ind elec_binary {
-	egen temp = max(`v'), by(parcelid_conc year)
+	egen temp = max(`v'), by(parcelid year)
 	replace `v' = temp
 	drop temp
 }
 
 	// Calculate fraction of parcel-months with electricity consumption
-egen temp_mo = max(elec_binary), by(parcelid_conc modate)
-egen temp_mean = mean(temp_mo), by(parcelid_conc)
+egen temp_mo = max(elec_binary), by(parcelid modate)
+egen temp_mean = mean(temp_mo), by(parcelid)
 replace elec_binary_frac = temp_mean
 la var elec_binary_frac "Fraction of parcel's months with kwh>0"
 drop temp*
@@ -3363,48 +3498,62 @@ foreach v of varlist degreesC* {
 	foreach s of varlist summer winter {
 		gen temp = `v' if `s'
 		local v2 = "`v'_`s'"
-		egen `v2' = wtmean(temp), by(parcelid_conc year) weight(days)
+		egen `v2' = wtmean(temp), by(parcelid year) weight(days)
 		local vlab1: variable label `v'
 		local vlab2 = "`vlab1', `s'"
 		la var `v2' "`vlab2'"
 		drop temp
 	}
-	egen temp = wtmean(`v'), by(parcelid_conc year) weight(days)
+	egen temp = wtmean(`v'), by(parcelid year) weight(days)
 	replace `v' = temp
 	drop temp
 }
 
+	// Take sum of precipitation for year and for summer/winter
+foreach s of varlist summer winter {
+	gen temp = precip_mm if `s'
+	local v2 = "precip_mm_`s'"
+	egen `v2' = sum(temp), by(parcelid year)
+	local vlab1: variable label precip_mm
+	local vlab2 = "`vlab1', `s'"
+	la var `v2' "`vlab2'"
+	drop temp
+}
+egen temp = sum(precip_mm), by(parcelid year)
+replace precip_mm = temp
+drop temp
+
 	// Take mean of other numeric variables
 foreach v of varlist interval_bill_corr {
-	egen temp = wtmean(`v'), by(parcelid_conc year) weight(days)
+	egen temp = wtmean(`v'), by(parcelid year) weight(days)
 	replace `v' = temp
 	drop temp
 }
 
 	// Take max of EE measures
-egen temp_tag = tag(sp_group parcelid_conc)
+egen temp_tag = tag(sp_group parcelid)
 egen temp_count = max(ee_measure_count), by(sp_group)
 gen temp_prod = temp_tag*temp_count
-egen temp_parc = sum(temp_prod), by(parcelid_conc)
+egen temp_parc = sum(temp_prod), by(parcelid)
 replace ee_measure_count = temp_parc
 drop temp*
 
 	// Take max of APEP project indicators
 foreach v of varlist post_apep_proj_finish extrap* {
-	egen temp = max(`v'), by(parcelid_conc year)
+	egen temp = max(`v'), by(parcelid year)
 	replace `v' = temp
 	drop temp
 }
 
 	// Take min of APEP project finish date
-egen temp = min(date_proj_finish), by(parcelid_conc year)
+egen temp = min(date_proj_finish), by(parcelid year)
 replace date_proj_finish = temp
 la var date_proj_finish "Date of first project finsihed in parcel"
 drop temp
 
 	// Take mode of other APEP indicators and IDs
 foreach v of varlist apep_interp_case apeptestid* {
-	egen temp = mode(`v'), maxmode by(parcelid_conc year)
+	egen temp = mode(`v'), maxmode by(parcelid year)
 	replace `v' = temp
 	drop temp
 	local vlab1: variable label `v'
@@ -3413,50 +3562,50 @@ foreach v of varlist apep_interp_case apeptestid* {
 }
 
 	// Take sum of APEP projects
-egen temp_tag = tag(sp_group parcelid_conc)
+egen temp_tag = tag(sp_group parcelid)
 gen temp_count = temp_tag*apep_proj_count
-egen temp_parc = sum(temp_count), by(parcelid_conc)
+egen temp_parc = sum(temp_count), by(parcelid)
 replace apep_proj_count = temp_parc
 drop temp*
 
 	// Count SPs in parcel and parcel-year
-egen temp_parc = tag(sp_group parcelid_conc)
-egen spcount_parcel = sum(temp_parc), by(parcelid_conc)
-egen temp_py = tag(sp_group parcelid_conc year)
-egen spcount_parcel_year = sum(temp_py), by(parcelid_conc year)
+egen temp_parc = tag(sp_group parcelid)
+egen spcount_parcel = sum(temp_parc), by(parcelid)
+egen temp_py = tag(sp_group parcelid year)
+egen spcount_parcel_year = sum(temp_py), by(parcelid year)
 la var spcount_parcel "Number of SPs in parcel over all years"
 la var spcount_parcel_year "Number of SPs in parcel in a year"
 drop temp*
 
 	// Create indicator for set of SPs within a parcel for each year
 preserve
-keep sp_uuid parcelid_conc year
+keep sp_uuid parcelid year
 duplicates drop
-sort parcelid_conc year sp_uuid
-egen parc_year_group = group(parcelid_conc year)
+sort parcelid year sp_uuid
+egen parc_year_group = group(parcelid year)
 bysort parc_year_group (sp_uuid) : gen parc_year_n = _n
-reshape wide sp_uuid, i(parcelid_conc year) j(parc_year_n)
-egen parcel_sp_group = group(parcelid_conc sp_uuid*), missing
-keep parcelid_conc year parcel_sp_group
+reshape wide sp_uuid, i(parcelid year) j(parc_year_n)
+egen parcel_sp_group = group(parcelid sp_uuid*), missing
+keep parcelid year parcel_sp_group
 tempfile parcel_sp_group
 save `parcel_sp_group'
 restore
-merge m:1 parcelid_conc year using `parcel_sp_group'
+merge m:1 parcelid year using `parcel_sp_group'
 assert _merge==3
 drop _merge
 la var parcel_sp_group "Identifier for group of SPs comprising the parcel"
 
 	// Drop CLU-specific variables
-drop clu* crop* frac* ever* acres* mode* 
+drop clu* frac* ever* mode* neighbor_clu* spcount_clu*
 
 	// Drop remaining monthly variables
 drop modate month summer winter days ctrl_fxn* log* ln* ihs* L12* L6* gw_qtr_bsn* ///
-	 sp_uuid sp_group prem* sa_sp* *dt* parcelid_concAPEP latlon* pump* ///
-	 spcount_parcelid_conc* *clu*APEP* months* *test_modate*
+	 sp_uuid sp_group prem* sa_sp* *dt* parcelid_APEP latlon* pump* ///
+	 spcount_parcelid* months* *test_modate*
 
 	// Collapse
 duplicates drop
-unique parcelid_conc year
+unique parcelid year
 assert r(unique)==r(N)
 
 ** Inverse hyperbolic sine and log transform electricity quantity
@@ -3512,7 +3661,7 @@ foreach v of varlist *p_kwh_e1* *p_kwh_e20* *p_kwh_ag_default* *p_kwh_ag_modal* 
 }	
 
 ** Construct instruments of lagged electricity prices
-tsset parcelid_conc year
+tsset parcelid year
 foreach v of varlist log_p* {
 	local vpre = subinstr(subinstr(substr("`v'",7,.),"_summer","",1),"_winter","",1)
 	local v2 = subinstr("`v'","`vpre'","`vpre'_lag",1)
@@ -3609,8 +3758,8 @@ foreach v of varlist af_rast_dd_mth_2SP* {
 }
 
 ** Log-transform water price composite variables
-foreach v of varlist mean_p_af_* {
-	local v2 = subinstr("ln_`v'","mean","mn",1)
+foreach v of varlist mean_p_af_* min_p_af_* {
+	local v2 = subinstr(subinstr("ln_`v'","mean","mn",1),"min","mi",1)
 	gen `v2' = ln(`v') // I actually want the zeros to become missings
 	local vlab: variable label `v'
 	la var `v2' "Log `vlab'"
@@ -3632,7 +3781,7 @@ foreach v of varlist gw_mean_* {
 }
 
 ** Lag depth instrument(s)
-tsset parcelid_conc year
+tsset parcelid year
 foreach v of varlist *gw_mean_depth_mth_2SP* {
 	local v2 = subinstr(subinstr("L_`v'","summer","su",1),"winter","wi",1)
 	gen `v2' = L.`v'
@@ -3640,12 +3789,12 @@ foreach v of varlist *gw_mean_depth_mth_2SP* {
 }
 
 ** Save
-order parcelid_conc year
-sort parcelid_conc year
-unique parcelid_conc year
+order parcelid year
+sort parcelid year
+unique parcelid year
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/parcel_annual_water_panel.dta", replace
+save "$dirpath_data/merged_pge/parcel_annual_water_panel.dta", replace
 
 }
 
@@ -3656,7 +3805,7 @@ save "$dirpath_data/merged/parcel_annual_water_panel.dta", replace
 if 1==0{
 
 ** Start with monthly water dataset
-use "$dirpath_data/merged/sp_month_water_panel.dta", clear
+use "$dirpath_data/merged_pge/sp_month_water_panel.dta", clear
 
 ** Keep only SP-months that have a CLU group75 ID
 keep if clu_group75!=.
@@ -3787,7 +3936,7 @@ foreach v of varlist kwhaf* {
 }
 
 	// Take mean of groundwater depth for year and summer/winter
-foreach v of varlist gw*depth* {
+foreach v of varlist gw*depth* gw*bsn_mean* {
 	foreach s of varlist summer winter {
 		gen temp = `v' if `s'
 		local v2 = "`v'_`s'"
@@ -3909,6 +4058,23 @@ foreach v of varlist mean_p_af* {
 	drop temp
 }
 
+	// Take min of water prices for year and for summer/winter
+foreach v of varlist min_p_af* {
+	foreach s of varlist summer winter {
+		local s2 = substr("`s'",1,2)
+		gen temp = `v' if `s'
+		local v2 = "`v'_`s2'"
+		egen `v2' = min(temp), by(clu_group75 year)
+		local vlab1: variable label `v'
+		local vlab2 = "`vlab1', `s'"
+		la var `v2' "`vlab2'"
+		drop temp
+	}
+	egen temp = min(`v'), by(clu_group75 year)
+	replace `v' = temp
+	drop temp
+}
+
 	// Take max of flag variables
 foreach v of varlist *flag* {
 	egen temp = max(`v'), by(clu_group75 year)
@@ -3961,7 +4127,7 @@ foreach v of varlist rt_group rt_category rt_large_ag hp* kw* ope* {
 }
 
 	// Take mode of group variables
-foreach v of varlist wdist_group county_group basin_group cz_group {
+foreach v of varlist wdist_group county_group basin*group cz_group {
 	egen temp = mode(`v'), maxmode by(clu_group75 year)
 	replace `v' = temp
 	drop temp
@@ -4023,6 +4189,20 @@ foreach v of varlist degreesC* {
 	replace `v' = temp
 	drop temp
 }
+
+	// Take sum of precipitation for year and for summer/winter
+foreach s of varlist summer winter {
+	gen temp = precip_mm if `s'
+	local v2 = "precip_mm_`s'"
+	egen `v2' = sum(temp), by(clu_group75 year)
+	local vlab1: variable label precip_mm
+	local vlab2 = "`vlab1', `s'"
+	la var `v2' "`vlab2'"
+	drop temp
+}
+egen temp = sum(precip_mm), by(clu_group75 year)
+replace precip_mm = temp
+drop temp
 
 	// Take mean of other numeric variables
 foreach v of varlist interval_bill_corr {
@@ -4097,12 +4277,12 @@ drop _merge
 la var clu75_sp_group "Identifier for group of SPs comprising the CLU75"
 
 	// Drop CLU-specific variables
-drop clu_id clu_group0 clu_group10 clu_group25 clu_group50 cluacres crop* frac* ever* acres* mode* 
+drop clu_id clu_group0 clu_group10 clu_group25 clu_group50 cluacres frac* ever* mode* neighbor_clu* spcount_clu* clu_ec*
 
 	// Drop remaining monthly variables
 drop modate month summer winter days ctrl_fxn* log* ln* ihs* L12* L6* gw_qtr_bsn* ///
-	 sp_uuid sp_group prem* sa_sp* *dt* parcelid_conc* latlon* pump* ///
-	 spcount_parcelid_conc* *clu*APEP* months* *test_modate*
+	 sp_uuid sp_group prem* sa_sp* *dt* parcelid* latlon* pump* ///
+	 spcount_parcelid* *clu*APEP* months* *test_modate*
 
 	// Collapse
 duplicates drop
@@ -4259,8 +4439,8 @@ foreach v of varlist af_rast_dd_mth_2SP* {
 }
 
 ** Log-transform water price composite variables
-foreach v of varlist mean_p_af_* {
-	local v2 = subinstr("ln_`v'","mean","mn",1)
+foreach v of varlist mean_p_af_* min_p_af_* {
+	local v2 = subinstr(subinstr("ln_`v'","mean","mn",1),"min","mi",1)
 	gen `v2' = ln(`v') // I actually want the zeros to become missings
 	local vlab: variable label `v'
 	la var `v2' "Log `vlab'"
@@ -4303,7 +4483,7 @@ sort clu_group75 year
 unique clu_group75 year
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/merged/clu75_annual_water_panel.dta", replace
+save "$dirpath_data/merged_pge/clu75_annual_water_panel.dta", replace
 
 }
 
