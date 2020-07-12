@@ -32,7 +32,37 @@ forvalues r = 1/4 {
 	local mfx_se_`r' = string(mfx_se[`r']*100,"%9.3f")
 	local elas_`r' = string(elas[`r'],"%9.3f")
 	local elas_se_`r' = string(elas_se[`r'],"%9.3f")
+	
+	local pval_mfx_`r' = 2*ttail(dof[999999],abs(mfx[`r']/mfx_se[`r]'))
+	if `pval_mfx_`r''<0.01 {
+		local stars_mfx_`r' = "$^{***}$"
+	}
+	else if `pval_mfx_`r''<0.05 {
+		local stars_mfx_`r' = "$^{**}$"
+	}
+	else if `pval_mfx_`r''<0.1 {
+		local stars_mfx_`r' = "$^{*}$"
+	}
+	else {
+		local stars_mfx_`r' = ""
+	}
+
+	local pval_elas_`r' = 2*ttail(dof[999999],abs(elas[`r']/elas_se[`r]')))
+	if `pval_elas_`r''<0.01 {
+		local stars_elas_`r' = "$^{***}$"
+	}
+	else if `pval_elas_`r''<0.05 {
+		local stars_elas_`r' = "$^{**}$"
+	}
+	else if `pval_elas_`r''<0.1 {
+		local stars_elas_`r' = "$^{*}$"
+	}
+	else {
+		local stars_elas_`r' = ""
+	}
+	
 }
+
 
 // save number of CLUs and observations and first-stage chi-squared stat
 local n_clu = string(n_clu[1],"%9.0fc")
@@ -60,7 +90,7 @@ file open textab using "$dirpath_output/table_probit_results.tex", write text re
 
 file write textab "\begin{table}[t!]\centering" _n
 file write textab "\small" _n
-file write textab "\caption{Results of Crop Choice Model \label{tab:probit_results}}" _n
+file write textab "\caption{Discrete choice model crop switching estimates \label{tab:probit_results}}" _n
 file write textab "\vspace{-0.1cm}" _n
 file write textab "\small" _n
 file write textab "\begin{adjustbox}{center} " _n
@@ -68,24 +98,27 @@ file write textab "\begin{tabular}{lcc} " _n
 file write textab "\hline \hline" _n
 file write textab "\vspace{-0.37cm}" _n
 file write textab "\\" _n
-file write textab " & Marginal Effect & Semi-Elasticity \\" _n
+file write textab " & Marginal effect & Semi-elasticity \\" _n
 file write textab "\vspace{-0.37cm}" _n
 file write textab "\\" _n
 file write textab "\cline{2-3}" _n
 file write textab "\vspace{-0.27cm}" _n
 file write textab "\\" _n
-file write textab "Annuals & $`mfx_2'$ & $`elas_2'$ \\ " _n
+file write textab "Annuals & $`mfx_2'$`stars_mfx_2' & $`elas_2'$`stars_elas_2' \\ " _n
 file write textab "& $(`mfx_se_2')$ & $(`elas_se_2')$ \\ " _n
 file write textab "[0.1em]" _n
-file write textab "Fruit and nut perennials & $`mfx_3'$ & $`elas_3'$ \\ " _n
+file write textab "Fruit and nut perennials & $`mfx_3'$`stars_mfx_3' & $`elas_3'$`stars_elas_3' \\ " _n
 file write textab "& $(`mfx_se_3')$ & $(`elas_se_3')$ \\ " _n
 file write textab "[0.1em]" _n
-file write textab "Other perennials & $`mfx_4'$ & $`elas_4'$ \\ " _n
+file write textab "Other perennials & $`mfx_4'$`stars_mfx_4' & $`elas_4'$`stars_elas_4' \\ " _n
 file write textab "& $(`mfx_se_4')$ & $(`elas_se_4')$ \\ " _n
 file write textab "[0.1em]" _n
-file write textab "Fallow & $`mfx_1'$ & $`elas_1'$ \\ " _n
+file write textab "Fallow & $`mfx_1'$`stars_mfx_1' & $`elas_1'$`stars_elas_1' \\ " _n
 file write textab "& $(`mfx_se_1')$ & $(`elas_se_1')$ \\ " _n
 file write textab "[1.5em]" _n
+file write textab "Instrument: \\ " _n
+file write textab "[0.1em] " _n
+file write textab "~~Default $\log(P^{\text{elec}}_{iy})$ & \multicolumn{2}{c}{Yes} \\ " _n
 file write textab "Fixed effects: \\ " _n
 file write textab "[0.1em] " _n
 file write textab "~~County $\times$ year $\times$ crop type & \multicolumn{2}{c}{Yes} \\ " _n
@@ -112,7 +145,7 @@ file open textab using "$dirpath_output/table_sim_acres.tex", write text replace
 
 file write textab "\begin{table}[t!]\centering" _n
 file write textab "\small" _n
-file write textab "\caption{Acreage Under a Counterfactual Groundwater Tax \label{tab:sim_acres}}" _n
+file write textab "\caption{Acreage under counterfactual groundwater taxes \label{tab:sim_acres}}" _n
 file write textab "\vspace{-0.1cm}" _n
 file write textab "\small" _n
 file write textab "\begin{adjustbox}{center} " _n
@@ -120,9 +153,9 @@ file write textab "\begin{tabular}{lcccccc} " _n
 file write textab "\hline \hline" _n
 file write textab "\vspace{-0.37cm}" _n
 file write textab "\\" _n
-file write textab "& \multicolumn{6}{c}{Counterfactual Acreage (1000 acres)} \\" _n
-file write textab "\cmidrule{2-7}" _n
-file write textab " & No Tax & \\$5 Tax & \\$10 Tax & \\$15 Tax & \\$20 Tax & \\$25 Tax \\" _n
+file write textab "& & \multicolumn{5}{c}{Counterfactual acreage (thousands of acres)} \\" _n
+file write textab "\cmidrule{3-7}" _n
+file write textab " & No tax & \\$5 tax & \\$10 tax & \\$15 tax & \\$20 tax & \\$25 tax \\" _n
 file write textab "\vspace{-0.37cm}" _n
 file write textab "\\" _n
 file write textab "\cline{2-7}" _n
@@ -137,7 +170,7 @@ file write textab "[0.1em]" _n
 file write textab "Fallow & $`acres_0tax_1'$ & $`acres_5tax_1'$ & $`acres_10tax_1'$ & $`acres_15tax_1'$ & $`acres_20tax_1'$ & $`acres_25tax_1'$ \\ " _n
 file write textab "[0.5em]" _n
 file write textab "Total reallocation & & $`acres_5tax_reall'$ & $`acres_10tax_reall'$ & $`acres_15tax_reall'$ & $`acres_20tax_reall'$ & $`acres_25tax_reall'$ \\ " _n
-file write textab "& & $(`acres_5tax_reall_pct'\%)$ & $(`acres_10tax_reall_pct'\%)$ & $(`acres_15tax_reall_pct'\%)$ & $(`acres_20tax_reall_pct'\%)$ & $(`acres_25tax_reall_pct'\%)$ \\ " _n
+file write textab "Total reallocation (percent) & & $(`acres_5tax_reall_pct'\%)$ & $(`acres_10tax_reall_pct'\%)$ & $(`acres_15tax_reall_pct'\%)$ & $(`acres_20tax_reall_pct'\%)$ & $(`acres_25tax_reall_pct'\%)$ \\ " _n
 file write textab "[0.15em]" _n
 file write textab "\hline" _n
 file write textab "\end{tabular}" _n
