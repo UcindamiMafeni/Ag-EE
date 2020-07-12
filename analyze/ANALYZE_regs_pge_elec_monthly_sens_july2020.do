@@ -106,7 +106,7 @@ gen fs_t_modlag6 = .
 
 	
 // Loop over sensitivities
-foreach c of numlist 1/61 {
+foreach c of numlist 70/70 {
 
 	// Reset default locals
 	local ifs_sample = ""
@@ -361,7 +361,46 @@ foreach c of numlist 1/61 {
 		local sens = "Control for current & lagged monthly precipitation and temperature"
 		local RHS = "${RHS} precip_mm Lprecip_mm degreesC_* LdegreesC_min LdegreesC_max LdegreesC_mean"
 	}
-	
+	if `c'==62 {
+		local sens = "SP*month FEs, + interact month-of-sample FEs with HP decile bins"
+		local FEs = "sp_group#month hp_bin_dec#modate"
+	}
+	if `c'==63 {
+		local sens = "SP*month FEs, + interact month-of-sample FEs with KW decile bins"
+		local FEs = "sp_group#month kw_bin_dec#modate"
+	}
+	if `c'==64 {
+		local sens = "SP*month FEs, + interact month-of-sample FEs with OPE decile bins"
+		local FEs = "sp_group#month ope_bin_dec#modate"
+	}
+	if `c'==65 {
+		local sens = "SP*month and SP*large FEs, + interact month-of-sample FEs with HP decile bins"
+		local FEs = "sp_group#month sp_group#rt_large_ag hp_bin_dec#modate"
+	}
+	if `c'==66 {
+		local sens = "SP*month and SP*large FEs, + interact month-of-sample FEs with KW decile bins"
+		local FEs = "sp_group#month sp_group#rt_large_ag kw_bin_dec#modate"
+	}
+	if `c'==67 {
+		local sens = "SP*month and SP*large FEs, + interact month-of-sample FEs with OPE decile bins"
+		local FEs = "sp_group#month sp_group#rt_large_ag ope_bin_dec#modate"
+	}
+	if `c'==68 {
+		local sens = "IV with modal tariff, not default tariff; group*year FEs"
+		local RHS = "(log_p_mean = log_mean_p_kwh_ag_modal)"
+		local FEs = "sp_group#month sp_group#rt_large_ag modate#basin_group modate#wdist_group" 
+	}
+	if `c'==69 {
+		local sens = "IV with lagged modal tariff, not default tariff; group*year FEs"
+		local RHS = "(log_p_mean = log_p_mean_modlag*)"
+		local FEs = "sp_group#month sp_group#rt_large_ag modate#basin_group modate#wdist_group" 
+	}
+	if `c'==70 {
+		local sens = "IV with lagged modal tariff, not default tariff; no tech FEs"
+		local RHS = "(log_p_mean = log_mean_p_kwh_ag_modal)"
+		local FEs = "sp_group#month modate" 
+	}
+
 		
 	// Run non-IV specification	
 	if substr("`RHS'",1,1)!="(" {
