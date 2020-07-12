@@ -44,7 +44,7 @@ twoway (tsline mean_p_kwh1A, color(eltblue) lwidth(medthick)) ///
 	xtitle(" ", size(medlarge)) ///
 	ylab(0 0.05 0.10 ".10" 0.15 0.20 ".20" 0.25 0.30 ".30",nogrid angle(0) labsize(medlarge)) ytitle("Avg marginal price ($/kWh)", size(medlarge)) ///
 	graphr(color(white) lc(white)) ///
-	/*title("Monthly Average Marginal Price", size(vlarge) color(black))*/ ///
+	title("Raw marginal prices", size(vlarge) color(black)) ///
 	legend(order(1 "AG-1A " 2 "AG-1B " 3 "AG-ICE" 4 "AG-4A " 5 "AG-4B ")  col(3) size(medlarge) nobox region(lstyle(none) lcolor(white)))
 graph export "$dirpath/output/marg_price_5_default_rates_raw.eps", replace
 
@@ -72,7 +72,7 @@ twoway (tsline resid2_1A, color(eltblue) lwidth(medthick)) ///
 	xtitle(" ", size(medlarge)) ///
 	ylab(-0.03 -0.02 -0.01 0 0.01 0.02 0.03,nogrid angle(0) labsize(medlarge)) ytitle("Avg marginal price ($/kWh), residuals", size(medlarge)) ///
 	graphr(color(white) lc(white)) ///
-	/*title("Monthly Average Marginal Price", size(vlarge) color(black))*/ ///
+	title("Residualized marginal prices", size(vlarge) color(black)) ///
 	legend(order(1 "AG-1A " 2 "AG-1B " 3 "AG-ICE" 4 "AG-4A " 5 "AG-4B ")  col(3) size(medlarge) nobox region(lstyle(none) lcolor(white)))
 graph export "$dirpath/output/marg_price_5_default_rates_resid.eps", replace
 
