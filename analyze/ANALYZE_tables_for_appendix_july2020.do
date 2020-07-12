@@ -259,7 +259,7 @@ file open textab using "$dirpath_output/table_elec_regs_ihs_logs.tex", write tex
 
 file write textab "\begin{table}[t!]\centering" _n
 file write textab "\small" _n
-file write textab "\caption{Sensitivity to IHS vs.\ Log Transformation - Electricity  \label{tab:elec_regs_ihs_logs}}" _n
+file write textab "\caption{Sensitivity to IHS vs.\ Log Transformation -- Electricity  \label{tab:elec_regs_ihs_logs}}" _n
 file write textab "\vspace{-0.1cm}" _n
 file write textab "\small" _n
 file write textab "\begin{adjustbox}{center} " _n
@@ -327,7 +327,247 @@ file close textab
 ************************************************
 ************************************************
 
-** 3. Sensitivity: time varying confounders, electricity
+** 3. Sensitivity: bins in HP, kWh, OPE, electricity
+{
+use "$dirpath_data/results/regs_pge_elec_monthly_sens_july2020.dta" , clear
+keep if regexm(sens,"bins")
+assert _N==6
+assert pull=="PGE 20180719"
+assert panel=="monthly"
+assert ifs_base=="if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0 & merge_sp_water_panel==3"
+assert ifs_sample==""
+assert depvar=="ihs_kwh"
+assert rhs=="(log_p_mean = log_mean_p_kwh_ag_default)"
+
+gen col = .			
+replace col = 1 if fes=="sp_group#month hp_bin_dec#modate"
+replace col = 2 if fes=="sp_group#month kw_bin_dec#modate"
+replace col = 3 if fes=="sp_group#month ope_bin_dec#modate"
+replace col = 4 if fes=="sp_group#month sp_group#rt_large_ag hp_bin_dec#modate"
+replace col = 5 if fes=="sp_group#month sp_group#rt_large_ag kw_bin_dec#modate"
+replace col = 6 if fes=="sp_group#month sp_group#rt_large_ag ope_bin_dec#modate"
+sort col
+order col
+
+
+forvalues c = 1/6 {
+	local beta_`c' = string(beta_log_p_mean[`c'],"%9.2f")
+	local se_`c' = string(se_log_p_mean[`c'],"%9.2f")
+	local pval_`c' = 2*ttail(dof[`c'],abs(t_log_p_mean[`c']))
+	if `pval_`c''<0.01 {
+		local stars_`c' = "$^{***}$"
+	}
+	else if `pval_`c''<0.05 {
+		local stars_`c' = "$^{**}$"
+	}
+	else if `pval_`c''<0.1 {
+		local stars_`c' = "$^{*}$"
+	}
+	else {
+		local stars_`c' = ""
+	}
+	local n_sp_`c' = string(n_SPs[`c'],"%9.0fc")
+	local n_mth_`c' = string(n_modates[`c'],"%9.0fc")
+	local n_obs_`c' = string(n_obs[`c']/1e6,"%9.2f") + "M"
+	local fstat_`c' = string(fstat_rk[`c'],"%9.0f")
+	if "`fstat_`c''"=="." {
+		local fstat_`c' = ""
+	}
+}
+
+	// Build table
+file open textab using "$dirpath_output/table_elec_regs_month_bin_hp_fes.tex", write text replace
+
+file write textab "\begin{table}[t!]\centering" _n
+file write textab "\small" _n
+file write textab "\caption{Sensitivity to Trends in HP, kWh, OPE -- Electricity  \label{tab:elec_regs_month_bin_hp_fes}}" _n
+file write textab "\vspace{-0.1cm}" _n
+file write textab "\small" _n
+file write textab "\begin{adjustbox}{center} " _n
+file write textab "\begin{tabular}{lcccccccc} " _n
+file write textab "\hline \hline" _n
+file write textab "\vspace{-0.37cm}" _n
+file write textab "\\" _n
+file write textab " & (1)  & (2)  & (3)  & (4)  & (5) & (6)  \\ " _n
+file write textab "[0.1em]" _n
+file write textab " & IV & IV & IV & IV & IV & IV  \\" _n
+file write textab "\vspace{-0.37cm}" _n
+file write textab "\\" _n
+file write textab "\cline{2-7}" _n
+file write textab "\vspace{-0.27cm}" _n
+file write textab "\\" _n
+file write textab " $\log\big(P^{\text{elec}}_{it}\big)$ ~ & $`beta_1'$`stars_1'  & $`beta_2'$`stars_2' & $`beta_3'$`stars_3' & $`beta_4'$`stars_4' & $`beta_5'$`stars_5' & $`beta_6'$`stars_6' \\ " _n
+file write textab "& $(`se_1')$ & $(`se_2')$ & $(`se_3')$ & $(`se_4')$ & $(`se_5')$ & $(`se_6')$  \\" _n
+file write textab "[1.5em] " _n
+file write textab "Month-of-sample FEs & HP  & kWh  & OPE   & HP  & kWh  & OPE   \\" _n
+file write textab "~~~~~~interaction & bins & bins & bins & bins & bins & bins \\ " _n
+file write textab "[1em] " _n
+file write textab "IV: Default $\log\big(P^{\text{elec}}_{it}\big)$  & Yes & Yes & Yes  & Yes  &  Yes &  Yes \\" _n
+file write textab "[1em] " _n
+file write textab "Fixed effects: \\" _n
+file write textab "[0.1em] " _n
+file write textab "~~Unit $\times$ month-of-year  & Yes  & Yes  & Yes  & Yes  & Yes  &  Yes   \\ " _n
+file write textab "[0.1em] " _n
+file write textab "~~Month-of-sample  & Yes  & Yes  & Yes  & Yes  & Yes  &  Yes    \\ " _n
+file write textab "[0.1em] " _n
+file write textab "~~Unit $\times$ physical capital &  & &  & Yes & Yes & Yes  \\" _n
+*file write textab "[0.1em] " _n
+*file write textab "~~Water basin $\times$ year & & &  & Yes & &  \\" _n
+*file write textab "[0.1em] " _n
+*file write textab "~~Water district $\times$ year & & &  & Yes & & \\" _n
+*file write textab "[0.1em] " _n
+file write textab "[1em] " _n
+file write textab "Service point units & `n_sp_1' & `n_sp_2' & `n_sp_3' & `n_sp_4' & `n_sp_5' & `n_sp_6'   \\ " _n
+file write textab "[0.1em] " _n
+file write textab "Months  & `n_mth_1' & `n_mth_2' & `n_mth_3' & `n_mth_4' & `n_mth_5' & `n_mth_6'  \\ " _n
+file write textab "[0.1em] " _n
+file write textab "Observations & `n_obs_1' & `n_obs_2' & `n_obs_3' & `n_obs_4' & `n_obs_5' & `n_obs_6'  \\ " _n
+file write textab "[0.1em] " _n
+file write textab "First stage \$F\$-statistic & `fstat_1' & `fstat_2' & `fstat_3' & `fstat_4' & `fstat_5' & `fstat_6'  \\ " _n
+file write textab "[0.15em]" _n
+file write textab "\hline" _n
+file write textab "\end{tabular}" _n
+file write textab "\end{adjustbox}" _n
+file write textab "\captionsetup{width=\textwidth}" _n
+file write textab "\caption*{\scriptsize \emph{Notes:} This table conducts sensitivity analysis on our monthly electricity regressions " _n
+file write textab "by interacting month-of-sample fixed effects with bins of pump horsepower, kW, and operating efficiency.  " _n
+file write textab "Columns (1)--(3) replicate Column (2) from Table \ref{tab:elec_regs_main}, while Columns (4)--(6) replicate Column (3) from Table \ref{tab:elec_regs_main}." _n
+file write textab "Columns (1) and (4) interact month-of-sample fixed effects with 11 bins of nameplate horsepower: 1 bin below PGE's 35 hp cutoff, " _n
+file write textab " and 10 bins for deciles of the distribution of hp above this cutoff.  " _n
+file write textab "Columns (2) and (5) interact month-of-sample fixed effects with 11 bins of kW usage, as measured in APEP pump tests:  " _n
+file write textab "1 bin below PGE's 35 hp cutoff (equivalent to 26.1 kW), and 10 bins for deciles of the distribution of measured kW above this cutoff.  " _n
+file write textab "Columns (3) and (6) interact month-of-sample fixed effects with 10 bins for deciles of operating pump efficiency recorded in APEP pump tests. " _n
+file write textab "See notes under Table \ref{tab:elec_regs_main} for further detail. " _n
+file write textab "Standard errors (in parentheses) are two-way clustered by service point and by month-of-sample." _n
+file write textab "Significance: *** \$p < 0.01\$, ** \$p < 0.05\$, * \$p < 0.10\$." _n
+file write textab "}" _n
+file write textab "\end{table}" _n
+
+file close textab
+
+}
+
+************************************************
+************************************************
+
+** 4. Sensitivity: modal tariff IV, electricity
+{
+use "$dirpath_data/results/regs_pge_elec_monthly_sens_july2020.dta" , clear
+keep if regexm(lower(sens),"mod")
+tab sens
+assert _N==5
+assert pull=="PGE 20180719"
+assert panel=="monthly"
+assert ifs_base=="if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0 & merge_sp_water_panel==3"
+assert ifs_sample==""
+assert depvar=="ihs_kwh"
+
+gen col = .			
+replace col = 1 if fes=="sp_group#month modate" & rhs=="(log_p_mean = log_mean_p_kwh_ag_modal)"
+replace col = 2 if fes=="sp_group#month sp_group#rt_large_ag modate" & rhs=="(log_p_mean = log_mean_p_kwh_ag_modal)"
+replace col = 3 if fes=="sp_group#month sp_group#rt_large_ag modate#basin_group modate#wdist_group" & rhs=="(log_p_mean = log_mean_p_kwh_ag_modal)"
+replace col = 4 if fes=="sp_group#month sp_group#rt_large_ag modate" & rhs=="(log_p_mean = log_p_mean_modlag*)"
+keep if col!=.
+assert _N==4
+sort col
+order col
+
+forvalues c = 1/4 {
+	local beta_`c' = string(beta_log_p_mean[`c'],"%9.2f")
+	local se_`c' = string(se_log_p_mean[`c'],"%9.2f")
+	local pval_`c' = 2*ttail(dof[`c'],abs(t_log_p_mean[`c']))
+	if `pval_`c''<0.01 {
+		local stars_`c' = "$^{***}$"
+	}
+	else if `pval_`c''<0.05 {
+		local stars_`c' = "$^{**}$"
+	}
+	else if `pval_`c''<0.1 {
+		local stars_`c' = "$^{*}$"
+	}
+	else {
+		local stars_`c' = ""
+	}
+	local n_sp_`c' = string(n_SPs[`c'],"%9.0fc")
+	local n_mth_`c' = string(n_modates[`c'],"%9.0fc")
+	local n_obs_`c' = string(n_obs[`c']/1e6,"%9.2f") + "M"
+	local fstat_`c' = string(fstat_rk[`c'],"%9.0f")
+	if "`fstat_`c''"=="." {
+		local fstat_`c' = ""
+	}
+}
+
+	// Build table
+file open textab using "$dirpath_output/table_elec_regs_modal_tariff.tex", write text replace
+
+file write textab "\begin{table}[t!]\centering" _n
+file write textab "\small" _n
+file write textab "\caption{Instrumenting with Within-Category Modal Tariffs -- Electricity  \label{tab:elec_regs_modal_tariff}}" _n
+file write textab "\vspace{-0.1cm}" _n
+file write textab "\small" _n
+file write textab "\begin{adjustbox}{center} " _n
+file write textab "\begin{tabular}{lcccccccc} " _n
+file write textab "\hline \hline" _n
+file write textab "\vspace{-0.37cm}" _n
+file write textab "\\" _n
+file write textab " & (1)  & (2)  & (3) & (4)  \\ " _n
+file write textab "[0.1em]" _n
+file write textab " & IV & IV & IV & IV \\" _n
+file write textab "\vspace{-0.37cm}" _n
+file write textab "\\" _n
+file write textab "\cline{2-5}" _n
+file write textab "\vspace{-0.27cm}" _n
+file write textab "\\" _n
+file write textab " $\log\big(P^{\text{elec}}_{it}\big)$ ~ & $`beta_1'$`stars_1'  & $`beta_2'$`stars_2' & $`beta_3'$`stars_3' & $`beta_4'$`stars_4'  \\ " _n
+file write textab "& $(`se_1')$ & $(`se_2')$ & $(`se_3')$ & $(`se_4')$ \\" _n
+file write textab "[1.5em] " _n
+file write textab "Instrument(s): \\" _n
+file write textab "[0.1em] " _n
+file write textab "~~ Modal $\log\big(P^{\text{elec}}_{it}\big)$  & Yes & Yes & Yes  & \\" _n
+file write textab "[0.1em] " _n
+file write textab "~~ Modal $\log\big(P^{\text{elec}}_{it}\big)$, lagged  & & & & Yes \\" _n
+file write textab "[1em] " _n
+file write textab "Fixed effects: \\" _n
+file write textab "[0.1em] " _n
+file write textab "~~Unit $\times$ month-of-year  & Yes  & Yes  & Yes  & Yes  \\ " _n
+file write textab "[0.1em] " _n
+file write textab "~~Month-of-sample  & Yes  & Yes  & Yes  & Yes    \\ " _n
+file write textab "[0.1em] " _n
+file write textab "~~Unit $\times$ physical capital & & Yes & Yes & Yes  \\" _n
+file write textab "[0.1em] " _n
+file write textab "~~Water basin $\times$ year & & & Yes &  \\" _n
+file write textab "[0.1em] " _n
+file write textab "~~Water district $\times$ year & & & Yes &  \\" _n
+file write textab "[1em] " _n
+file write textab "Service point units & `n_sp_1' & `n_sp_2' & `n_sp_3' & `n_sp_4'    \\ " _n
+file write textab "[0.1em] " _n
+file write textab "Months  & `n_mth_1' & `n_mth_2' & `n_mth_3' & `n_mth_4' \\ " _n
+file write textab "[0.1em] " _n
+file write textab "Observations & `n_obs_1' & `n_obs_2' & `n_obs_3' & `n_obs_4'    \\ " _n
+file write textab "[0.1em] " _n
+file write textab "First stage \$F\$-statistic & `fstat_1' & `fstat_2' & `fstat_3' & `fstat_4'   \\ " _n
+file write textab "[0.15em]" _n
+file write textab "\hline" _n
+file write textab "\end{tabular}" _n
+file write textab "\end{adjustbox}" _n
+file write textab "\captionsetup{width=\textwidth}" _n
+file write textab "\caption*{\scriptsize \emph{Notes:} This table reestimates Columns (2)--(5) from Table \ref{tab:elec_regs_main}, " _n
+file write textab "instrumenting with the average marginal price of the modal tariff within each category. " _n
+file write textab "These instruments produce very similar results, demonstrating that our main results are not sensitive to our choice of default tariff. " _n
+file write textab "See notes under Table \ref{tab:elec_regs_main} for further detail. " _n
+file write textab "Standard errors (in parentheses) are two-way clustered by service point and by month-of-sample." _n
+file write textab "Significance: *** \$p < 0.01\$, ** \$p < 0.05\$, * \$p < 0.10\$." _n
+file write textab "}" _n
+file write textab "\end{table}" _n
+
+file close textab
+
+}
+
+************************************************
+************************************************
+
+** 5. Sensitivity: time varying confounders, electricity
 {
 use "$dirpath_data/results/regs_pge_elec_monthly_sens_july2020.dta" , clear
 keep if regexm(sens,"by month-of-sample FEs")
@@ -378,7 +618,7 @@ file open textab using "$dirpath_output/table_elec_regs_month_int_fes.tex", writ
 
 file write textab "\begin{table}[t!]\centering" _n
 file write textab "\small" _n
-file write textab "\caption{Sensitivity to Geographic Confounders - Electricity  \label{tab:elec_regs_month_int_fes}}" _n
+file write textab "\caption{Sensitivity to Geographic Confounders -- Electricity  \label{tab:elec_regs_month_int_fes}}" _n
 file write textab "\vspace{-0.1cm}" _n
 file write textab "\small" _n
 file write textab "\begin{adjustbox}{center} " _n
@@ -447,7 +687,7 @@ file close textab
 ************************************************
 ************************************************
 
-** 4. Sensitivity: Summer vs winter, electricity and water
+** 6. Sensitivity: Summer vs winter, electricity and water
 {
 use "$dirpath_data/results/regs_pge_elec_monthly_sens_july2020.dta" , clear
 keep if inlist(sens,"Summer months only","Winter months only")
@@ -613,7 +853,7 @@ file close textab
 ************************************************
 ************************************************
 
-** 5. Sensitivity: weather controls, electricity and water
+** 7. Sensitivity: weather controls, electricity and water
 {
 use "$dirpath_data/results/regs_pge_elec_monthly_sens_july2020.dta" , clear
 keep if regexm(sens,"precip")
@@ -717,7 +957,7 @@ file open textab using "$dirpath_output/table_elec_water_regs_weather.tex", writ
 
 file write textab "\begin{table}[t!]\centering" _n
 file write textab "\small" _n
-file write textab "\caption{Monthly Elasticities during Summer vs.\ Winter  \label{tab:elec_water_regs_weather}}" _n
+file write textab "\caption{Controlling for Precipitation and Temperature  \label{tab:elec_water_regs_weather}}" _n
 file write textab "\vspace{-0.1cm}" _n
 file write textab "\small" _n
 file write textab "\begin{adjustbox}{center} " _n
@@ -793,7 +1033,7 @@ file close textab
 ************************************************
 ************************************************
 
-** 6. Sensitivity: time since pump test, water
+** 8. Sensitivity: time since pump test, water
 {
 use "$dirpath_data/results/regs_pge_water_combined_monthly_sens_july2020.dta" , clear
 keep if regexm(sens,"months of pump test")
@@ -920,7 +1160,7 @@ file close textab
 ************************************************
 ************************************************
 
-** 7. Sensitivity: CLU groupings, water
+** 9. Sensitivity: CLU groupings, water
 {
 use "$dirpath_data/results/regs_pge_water_combined_monthly_sens_july2020.dta" , clear
 keep if regexm(sens,"CLU")
@@ -1057,7 +1297,7 @@ file close textab
 ************************************************
 ************************************************
 
-** 8. Sensitivity: KWHAF, water
+** 10. Sensitivity: KWHAF, water
 {
 use "$dirpath_data/results/regs_pge_water_combined_monthly_sens_july2020.dta" , clear
 assert pull=="PGE 20180719"
@@ -1193,6 +1433,189 @@ file write textab "Column (6) uses rasterized groundwater measurements, but drop
 file write textab "groundwater measurement within 8 miles. " _n
 file write textab "See notes under Table \ref{tab:water_regs_combined} for further detail. " _n
 file write textab "Standard errors (in parentheses) are two-way clustered by service point and by month-of-sample." _n
+file write textab "Significance: *** \$p < 0.01\$, ** \$p < 0.05\$, * \$p < 0.10\$." _n
+file write textab "}" _n
+file write textab "\end{table}" _n
+
+file close textab
+
+}
+
+************************************************
+************************************************
+
+** 11. Intensive/extensive margin results: Electricity and water
+{
+use "$dirpath_data/results/regs_pge_elec_annual_sp_july2020.dta" , clear
+
+keep if pull=="PGE 20180719"
+keep if panel=="annual (sp)"
+keep if ifs_base=="if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0 & merge_sp_water_panel==3 & flag_partial_year==0"
+keep if inlist(rhs,"(log_p_mean = log_mean_p_kwh_ag_default)")
+keep if inlist(fes,"sp_group sp_group#rt_large_ag basin_group#year wdist_group#year")
+gen col = .
+
+replace col = 1 if depvar=="ihs_kwh" & ifs_sample==""
+replace col = 2 if depvar=="ihs_kwh" & ifs_sample==" & elec_binary_frac>0.9"
+replace col = 3 if depvar=="elec_binary"
+drop if col==.
+assert _N==3
+sort col
+order col
+
+forvalues c = 1/3 {
+	local beta_`c' = string(beta_log_p_mean[`c'],"%9.2f")
+	local se_`c' = string(se_log_p_mean[`c'],"%9.2f")
+	local pval_`c' = 2*ttail(dof[`c'],abs(t_log_p_mean[`c']))
+	if `pval_`c''<0.01 {
+		local stars_`c' = "$^{***}$"
+	}
+	else if `pval_`c''<0.05 {
+		local stars_`c' = "$^{**}$"
+	}
+	else if `pval_`c''<0.1 {
+		local stars_`c' = "$^{*}$"
+	}
+	else {
+		local stars_`c' = ""
+	}
+	local n_sp_`c' = string(n_SPs[`c'],"%9.0fc")
+	local n_cty_yr_`c' = string(n_cty_yrs[`c'],"%9.0fc")
+	local n_obs_`c' = string(n_obs[`c']/1e3,"%9.1f") + "K"
+	local fstat_`c' = string(fstat_rk[`c'],"%9.0f")
+	if "`fstat_`c''"=="." {
+		local fstat_`c' = ""
+	}
+}
+
+use "$dirpath_data/results/regs_pge_water_combined_annual_sp_july2020.dta" , clear
+
+keep if pull=="PGE 20180719"
+keep if panel=="annual (sp)"
+keep if ifs_base=="if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & flag_partial_year==0"
+keep if inlist(rhs,"(ln_mean_p_af_rast_dd_mth_2SP = log_mean_p_kwh_ag_default)")
+keep if inlist(fes,"sp_group sp_group#rt_large_ag basin_group#year wdist_group#year")
+gen col = .			
+
+replace col = 4 if depvar=="ihs_af_rast_dd_mth_2SP" & ifs_sample==""	
+replace col = 5 if depvar=="ihs_af_rast_dd_mth_2SP" & ifs_sample==" & elec_binary_frac>0.9"	
+replace col = 6 if depvar=="elec_binary"
+drop if col==.
+assert _N==3
+set obs 6
+replace col = 1 in 4
+replace col = 2 in 5
+replace col = 3 in 6
+assert _N==6
+sort col
+order col
+
+forvalues c = 4/6 {
+
+	local beta_`c' = string(beta_log_p_water[`c'],"%9.2f")
+	local se_`c' = string(se_log_p_water[`c'],"%9.2f")
+	local pval_`c' = 2*ttail(dof[`c'],abs(t_log_p_water[`c']))
+	if `pval_`c''<0.01 {
+		local stars_`c' = "$^{***}$"
+	}
+	else if `pval_`c''<0.05 {
+		local stars_`c' = "$^{**}$"
+	}
+	else if `pval_`c''<0.1 {
+		local stars_`c' = "$^{*}$"
+	}
+	else {
+		local stars_`c' = ""
+	}
+	
+	local n_sp_`c' = string(n_SPs[`c'],"%9.0fc")
+	local n_cty_yr_`c' = string(n_cty_yrs[`c'],"%9.0fc")
+	local n_obs_`c' = string(n_obs[`c']/1e3,"%9.1f") + "K"
+	local fstat_`c' = string(fstat_rk[`c'],"%9.0f")
+	if "`fstat_`c''"=="." {
+		local fstat_`c' = ""
+	}
+}
+
+
+
+	// Build table
+file open textab using "$dirpath_output/table_elec_water_intens_extens.tex", write text replace
+
+file write textab "\begin{table}[t!]\centering" _n
+file write textab "\small" _n
+file write textab "\caption{Annual Demand Elasticities -- Intensive vs.\ Extensive Margins \label{tab:elec_water_intens_extens}}" _n
+file write textab "\vspace{-0.1cm}" _n
+file write textab "\small" _n
+file write textab "\begin{adjustbox}{center} " _n
+file write textab "\begin{tabular}{lcccccc} " _n
+file write textab "\hline \hline" _n
+file write textab "\vspace{-0.37cm}" _n
+file write textab "\\" _n
+file write textab " & \multicolumn{3}{c}{Electricity} & \multicolumn{3}{c}{Groundwater} \\" _n
+file write textab " \cmidrule(r){2-4} \cmidrule(l){5-7}" _n
+file write textab " & Overall & Intensive & Extensive & Overall & Intensive & Extensive \\" _n
+file write textab " & elasticity & margin & margin & elasticity & margin & margin \\" _n
+file write textab "[0.1em]" _n
+file write textab " & (1)  & (2)  & (3)  & (4)  & (5)  & (6) \\ " _n
+file write textab "\vspace{-0.37cm}" _n
+file write textab "\\" _n
+file write textab "\cline{2-7}" _n
+file write textab "\vspace{-0.27cm}" _n
+file write textab "\\" _n
+file write textab " $\log\big(P^{\text{elec}}_{iy}\big)$ ~ & $`beta_1'$`stars_1'  & $`beta_2'$`stars_2' & $`beta_3'$`stars_3' &  &  &  \\ " _n
+file write textab "& $(`se_1')$ & $(`se_2')$ & $(`se_3')$ &  &  &  \\" _n
+file write textab "[0.1em] " _n
+file write textab " $\log\big(P^{\text{water}}_{iy}\big)$ ~ &  &  &  & $`beta_4'$`stars_4' & $`beta_5'$`stars_5'  & $`beta_6'$`stars_6' \\ " _n
+file write textab "&  &  &  & $(`se_4')$ & $(`se_5')$ & $(`se_6')$ \\" _n
+file write textab "[1.5em] " _n
+file write textab "Outcome: \\" _n
+file write textab "~~ $\sinh^{-1}\big(Q_{iy}\big)$ & Yes & Yes & & Yes & Yes & \\" _n
+file write textab "[0.1em] " _n
+file write textab "~~ $1\big[Q_{iy}>0\big]$ & & & Yes & & & Yes \\" _n
+file write textab "[1.5em] " _n
+file write textab "Sample restriction: \\" _n
+file write textab "~~ \$Q_{iy} > 0\$ in all years & & Yes & & & Yes & \\" _n
+file write textab "[1.5em] " _n
+file write textab "Instrument: \\" _n
+file write textab "[0.1em] " _n
+file write textab "~~ Default $\log\big(P^{\text{elec}}_{iy}\big)$  & Yes & Yes & Yes  & Yes  & Yes & Yes \\" _n
+file write textab "[1.5em] " _n
+file write textab "Fixed effects: \\" _n
+file write textab "[0.1em] " _n
+file write textab "~~Unit $\times$ physical capital & Yes & Yes & Yes & Yes & Yes & Yes  \\" _n
+file write textab "[0.1em] " _n
+file write textab "~~Water basin $\times$ year & Yes & Yes & Yes & Yes & Yes & Yes \\" _n
+file write textab "[0.1em] " _n
+file write textab "~~Water district $\times$ year & Yes & Yes & Yes & Yes & Yes & Yes \\" _n
+file write textab "[1.5em] " _n
+file write textab "Service point units & `n_sp_1' & `n_sp_2' & `n_sp_3' & `n_sp_4' & `n_sp_5' & `n_sp_6'  \\ " _n
+file write textab "[0.1em] " _n
+file write textab "County \$\times\$ years  & `n_cty_yr_1' & `n_cty_yr_2' & `n_cty_yr_3' & `n_cty_yr_4' & `n_cty_yr_5' & `n_cty_yr_6' \\ " _n
+file write textab "[0.1em] " _n
+file write textab "Observations & `n_obs_1' & `n_obs_2' & `n_obs_3' & `n_obs_4' & `n_obs_5' & `n_obs_6' \\ " _n
+file write textab "[0.1em] " _n
+file write textab "First stage \$F\$-statistic & `fstat_1' & `fstat_2' & `fstat_3' & `fstat_4' & `fstat_5' & `fstat_6' \\ " _n
+file write textab "[0.15em]" _n
+file write textab "\hline" _n
+file write textab "\end{tabular}" _n
+file write textab "\end{adjustbox}" _n
+file write textab "\captionsetup{width=\textwidth}" _n
+file write textab "\caption*{\scriptsize \emph{Notes:} Each regression estimates Equation (\ref{eq:reg_elec_annual}) or Equation (\ref{eq:reg_water_annual}) at the service point by year level." _n
+file write textab "Columns (1)--(3) report results for electricity consumption, and Columns (4)--(6) report results for groundwater consumption." _n
+file write textab "Columns (1) and (4) report annual demand elasticities for electricity and water, respectively. These results are analogous to the monthly demand elasticities reported " _n
+file write textab "in Column (4) of Table \ref{tab:elec_regs_main} and in Column (5) of Table \ref{tab:water_regs_combined}, respectively." _n
+file write textab "Columns (2) and (5) report analogous demand elasticities for the subset of service points that consume electricity or water, respectively, in every year of our sample." _n
+file write textab "Columns (3) and (6) report semi-elasticities for the extensive margins by replacing the outcome variable with a binary indicator of electricity or water consumption, respectively." _n
+file write textab "We estimate these regressions using two-stage least squares, instrumenting with unit \$i\$'s within-category default logged electricity price in year \$y\$." _n
+file write textab "\`\`Physical capital'' is a categorical variable for (i) small pumps, (ii) large pumps, and (iii) internal combustion engines, and unit \$\times\$" _n
+file write textab "physical capital fixed effects control for shifts in tariff category triggered by the installation of new pumping equipment." _n
+file write textab "Water basin \$\times\$ year fixed effects control for broad geographic trends in groundwater depth." _n
+file write textab "Water district \$\times\$ year fixed effects control for annual variation in surface water allocations." _n
+file write textab "All regressions drop solar NEM customers, customers with bad geocodes, years with irregular electricity bills" _n
+file write textab "(e.g.\ first/last bills, bills longer/shorter than 1 month, overlapping bills for a single account), and incomplete years." _n
+file write textab "Groundwater regressions use a monthly time interval to assign rasterized groundwater levels." _n
+file write textab "Standard errors (in parentheses) are two-way clustered by service point and by county-year." _n
 file write textab "Significance: *** \$p < 0.01\$, ** \$p < 0.05\$, * \$p < 0.10\$." _n
 file write textab "}" _n
 file write textab "\end{table}" _n

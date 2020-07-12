@@ -348,6 +348,9 @@ assert r(unique)==real(subinstr("`A1'",",","",.))
 keep if _merge==3
 duplicates t sp_uuid, gen(dup)
 replace dup = dup+1
+duplicates drop
+unique sp_uuid
+assert r(unique)==r(N)
 sum dup, detail
 local K1 = string(r(mean),"%9.2f")
 local K1_sd = string(r(sd),"%9.2f")
@@ -733,3 +736,185 @@ file close textab
 ************************************************
 ************************************************
 
+** 5. Regression results: Electricity and water, annual
+{
+use "$dirpath_data/results/regs_pge_elec_annual_sp_july2020.dta" , clear
+
+keep if pull=="PGE 20180719"
+keep if panel=="annual (sp)"
+keep if ifs_base=="if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_cust==0 & merge_sp_water_panel==3 & flag_partial_year==0"
+keep if inlist(rhs,"(log_p_mean = log_mean_p_kwh_ag_default)")
+keep if inlist(fes,"sp_group sp_group#rt_large_ag basin_group#year wdist_group#year")
+keep if depvar=="ihs_kwh"
+keep if ifs_sample==""
+assert _N==1
+gen col = 1		
+
+forvalues c = 1/1 {
+	local beta_`c' = string(beta_log_p_mean[`c'],"%9.2f")
+	local se_`c' = string(se_log_p_mean[`c'],"%9.2f")
+	local pval_`c' = 2*ttail(dof[`c'],abs(t_log_p_mean[`c']))
+	if `pval_`c''<0.01 {
+		local stars_`c' = "$^{***}$"
+	}
+	else if `pval_`c''<0.05 {
+		local stars_`c' = "$^{**}$"
+	}
+	else if `pval_`c''<0.1 {
+		local stars_`c' = "$^{*}$"
+	}
+	else {
+		local stars_`c' = ""
+	}
+	local n_sp_`c' = string(n_SPs[`c'],"%9.0fc")
+	local n_cty_yr_`c' = string(n_cty_yrs[`c'],"%9.0fc")
+	local n_obs_`c' = string(n_obs[`c']/1e3,"%9.1f") + "K"
+	local fstat_`c' = string(fstat_rk[`c'],"%9.0f")
+	if "`fstat_`c''"=="." {
+		local fstat_`c' = ""
+	}
+}
+
+use "$dirpath_data/results/regs_pge_water_combined_annual_sp_july2020.dta" , clear
+
+keep if pull=="PGE 20180719"
+keep if panel=="annual (sp)"
+keep if ifs_base=="if flag_nem==0 & flag_geocode_badmiss==0 & flag_irregular_bill==0 & flag_weird_pump==0 & flag_weird_cust==0 & flag_partial_year==0"
+keep if inlist(rhs,"(ln_mean_p_af_rast_dd_mth_2SP = log_mean_p_kwh_ag_default)")
+keep if inlist(fes,"sp_group sp_group#rt_large_ag basin_group#year wdist_group#year")
+keep if depvar=="ihs_af_rast_dd_mth_2SP"
+gen col = .			
+
+replace col = 2 if ifs_sample==""
+replace col = 3 if ifs_sample==" & always50_SameType==1"
+replace col = 4 if ifs_sample==" & always50_SameType_NC==1"
+replace col = 5 if ifs_sample==" & always50_Crop_Switcher==1"
+replace col = 6 if ifs_sample==" & always50_Switcher_Fallower==1"	
+	
+drop if col==.
+assert _N==5
+set obs 6
+replace col = 1 if col==.
+assert _N==6
+sort col
+order col
+
+forvalues c = 2/6 {
+
+	local beta_`c' = string(beta_log_p_water[`c'],"%9.2f")
+	local se_`c' = string(se_log_p_water[`c'],"%9.2f")
+	local pval_`c' = 2*ttail(dof[`c'],abs(t_log_p_water[`c']))
+	if `pval_`c''<0.01 {
+		local stars_`c' = "$^{***}$"
+	}
+	else if `pval_`c''<0.05 {
+		local stars_`c' = "$^{**}$"
+	}
+	else if `pval_`c''<0.1 {
+		local stars_`c' = "$^{*}$"
+	}
+	else {
+		local stars_`c' = ""
+	}
+	
+	local n_sp_`c' = string(n_SPs[`c'],"%9.0fc")
+	local n_cty_yr_`c' = string(n_cty_yrs[`c'],"%9.0fc")
+	local n_obs_`c' = string(n_obs[`c']/1e3,"%9.1f") + "K"
+	local fstat_`c' = string(fstat_rk[`c'],"%9.0f")
+	if "`fstat_`c''"=="." {
+		local fstat_`c' = ""
+	}
+}
+
+
+	// Build table
+file open textab using "$dirpath_output/table_elec_water_regs_annual.tex", write text replace
+
+file write textab "\begin{table}[t!]\centering" _n
+file write textab "\small" _n
+file write textab "\caption{Estimated Annual Demand Elasticities  \label{tab:elec_water_regs_annual}}" _n
+file write textab "\vspace{-0.1cm}" _n
+file write textab "\small" _n
+file write textab "\begin{adjustbox}{center} " _n
+file write textab "\begin{tabular}{lcccccccc} " _n
+file write textab "\hline \hline" _n
+file write textab "\vspace{-0.37cm}" _n
+file write textab "\\" _n
+file write textab " & \multicolumn{1}{c}{Electricity} & \multicolumn{5}{c}{Groundwater} \\" _n
+file write textab " \cmidrule(r){2-2} \cmidrule(l){3-7}" _n
+file write textab "  & Pooled & Pooled & 1 Crop & 1 Crop Type & Crop Type & Crop Switchers \\" _n
+file write textab " &  &  & Type & and Fallow & Switchers & and Fallowers \\" _n
+file write textab " &  &  & Crop Type & or Fallow & Switchers & and Fallowers \\" _n
+file write textab "[0.1em]" _n
+file write textab " & (1)  & (2)  & (3)  & (4)  & (5)  & (6) \\ " _n
+file write textab "[0.1em]" _n
+file write textab " & IV & IV & IV & IV & IV & IV \\" _n
+file write textab "\vspace{-0.37cm}" _n
+file write textab "\\" _n
+file write textab "\cline{2-7}" _n
+file write textab "\vspace{-0.27cm}" _n
+file write textab "\\" _n
+file write textab " $\log\big(P^{\text{elec}}_{iy}\big)$ ~ & " _n
+file write textab " $`beta_1'$`stars_1'  & \\ " _n
+file write textab "& $(`se_1')$ \\" _n
+file write textab "[0.1em] " _n
+file write textab " $\log\big(P^{\text{water}}_{iy}\big)$ ~ & " _n
+file write textab "& $`beta_2'$`stars_2' & $`beta_3'$`stars_3' & $`beta_4'$`stars_4' & $`beta_5'$`stars_5'  & $`beta_6'$`stars_6' \\ " _n
+file write textab "& & $(`se_2')$ & $(`se_3')$ & $(`se_4')$ & $(`se_5')$ & $(`se_6')$ \\" _n
+file write textab "[1.5em] " _n
+file write textab "Instrument: \\" _n
+file write textab "[0.1em] " _n
+file write textab "~~ Default $\log\big(P^{\text{elec}}_{iy}\big)$  & Yes & Yes & Yes  & Yes  & Yes & Yes \\" _n
+file write textab "[1.5em] " _n
+file write textab "Fixed effects: \\" _n
+file write textab "[0.1em] " _n
+file write textab "~~Unit $\times$ physical capital & Yes & Yes & Yes & Yes & Yes & Yes  \\" _n
+file write textab "[0.1em] " _n
+file write textab "~~Water basin $\times$ year  & Yes & Yes & Yes & Yes & Yes & Yes    \\" _n
+file write textab "[0.1em] " _n
+file write textab "~~Water district $\times$ year  & Yes & Yes & Yes & Yes & Yes & Yes  \\" _n
+file write textab "[1.5em] " _n
+file write textab "Service point units & `n_sp_1' & `n_sp_2' & `n_sp_3' & `n_sp_4' & `n_sp_5' & `n_sp_6'  \\ " _n
+file write textab "[0.1em] " _n
+file write textab "County \$\times\$ years  & `n_cty_yr_1' & `n_cty_yr_2' & `n_cty_yr_3' & `n_cty_yr_4' & `n_cty_yr_5' & `n_cty_yr_6' \\ " _n
+file write textab "[0.1em] " _n
+file write textab "Observations & `n_obs_1' & `n_obs_2' & `n_obs_3' & `n_obs_4' & `n_obs_5' & `n_obs_6' \\ " _n
+file write textab "[0.1em] " _n
+file write textab "First stage \$F\$-statistic & `fstat_1' & `fstat_2' & `fstat_3' & `fstat_4' & `fstat_5' & `fstat_6' \\ " _n
+file write textab "[0.15em]" _n
+file write textab "\hline" _n
+file write textab "\end{tabular}" _n
+file write textab "\end{adjustbox}" _n
+file write textab "\captionsetup{width=\textwidth}" _n
+file write textab "\caption*{\scriptsize \emph{Notes:} " _n
+file write textab "Each regression estimates Equation (\ref{eq:reg_elec_annual}) or Equation (\ref{eq:reg_water_annual}) at the service point by year level." _n
+file write textab "Columns (1) report results for electricity consumption, while Columns (2)--(6) report results for groundwater consumption." _n
+file write textab "Columns (1)--(2) include the full annual panel of SPs; they are analogous to the monthly regressions " _n
+file write textab "in Column (4) of Table \ref{tab:elec_regs_main} and in Column (5) of Table \ref{tab:water_regs_combined}, respectively. " _n
+file write textab "Columns (3)--(6) restrict the sample based on the observed crop history at each service point's assigned CLU (from 2008 to 2016). " _n
+file write textab "We classify individual CLU-years as annual crop, fruit/nut perennial crop, other perennial crop, or non-crop." _n
+file write textab "Column (3) includes service points in CLUs that always have the same crop type (annual, fruit/nut, other perennial) during our sample period." _n
+file write textab "Column (4) includes units in CLUs that always have at most 1 of the 3 crop types, and also fallow." _n
+file write textab "Column (5) includes units in CLUs that swtich between at least 2 of the crop types, and never fallow." _n
+file write textab "Column (6) includes units in CLUs that switch between at least 2 of the crop types, and also fallow." _n
+file write textab "These four subsamples are disjoint but not exhaustive, due to ambiguities in land cover classifications" _n
+file write textab "(we require that at least 50 percent for CLU fall into a single category). " _n
+file write textab "All regressions apply two-stage least squares, instrumenting with unit \$i\$'s within-category default logged electricity price in year \$y\$." _n
+file write textab "\`\`Physical capital'' is a categorical variable for (i) small pumps, (ii) large pumps, and (iii) internal combustion engines, and unit \$\times\$" _n
+file write textab "physical capital fixed effects control for shifts in tariff category triggered by the installation of new pumping equipment." _n
+file write textab "Water basin \$\times\$ year fixed effects control for broad geographic trends in groundwater depth." _n
+file write textab "Water district \$\times\$ year fixed effects control for annual variation in surface water allocations." _n
+file write textab "All regressions drop solar NEM customers, customers with bad geocodes, years with irregular electricity bills" _n
+file write textab "(e.g.\ first/last bills, bills longer/shorter than 1 month, overlapping bills for a single account), and incomplete years." _n
+file write textab "Groundwater regressions use a monthly time interval to assign rasterized groundwater levels." _n
+file write textab "Standard errors (in parentheses) are two-way clustered by service point and by county-year." _n
+file write textab "Significance: *** \$p < 0.01\$, ** \$p < 0.05\$, * \$p < 0.10\$." _n
+file write textab "}" _n
+file write textab "\end{table}" _n
+
+file close textab
+
+}
+
+************************************************
+************************************************
