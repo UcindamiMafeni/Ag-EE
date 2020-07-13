@@ -158,39 +158,61 @@ graph export "$dirpath/output/davis_lines_crossing.eps", replace
 ************************************************
 
 
+** 3. Time series of acreage
+{
+use "$dirpath_data/cleaned_spatial/cdl_panel_crop_year_full.dta", clear
+collapse (sum) landtype_acres, by(year landtype noncrop) fast
+drop if noncrop==1
+drop noncrop
+drop if landtype=="Fallow/Idle Cropland"
+egen sum_year = sum(landtype_acres), by(year)
+tab year sum_year
+sort landtype year
+rename landtype_acres acres
+tabstat acres if year==2010 & acres>3e5, by(landtype)
+tabstat acres if year==2017 & acres>3e5, by(landtype)
+gen in_bars10 = inlist(landtype,"Alfalfa","Almonds","Corn","Cotton","Grapes","Rice","Winter Wheat")
+gen in_bars17 = inlist(landtype,"Alfalfa","Almonds","Grapes","Pistachios","Rice","Walnuts","Winter Wheat")
+gen xbar10 = .
+replace xbar10 = 1 if landtype=="Alfalfa"
+replace xbar10 = 2 if landtype=="Almonds"
+replace xbar10 = 3 if landtype=="Winter Wheat"
+replace xbar10 = 4 if landtype=="Rice"
+replace xbar10 = 5 if landtype=="Cotton"
+replace xbar10 = 6 if landtype=="Corn"
+replace xbar10 = 7 if landtype=="Grapes"
+replace xbar10 = 8 if landtype=="Walnuts"
+replace xbar10 = 9 if landtype=="Pistachios"
+gen xbar17 = xbar10+0.4
+gen cali_crop = inlist(landtype,"Almonds","Grapes","Pistachios","Walnuts")
 
-use "$dirpath_data/merged_pge/ag_rates_avg_by_month.dta", clear
-replace rt_sched_cd = subinstr(rt_sched_cd,"AG-","",1)
-*reg mean_p_kwh i.modate if inlist(rt_sched_cd,"1A","1B","4A","4B","ICE")
-*predict resid_, residuals
-egen temp1 = group(rt_sched_cd)
-gen temp2 = real(subinstr(substr(string(modate,"%tm"),-2,2),"m","",.))
-tab temp2
-reg mean_p_kwh i.modate i.temp1#i.temp2 //if inlist(rt_sched_cd,"1A","1B","4A","4B","ICE")
-predict resid2_, residuals
-drop temp*
-reshape wide *kwh /*resid_*/ resid2_, i(modate) j(rt_sched_cd) string
-tsset modate
+gen acresM = acres/1e6
+gen acresK = acres/1e3
 
-local xmin = ym(2008,1)
-local xmax = ym(2017,9)
-local xlabmax = ym(2017,1)
-keep if inrange(modate,`xmin',`xmax')
+twoway ///
+	(bar acresK xbar10 if (in_bars10 | in_bars17) & year==2010 & cali_crop==20, fi(inten20) color(black) barw(0.4)) ///
+	(bar acresK xbar10 if (in_bars10 | in_bars17) & year==2010 & cali_crop==20, fi(inten70) color(black) barw(0.4)) ///
+	(bar acresK xbar10 if (in_bars10 | in_bars17) & year==2010 & cali_crop==20, fi(inten0) color(navy) barw(1) lwidth(medium)) ///
+	(bar acresK xbar10 if (in_bars10 | in_bars17) & year==2010 & cali_crop==20, fi(inten0) color(midblue) barw(1) lwidth(medium)) ///
+	(bar acresK xbar10 if (in_bars10 | in_bars17) & year==2010 & cali_crop==1, fi(inten20) color(midblue) barw(0.4)) ///
+	(bar acresK xbar10 if (in_bars10 | in_bars17) & year==2010 & cali_crop==0, fi(inten20) color(navy) barw(0.4)) ///	
+	(bar acresK xbar17 if (in_bars10 | in_bars17) & year==2017 & cali_crop==1, color(midblue) barw(0.4)) ///
+	(bar acresK xbar17 if (in_bars10 | in_bars17) & year==2017 & cali_crop==0, color(navy) barw(0.4)) ///	
+	, ylab(0 500 1000 1500, nogrid angle(0) labsize(medlarge)) ///
+	ytitle("Thousand acres planted", size(medlarge)) ///
+	xlab("") xtitle("") xscale(r(1 10)) graphr(color(white) lc(white)) ///
+	legend(order(1 "2010" 2 "2017" 3 "Low-value crops" 4 "High-value crops" ) rows(2)) /*title("California Acreage by Crop, 2017", size(medlarge) color(black)) */ ///
+	text(1310 1.2 "Alfalfa", place(n) angle(45) size(medlarge) color(navy)) ///
+	text(1237 2.4 "Almonds", place(n) size(medlarge) color(midblue)) ///
+	text(645 3.3 "Winter" "Wheat", place(n) size(medlarge) color(navy)) ///
+	text(565 4.3 "Rice", place(n) size(medlarge) color(navy)) ///
+	text(390 5.3 "Cotton", place(n) size(medlarge) color(navy)) ///
+	text(390 6.4 "Corn", place(n) size(medlarge) color(navy)) ///
+	text(705 7.0 "Grapes", place(n) size(medlarge) color(midblue)) ///
+	text(385 9.4 "Walnuts", place(n) size(medlarge) color(midblue)) ///
+	text(508 8.6 "Pistachios", place(n) size(medlarge) color(midblue)) 
+graph export "$dirpath/output/acreage_bars2017_blue.eps", replace
+}
 
-*twoway tsline resid2*, legend(off)
-
-twoway tsline mean_p_kwhIC*, legend(off)
-
-twoway (tsline mean_p_kwh1A, color(eltblue) lwidth(medthick)) ///
-	(tsline mean_p_kwh1B, color(eltblue) lwidth(medthick) lpattern(shortdash)) ///
-	(tsline mean_p_kwhICE, color(midblue) lwidth(medthick) lpattern(dash_dot)) ///
-	(tsline mean_p_kwh4A, color(dknavy) lwidth(medthick)) ///
-	(tsline mean_p_kwh4B, color(dknavy) lwidth(medthick)  lpattern(shortdash)) ///
-	, ///
-	xscale(r(`xmin',`xmax')) xlab(`xmin'(36)`xlabmax', labsize(medlarge)) ///
-	xtitle(" ", size(medlarge)) ///
-	ylab(0 0.05 0.10 ".10" 0.15 0.20 ".20" 0.25 0.30 ".30",nogrid angle(0) labsize(medlarge)) ytitle("Avg marginal price ($/kWh)", size(medlarge)) ///
-	graphr(color(white) lc(white)) ///
-	/*title("Monthly Average Marginal Price", size(vlarge) color(black))*/ ///
-	legend(order(1 "AG-1A " 2 "AG-1B " 3 "AG-ICE" 4 "AG-4A " 5 "AG-4B ")  col(3) size(medlarge))
-graph export "$dirpath/output/marg_price_5_default_rates_raw.eps", replace
+************************************************
+************************************************
