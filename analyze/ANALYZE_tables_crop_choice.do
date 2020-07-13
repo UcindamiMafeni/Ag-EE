@@ -33,7 +33,7 @@ forvalues r = 1/4 {
 	local elas_`r' = string(elas[`r'],"%9.3f")
 	local elas_se_`r' = string(elas_se[`r'],"%9.3f")
 	
-	local pval_mfx_`r' = 2*ttail(dof[999999],abs(mfx[`r']/mfx_se[`r]'))
+	local pval_mfx_`r' = 2*ttail(999999,abs(mfx[`r']/mfx_se[`r']))
 	if `pval_mfx_`r''<0.01 {
 		local stars_mfx_`r' = "$^{***}$"
 	}
@@ -47,7 +47,7 @@ forvalues r = 1/4 {
 		local stars_mfx_`r' = ""
 	}
 
-	local pval_elas_`r' = 2*ttail(dof[999999],abs(elas[`r']/elas_se[`r]')))
+	local pval_elas_`r' = 2*ttail(999999,abs(elas[`r']/elas_se[`r']))
 	if `pval_elas_`r''<0.01 {
 		local stars_elas_`r' = "$^{***}$"
 	}
@@ -127,7 +127,7 @@ file write textab "Common land units & \multicolumn{2}{c}{`n_clu'} \\ " _n
 file write textab "[0.1em] " _n
 file write textab "Observations & \multicolumn{2}{c}{`n_obs'} \\ " _n
 file write textab "[0.1em] " _n
-file write textab "First stage \$\chi^2\$-statistic & \multicolumn{2}{c}{`chi'} \\ " _n
+file write textab "First stage \$\chi^2\$-statistic & \multicolumn{2}{c}{`chi2'} \\ " _n
 file write textab "[0.15em]" _n
 file write textab "\hline" _n
 file write textab "\end{tabular}" _n
@@ -178,7 +178,7 @@ file write textab "\end{adjustbox}" _n
 file write textab "\captionsetup{width=\textwidth}" _n
 file write textab "\caption*{\scriptsize \emph{Notes:} This table reports the results of adding counterfacatual taxes on groundwater to the observed electricity prices in our sample." _n
 file write textab "To simulate the impacts of a groundwater tax, we first calculate the observed probability of observing each crop type (annuals, fruit/nut perennials, other perennials, and no crop) for each CLU in our sample over our time series." _n
-file write textab "This baseline allocation is represented in the first column, labeled ``No tax'' The sample average marginal price is \$41 per acre-foot. " _n
+file write textab "This baseline allocation is represented in the first column, labeled ``No tax'' The sample average marginal price is \\$41 per acre-foot. " _n
 file write textab "In the subsequent columns, we take each CLU's average annual marginal price and add the reported tax level to it. We use our discrete choice semi-elasticity estimates to calculate predicted land reallocation." _n
 file write textab "The first four rows correspond to the four crop types in our analysis, and the table displays the total acreage in our sample that we predict would be cropped in each crop type under each of the tax levels." _n
 file write textab "The second-to-last row reports the total acreage of cropland that is reallocated to a different crop type due to the groundwater tax, as compared to no tax." _n
