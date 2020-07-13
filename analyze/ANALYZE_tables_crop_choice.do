@@ -176,10 +176,14 @@ file write textab "\hline" _n
 file write textab "\end{tabular}" _n
 file write textab "\end{adjustbox}" _n
 file write textab "\captionsetup{width=\textwidth}" _n
-file write textab "\caption*{\scriptsize \emph{Notes:} This table reports the results of simulating a counterfactual tax on groundwater." _n
-file write textab "Each column corresponds to a different tax level, including no tax, as reported in the column headers." _n
+file write textab "\caption*{\scriptsize \emph{Notes:} This table reports the results of adding counterfacatual taxes on groundwater to the observed electricity prices in our sample." _n
+file write textab "To simulate the impacts of a groundwater tax, we first calculate the observed probability of observing each crop type (annuals, fruit/nut perennials, other perennials, and no crop) for each CLU in our sample over our time series." _n
+file write textab "This baseline allocation is represented in the first column, labeled ``No tax'' The sample average marginal price is \$41 per acre-foot. " _n
+file write textab "In the subsequent columns, we take each CLU's average annual marginal price and add the reported tax level to it. We use our discrete choice semi-elasticity estimates to calculate predicted land reallocation." _n
 file write textab "The first four rows correspond to the four crop types in our analysis, and the table displays the total acreage in our sample that we predict would be cropped in each crop type under each of the tax levels." _n
-file write textab "The final row reports the total acreage of cropland that is reallocated to a different crop type due to the groundwater tax, as compared to no tax." _n
+file write textab "The second-to-last row reports the total acreage of cropland that is reallocated to a different crop type due to the groundwater tax, as compared to no tax." _n
+file write textab "The final row displays the total percent change in land use for each tax level, as compared to no tax." _n
+file write textab "These reallocations estimates are based on the 314,883.69 acres of agricultural land matched to our sample." _n
 file write textab "}" _n
 file write textab "\end{table}" _n
 
