@@ -1,3 +1,15 @@
+clear all
+version 13
+set more off
+set matsize 11000
+
+************************************************
+** Script to make marginal rates appx figure  **
+************************************************
+
+global dirpath "T:/Projects/Pump Data"
+global dirpath_data "$dirpath/data"
+global dirpath_output "$dirpath/output"
 
 
 use "$dirpath_data/merged_pge/ag_rates_avg_by_month.dta", clear
@@ -12,6 +24,9 @@ predict resid2_, residuals
 drop temp*
 reshape wide *kwh /*resid_*/ resid2_, i(modate) j(rt_sched_cd) string
 tsset modate
+
+format modate %tmCY
+
 
 local xmin = ym(2008,1)
 local xmax = ym(2017,9)

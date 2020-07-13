@@ -866,9 +866,9 @@ file write textab "~~ $\sinh^{-1}\big(Q_{iy}\big)$ & Yes& Yes & Yes & \\" _n
 file write textab "[0.1em] " _n
 file write textab "~~ $1\big[Q_{iy}>0\big]$ & & & & Yes \\" _n
 file write textab "[1.5em] " _n
-*file write textab "Sample restriction: \\" _n
-*file write textab "~~ \$Q_{iy} > 0\$ in all years & & & &Yes \\" _n
-*file write textab "[1.5em] " _n
+file write textab "Sample restriction: \\" _n
+file write textab "~~ \$Q_{iy} > 0\$ in all years & & & Yes & \\" _n
+file write textab "[1.5em] " _n
 file write textab "Instrument: \\" _n
 file write textab "[0.1em] " _n
 file write textab "~~ Default $\log\big(P^{\text{elec}}_{iy}\big)$  & Yes   & Yes  & Yes & Yes \\" _n

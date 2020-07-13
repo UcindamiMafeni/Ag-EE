@@ -34,6 +34,8 @@ local xmax = ym(2017,9)
 local xlabmax = ym(2017,1)
 keep if inrange(modate,`xmin',`xmax')
 
+format modate %tmCY
+
 twoway (tsline mean_p_kwh1A, color(eltblue) lwidth(medthick)) ///
 	(tsline mean_p_kwh1B, color(eltblue) lwidth(medthick) lpattern(shortdash)) ///
 	(tsline mean_p_kwhICE, color(midblue) lwidth(medthick) lpattern(dash_dot)) ///
