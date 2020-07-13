@@ -162,7 +162,7 @@ file open textab using "$dirpath_output/table_sim_acres.tex", write text replace
 
 file write textab "\begin{table}[t!]\centering" _n
 file write textab "\small" _n
-file write textab "\caption{Crop choice under counterfactual groundwater taxes \label{tab:sim_acres}}" _n
+file write textab "\caption{Crop choice and groundwater use under counterfactual groundwater taxes \label{tab:sim_acres}}" _n
 file write textab "\vspace{-0.1cm}" _n
 file write textab "\small" _n
 file write textab "\begin{adjustbox}{center} " _n
