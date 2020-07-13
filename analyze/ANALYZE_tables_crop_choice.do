@@ -150,8 +150,13 @@ file write textab "\hline" _n
 file write textab "\end{tabular}" _n
 file write textab "\end{adjustbox}" _n
 file write textab "\captionsetup{width=\textwidth}" _n
-file write textab "\caption*{\scriptsize \emph{Notes:} This table reports the mean marginal effects and semi-elasticities with respect to groundwater price that are implied by the results of our multinomial probit model of crop choice." _n
+file write textab "\caption*{\scriptsize \emph{Notes:} We estimate the discrete choice model of Equation (\ref{eq:discrete_choice}) using IV probit, instrumenting for groundwater price with the default within-category electricity price. " _n
+file write textab "We include county-by-year-by-crop-type fixed effects to flexibly estimate profit excluding the cost of groundwater pumping." _n
+file write textab "The left column presents the average marginal effects of groundwater price on crop type choice probabilities." _n
+file write textab "The right column reports the average semi-elasticities for each crop type choice probability with respect to the groundwater price." _n
+file write textab "Each value is calculated for every observation in our analysis, and then we take the mean over all observations to yield these average values. " _n
 file write textab "Standard errors (in parentheses) are clustered at the common land unit (CLU)." _n
+file write textab "Significance: *** \$p < 0.01$, ** \$p < 0.05$, * \$p < 0.10$." _n
 file write textab "}" _n
 file write textab "\end{table}" _n
 
