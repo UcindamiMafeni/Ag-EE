@@ -33,10 +33,12 @@ egen temp_sum = sum(temp_tag), by(county_group)
 drop if temp_sum < 4
 drop temp*
 
-// save number of observations and number of CLUs
+// save number of observations, number of CLUs, and mean water price
 qui distinct clu_id
 local n_obs = r(N)
 local n_clu = r(ndistinct)
+qui summ mean_p_af_rast_dd_mth_2SP
+local mean_p_water = r(mean)
 	
 ** estimate model
 set seed 321
@@ -120,6 +122,7 @@ foreach out in 1 2 3 4 {
 gen n_obs = `n_obs'
 gen n_clu = `n_clu'
 gen chi2 = `chi2'
+gen mean_p_water = `mean_p_water'
 
 // save results
 order model fes outcome crop_type mfx mfx_se elas elas_se acres* n_obs n_clu chi2
@@ -149,10 +152,12 @@ egen temp_sum = sum(temp_tag), by(county_group year)
 drop if temp_sum < 4
 drop temp*
 
-// save number of observations and number of CLUs
+// save number of observations, number of CLUs, and mean water price
 qui distinct clu_id
 local n_obs = r(N)
 local n_clu = r(ndistinct)
+qui summ mean_p_af_rast_dd_mth_2SP
+local mean_p_water = r(mean)
 	
 // estimate model
 set matsize 1000
@@ -247,6 +252,7 @@ foreach out in 1 2 3 4 {
 gen n_obs = `n_obs'
 gen n_clu = `n_clu'
 gen chi2 = `chi2'
+gen mean_p_water = `mean_p_water'
 
 // save results
 order model fes outcome crop_type mfx mfx_se elas elas_se acres* n_obs n_clu chi2
