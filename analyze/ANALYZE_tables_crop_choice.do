@@ -107,7 +107,7 @@ file open textab using "$dirpath_output/table_probit_results.tex", write text re
 
 file write textab "\begin{table}[t!]\centering" _n
 file write textab "\small" _n
-file write textab "\caption{Crop switching estimates -- Discrete choice model \label{tab:probit_results}}" _n
+file write textab "\caption{Discrete choice estimates of crop switching \label{tab:probit_results}}" _n
 file write textab "\vspace{-0.1cm}" _n
 file write textab "\small" _n
 file write textab "\begin{adjustbox}{center} " _n
@@ -162,7 +162,7 @@ file open textab using "$dirpath_output/table_sim_acres.tex", write text replace
 
 file write textab "\begin{table}[t!]\centering" _n
 file write textab "\small" _n
-file write textab "\caption{Counterfactual groundwater taxes \label{tab:sim_acres}}" _n
+file write textab "\caption{Crop choice under counterfactual groundwater taxes \label{tab:sim_acres}}" _n
 file write textab "\vspace{-0.1cm}" _n
 file write textab "\small" _n
 file write textab "\begin{adjustbox}{center} " _n
@@ -186,7 +186,7 @@ file write textab "[0.1em]" _n
 file write textab "~~Fallow & $`acres_0tax_1'$ & $`acres_5tax_1'$ & $`acres_10tax_1'$ & $`acres_15tax_1'$ \\ " _n
 file write textab "[0.5em]" _n
 file write textab "~~Total reallocation & & $`acres_5tax_reall'$ & $`acres_10tax_reall'$ & $`acres_15tax_reall'$ \\ " _n
-file write textab "~~Total reallocation (percent) & & $(`acres_5tax_reall_pct'\%)$ & $(`acres_10tax_reall_pct'\%)$ & $(`acres_15tax_reall_pct'\%)$ \\ " _n
+file write textab "~~Total reallocation (percent) & & $`acres_5tax_reall_pct'\%$ & $`acres_10tax_reall_pct'\%$ & $`acres_15tax_reall_pct'\%$ \\ " _n
 file write textab "[0.5em]" _n
 file write textab "Change in groundwater consumption (percent) & & $`water_5tax_pct'\%$ & $`water_10tax_pct'\%$ & $`water_15tax_pct'\%$ \\ " _n
 file write textab "[0.15em]" _n
