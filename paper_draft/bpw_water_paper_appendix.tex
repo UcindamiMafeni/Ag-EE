@@ -1,0 +1,108 @@
+
+\documentclass[hidelinks,12pt]{article}
+\usepackage{lastpage}
+\usepackage{fancyhdr}
+\fancyfoot{}
+\cfoot{\thepage{}~of~\pageref{LastPage}}
+\usepackage{caption}
+\usepackage[pdftex]{graphicx}
+\usepackage{epstopdf}
+\usepackage{mathtools}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amstext}
+\usepackage{amsthm}
+\usepackage{enumerate}
+\usepackage{amssymb}
+\usepackage{breqn}
+\usepackage{xr-hyper}
+\usepackage{hyperref}
+\usepackage{bigints}
+\usepackage{color}
+%\usepackage{parskip}
+\usepackage[letterpaper]{geometry}
+\usepackage{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{setspace}
+\usepackage{keyval}
+\usepackage{ifthen}
+%\usepackage[american]{babel}
+\usepackage{etoolbox}
+\usepackage[all]{nowidow}
+\usepackage[utf8]{inputenc}
+\usepackage{csquotes}
+\usepackage{comment}
+\usepackage{placeins}
+\usepackage{upgreek}
+%\usepackage{natbib}
+\usepackage{array}
+\usepackage{adjustbox}
+\usepackage[demo,abs]{overpic}
+\usepackage{booktabs}
+\usepackage[title]{appendix}
+\definecolor{cadmiumgreen}{rgb}{0.0, 0.42, 0.24}
+%% TO CONVERT TO TIMES NEW ROMAN
+%\usepackage{mathptmx}
+% convert table numering to roman
+%\renewcommand*\thetable{\Roman{table}}
+
+\usepackage[backend = biber, authordate, uniquename=false, uniquelist=false, url = false, doi=false, isbn=false]{biblatex-chicago}
+%\renewcommand\appendixpagename{\vspace{-10mm}\centering{\Large Appendix: For online publication}}
+\renewcommand\appendixpagename{\vspace{-30mm}\centering{~}}
+\usepackage{xr}
+\externaldocument{bpw_water_paper_master}
+
+
+\addbibresource{bpw_water.bib}
+
+
+\geometry{
+top = 1in,            % <-- you want to adjust this
+inner = 1in,
+outer = 1in,
+bottom = 1in,
+%headheight = 3ex,       % <-- and this
+%headsep = 2ex,          % <-- and this
+}
+
+\title{\vspace{-10mm} {Groundwater, energy, and crop choice}}
+\date{\today}
+
+\author{Fiona Burlig, Louis Preonas, and Matt Woerman}
+
+\begin{document}
+
+\setlength{\parindent}{0.9cm}
+%\maketitle
+\begin{appendices}
+\begin{refsection}
+\begin{spacing}{1.1} {
+\setcounter{page}{1}
+\renewcommand\thepage{\arabic{page}}
+\setcounter{figure}{0}
+\renewcommand\thefigure{\Alph{section}\arabic{figure}}
+\setcounter{table}{0}
+\renewcommand\thetable{\Alph{section}\arabic{table}}
+\setcounter{equation}{2}
+\appendixpage
+
+\section{PGE electricity prices}{\label{app:pge_prices}}
+\input{bpw_water_appendix_pgeprices}
+
+\section{Groundwater demand estimation}{\label{app:gw_demand}}
+\input{bpw_water_appendix_groundwaterdemand}
+
+\section{Discrete choice modeling framework}{\label{app:discrete_choice}}
+\input{bpw_water_appendix_sec_discretechoice}
+
+\newpage
+\section{Additional tables and figures}{\label{app:tab_fig}}
+\input{bpw_water_appendix_sec_tabfig}
+
+}
+\end{spacing}
+\end{refsection}
+\end{appendices}
+\end{document}

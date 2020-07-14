@@ -49,7 +49,7 @@
 %\renewcommand*\thetable{\Roman{table}}
 
 \usepackage[backend = biber, authordate, uniquename=false, uniquelist=false, url = false, doi=false, isbn=false]{biblatex-chicago}
-%\externaldocument{bpw_water_appendix}
+\externaldocument{bpw_water_paper_appendix}
 
 \addbibresource{bpw_water.bib}
 
@@ -63,20 +63,20 @@ bottom = 1in,
 %headsep = 2ex,          % <-- and this
 }
 
-\title{\vspace{-10mm} {Groundwater, energy, and crop choice: \\Evidence from California agriculture}
+\title{\vspace{-10mm} {Groundwater, energy, and crop choice}
 }
-\date{\today\\ \vspace{0.3cm} \textsc{Preliminary and Incomplete \\ Not for citation or circulation}
+\date{\today\\ \vspace{0.3cm} %\textsc{Preliminary and Incomplete \\ Not for citation or circulation}
 }
 \author{
 Fiona Burlig, Louis Preonas, and Matt Woerman\thanks{\scriptsize Burlig: University of Chicago Harris School of Public Policy and NBER. Keller Center, 1307 E. 60th Street, Chicago, IL 60637. Email: \url{burlig@uchicago.edu}. Preonas: Department of Agricultural and Resource Economics, University of Maryland. 2200 Symons Hall, 7998 Regents Drive, College Park, MD 20742. Email: \url{lpreonas@umd.edu}. Woerman: Department of Resource Economics, University of Massachusetts Amherst. Stockbridge Hall, 80 Campus Center Way, Amherst, MA 01003. Email: \url{mwoerman@umass.edu}. 
 %
-We thank Nick Hagerty for graciously sharing data with us, and thank Amy Ando, Andrew Ayers, Maximilian Auffhammer, Kathy Baylis, Ellen Bruno, Karen Clay, Michael Greenstone, Koichiro Ito, Katrina Jessoe, Erik Lichtenberg, Dave McLaughlin, Kyle Meng, Joe Shapiro, Andrew Stevens, Catherine Wolfram, and seminar participants at UC Energy Camp, Mississippi State, UC Davis, University of Illinois, ITAM, HKUST, University of Chicago, USC, the ASSA Annual Meetings, the AERE Summer Conference, and UC Berkeley's POWER Conference for helpful comments and suggestions.
+We thank Nick Hagerty for graciously sharing data with us, and thank Amy Ando, Andrew Ayers, Maximilian Auffhammer, Kathy Baylis, Ellen Bruno, Karen Clay, Michael Greenstone, Koichiro Ito, Katrina Jessoe, Erik Lichtenberg, Dave McLaughlin, Kyle Meng, Mar Reguant, Paul Scott, Joe Shapiro, Andrew Stevens, Catherine Wolfram, and seminar participants at UC Energy Camp, Mississippi State, UC Davis, University of Illinois, ITAM, HKUST, University of Chicago, USC, the ASSA Annual Meetings, the AERE Summer Conference, the WEAI annual meetings, and UC Berkeley's POWER Conference for helpful comments and suggestions.
 %
 Chinmay Lohani, Anna Schmidt, Chen Sui, Yixin Sun, and Xinyi Wang provided excellent research assistance.
 %
 Karen Notsund provided invaluable support in obtaining data. 
 %
-We received generous funding in support of this project from the Giannini Foundation of Agricultural Economics and the Sloan Foundation (via the E2e Project).
+We received generous funding in support of this project from the Giannini Foundation of Agricultural Economics, and the Sloan Foundation (via the E2e Project), and the Becker Friedman Institute for Economics.
 %
 All remaining errors are our own.}}
 \begin{document}
@@ -88,8 +88,7 @@ All remaining errors are our own.}}
 %\vspace{-2mm}
 %\thispagestyle{empty}
 \begin{abstract}
-\vspace{-2mm}
-\noindent \newline
+%\vspace{-5mm} 
 \input{bpw_water_paper_abstract}
 
 \noindent \textbf{Keywords:} groundwater, agriculture, electricity \\
@@ -139,54 +138,40 @@ All remaining errors are our own.}}
 }
 \end{spacing}
 
-\pagebreak
+
 \section*{References}
 \printbibliography[heading=none]
 \newpage
 \end{refsection}
 \FloatBarrier
 \section*{Figures and Tables}
+$\phantom{SPACER}$
 
-\input{figures/figure_marg_price_3rates}
+$\phantom{SPACER}$
+
+$\phantom{SPACER}$
+
+$\phantom{SPACER}$
+
+$\phantom{SPACER}$
+
+\input{figures/figure_acreage_bars2017}
 
 \input{figures/figure_pge_ca_map}
 
-\begin{figure}[t]
-\begin{centering}
-\caption{Histogram of pump horsepower}
-\label{fig:pump_hist}
-\includegraphics[width=0.7\textwidth]{Figures/pump_hist.png}
-\caption*{\footnotesize \emph{Notes:} This is a histogram of measured horsepower for all 21,851 tests in our APEP pump test dataset. We observe no bunching on either side of the 35 hp cutoff that determines whether PGE classifies pumps as small or large. Bunching would be a sign that farmers optimize against PGE's tariff schedules when making pump investment decisions.}
-\end{centering}
-\end{figure}
+\input{figures/figure_marg_price_5_default_rates}
 
+\input{figures/figure_pump_hist.tex}
 
+\input{figures/figure_hourly_consumption_vs_price}
 
-\begin{figure}[t]
-\begin{centering}
-\caption{Modeling farm $i$'s water costs and groundwater demand response}
-\label{fig:water_cost_cartoons}
-\includegraphics[width=0.495\textwidth, trim={4mm 0 11mm 0mm}, clip]{Figures/water_cost_1.png}
-\includegraphics[width=0.495\textwidth, trim={4mm 0 11mm 0mm}, clip]{Figures/water_cost_2.png} \\
-\includegraphics[width=0.495\textwidth, trim={4mm 0 11mm 0mm}, clip]{Figures/water_cost_3.png}
-\includegraphics[width=0.495\textwidth, trim={4mm 0 11mm 0mm}, clip]{Figures/water_cost_4.png}
-\caption*{\footnotesize \emph{Notes:} This figure presents a stylized water price schedule for a representative farm $i$. The price schedule is nonlinear and comprises water from up to three sources: (i) a low-cost allocation of surface water from farm $i$'s irrigation district; (ii) medium-cost groundwater pumping, with costs that rise gradually in own extraction; and (iii) a high-cost backstop of open market water transactions, for which we assume farm $i$ is a price taker. For crop $k^0$ requiring $W_i(k^0)$ acre/feet of water, farm $i$'s irrigation costs $C_i\big(W_i(k^0)\big)$ are represented by the shaded region in the top-left panel. If farm $i$ experiences a pumping cost shock (due to either an electricity price increase or a groundwater depth increase), its groundwater costs shift up and its total irrigation costs increase by the shaded region $\Delta C_i\big(W_i(k^0)\big)$ in the top-right panel. The bottom panels illustrate two ways that this pumping cost shock increase translate to a reduction in farm $i$'s groundwater consumption. First, the farmer may respond to this pumping cost shock by switching from crop $k^0$ to a less water intensive crop $k^1$, as in the bottom-left panel. Second, for a large enough cost shock, the farmer may continue to grow crop $k^0$, but substitute away from groundwater using open market water purchases.
-}
-\end{centering}
-\end{figure}
+\input{figures/figure_water_cost_cartoons}
 
+%\input{figures/figure_davis_line_crossing.tex}
 
-\begin{figure}[t]
-\begin{centering}
-\caption{Profits in the Southern San Joaqu\'{i}n Valley Under Varying Water Prices}
-\label{fig:davis_line_crossing}
-\includegraphics[width=0.7\textwidth]{Figures/davis_lines_crossing.pdf}
-\caption*{\footnotesize \emph{Notes:} This figure plots annual profits per acre by crop, as reported by the UC Davis Cost Studies. We focus on five crop-specific studies in the Southern San Joaqu\'{i}n Valley, and vary the average cost of water for irrigation while holding all other assumptions constant.}
-\end{centering}
-\end{figure}
+\input{figures/figure_cf_water_tax.tex}
 
-
-\input{tables/table_pge_ag_tariffs}
+\FloatBarrier
 
 \input{tables/table_elec_summary_stats.tex}
 
@@ -194,14 +179,14 @@ All remaining errors are our own.}}
 
 \input{tables/table_elec_regs_main.tex}
 
-\input{tables/table_water_regs_main.tex}
-
 \input{tables/table_water_regs_combined.tex}
 
-\input{tables/table_ann_regs_main.tex}
+\input{tables/table_water_months_from_pump_test}
 
-\input{tables/table_ann_regs_het.tex}
+\input{tables/table_water_intens_extens.tex}
 
-\input{tables/table_ann_regs_crop.tex}
+\input{tables/table_probit_results.tex}
+
+\input{tables/table_sim_acres.tex}
 
 \end{document}

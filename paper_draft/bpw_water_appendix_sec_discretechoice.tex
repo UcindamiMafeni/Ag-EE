@@ -1,0 +1,21 @@
+To arrive at the discrete choice model we present in Section~\ref{sec:discrete_choice} of the main text, we begin with a general model of farm profits:
+\begin{align*}
+\pi_{iy}(k) = r_{iyk} - c_{iyk} + \varepsilon_{iyk}	
+\end{align*}
+where $\pi_{iy}(k)$ is the profit for farmer $i$ in year $y$ growing crop type $k$, $r_{iyk}$ is farm revenues, $c_{iyk}$ are farm costs, and $\varepsilon_{iyk}$ is an error term. Rewriting revenues as a function of crop prices $p_{ky}$ (common across farmers) and quantity grown $q_{iyk}$, and decomposing costs into non-water costs and water costs, we can re-write this as:
+\begin{align*}
+\pi_{iy}(k) &= p_{yk}q_{iyk} - c_{iyk}^{\text{non-water}} - c_{iyk}^{\text{water}}  + \varepsilon_{iyk}\\
+& = p_{yt}q_{iyk} - c_{iyk}^{\text{non-water}} -  p_{iy}^{\text{water}}q_{iyk}^{water} + \varepsilon_{iyk}
+\intertext{Assuming yield and per-unit costs are constant within county $c$, and denoting acreage as $A_{iy}$:}
+\pi_{iy}(k) & = \alpha_{cyk} + \gamma_{cyk}A_{iy} - p_{iy}^{\text{water}}q_{iyk}^{water} + \varepsilon_{iyk}\\
+& = \alpha_{cyk} + \gamma_{cyk}A_{iy} + \beta_{cyk}A_{iy}p_{iy}^{\text{water}} + \varepsilon_{iyk}
+\intertext{Assuming all costs scale with acres (i.e. $\alpha_{cky} = 0)$:}
+\pi_{iy}(k) & = \gamma_{cyk} + \beta_{cyk}p_{iy}^{\text{water}} + \varepsilon_{iyk}
+\intertext{And, finally, assume that the impact of water prices on profits is time-invariant and location-invariant (i.e. $\beta_{cyk} = \beta_{k} ~ \forall ~ y, c$):}
+\pi_{iy}(k) & = \gamma_{cyy} + \beta_{k}p_{iy}^{\text{water}} + \varepsilon_{iyk}
+\intertext{Farmer $i$ maximizes profits by choosing crop $k$ (identical to Equation (\ref{eq:discrete_choice} in the main text):}
+\max_{k\in \mathcal{K}} \pi_{iy}(k) &= \gamma_{cky} + \beta_k p_{iy}^{\text{water}} + \varepsilon_{iyk}
+\end{align*}
+We further assume that the error terms are i.i.d. Normal: $\varepsilon_{iyk} \sim \mathcal{N}(0, \sigma)$, and estimate this model using the instrumental variables probit model described in the main text.
+
+\FloatBarrier

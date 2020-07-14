@@ -1,88 +1,61 @@
 %
 % EMPIRICAL STRATEGY 
 %
+This section outlines our empirical strategy for estimating farmers' demand for groundwater pumping. First, we estimate price elasticities of demand for electricity, for the full sample of agricultural consumers where we can match an electricity meter to a groundwater pump. Next, we estimate price elasticities of demand for groundwater by translating prices and quantities of electricity into prices and quantities of water using data on (i) technical pumping production functions and (ii) groundwater depths across space and time.
 
-This section outlines our empirical strategy for estimating farmers' demand for groundwater pumping. First, we estimate price elasticities of demand for electricity, for the full sample of agricultural consumers where we can match an electricity meter to a groundwater pump. Next, we estimate price elasticities of demand for groundwater, by translating prices/quantities of electricity into prices/quantitites of water using data on (i) technical pumping production functions and (ii) groundwater depths across space and time.
-
-\subsection{Electricity demand}\label{sec:empirics_elec}
+\subsection{Electricity demand}
+\label{sec:empirics_elec}
 
 We estimate monthly electricity demand using the following specification:
 \begin{equation}
 \sinh^{-1}\big(Q^{\text{elec}}_{it}\big) = \beta \log\big(P^{\text{elec}}_{it}\big) + \gamma_{i} + \delta_t + \varepsilon_{it}
 \label{eq:reg_elec}
 \end{equation}
-The dependent variable is kWh consumed at electricity service point $i$ in month $t$, transformed using the inverse hyperbolic sine function (which closely approximates the natural log transformation but includes zero in its support).\footnote{
-Since 15 percent of observations in this panel are zeroes, we apply the inverse hyperbolic sine transformation to avoid dropping months where farms consume zero kWh for groundwater pumping.
+The dependent variable is kWh of electricity consumed at service point $i$ in month $t$, transformed using the inverse hyperbolic sine function, which closely approximates the natural log transformation but includes zero in its support (\textcite{bellemare2020}).\footnote{
+Since 14 percent of observations in this panel are zeros, we apply the inverse hyperbolic sine transformation to avoid dropping months when a farm consumes zero kWh for groundwater pumping. Appendix Table \ref{tab:elec_regs_ihs_logs} presents alternative functional forms, including $\log$-$\log$ and $(\log+1)$-$\log$.
 }
-$P^{\text{elec}}_{it}$ is unit $i$'s marginal electricity price (in \$/kWh), averaged across all hours in month $t$. We include unit by month-of-year fixed effects ($\gamma_i$), in order to control for within-pump/month average consumption (e.g., service point $i$ in March). We also include month-of-sample fixed effects ($\delta_t$) to control for trends in both electricity prices (which rise over time) and pumping behavior. Alternative specifications include groundwater basin by year fixed effects (to control for time-varying trends in groundwater depth across basins), water district by year fixed effects (to control for annual shocks to surface water allocations), and unit-specific linear time trends.
-We two-way cluster standard errors by service point and month-of-sample, which accommodates both arbitrary within-unit serial correlations and arbitrary spatial correlations with each monthly cross-section.
+$P^{\text{elec}}_{it}$ is unit $i$'s marginal electricity price (in \$/kWh), averaged across all hours in month $t$. We include unit-by-month-of-year fixed effects ($\gamma_i$) to non-parametrically control for seasonality -- including the average agricultural cycle -- at every groundwater pump. We also include month-of-sample fixed effects ($\delta_t$) to control for average market-wide time effects in both electricity prices (which rise over time) and pumping behavior, as well as changes in of the market environment (e.g., crop prices). Alternative specifications include groundwater-basin-by-year fixed effects (to control for time-varying trends in groundwater depth across basins), water-district-by-year fixed effects (to control for annual shocks to surface water allocations), and service-point-specific linear time trends.
+We two-way cluster standard errors by service point and month-of-sample, which accommodates both arbitrary within-unit serial correlation and arbitrary spatial correlation across units within a month.
 
-\subsubsection{Identification}
-To identify the demand elasticity in Equation (\ref{eq:reg_elec}), we must purge any endogenous variation in unit $i$'s marginal electricity price. PGE's agricultural tariff \emph{schedules} are the outcome of statewide regulatory proceedings, and marginal prices are linear in kWh consumed.\footnote{
-By contrast, PGE's residential electricity tariffs use increasing block pricing, where a household's marginal price is endogenous to its own consumption (\textcite{ito2014}). Linear marginal prices simplify 
-our estimation of agricultural electricity demand, because farm $i$'s marginal price is determined \emph{solely} by its tariff schedule. 
-}
-While an individual farmer cannot plausibly influence how PGE sets prices, most farmers may select between alternative tariff schedules---effectively choosing which marginal electricity price they face. PGE restricts this choice to be within 5 tariff categories defined by farmers' physical capital (e.g.\  pump size and type) and type of electric meter (i.e.\ conventional vs.\ smart meters). We instrument for unit $i$'s marginal price with the marginal price of the default tariff \emph{within} unit $i$'s category (i.e.\ bolded tariffs in Table \ref{tab:pge_ag_tariffs}), which eliminates selection bias from a high-volume pumper choosing a tariff with advantageously low volumetric prices.
+To econometrically identify the demand elasticity in Equation (\ref{eq:reg_elec}), we leverage both cross-sectional and time-series variation in electricity prices. Our primary source of exogenous variation  comes from the fact that PGE's agricultural tariff schedules are the outcome of statewide regulatory proceedings. This means that individual farmers cannot plausibly influence how PGE sets prices. Moreover, tariff decisions are made 1--3 years in advance of their implementation, reducing concerns that prices are set in response to real-time events such as droughts.
 
-Farmers may also shift \emph{across} tariff categories, which could similarly bias our elasticity estimates. If such a shift reflects a change in physical pumping capital---for example, upgrading from a $<35$ hp pump to a $\ge35$ hp pump---then a change in marginal price (or within-category marginal default price) would coincide with a mechanical increase in electricity consumption. We control for such endogenous changes in price by interacting unit fixed effects with a categorical variable for the 3 types of physical capital that define PGE tariff categories: small pumps, large pumps, and auxiliary internal combustion engines.
-On the other hand, if unit $i$ shifted across categories because PGE replaced its conventional meter with a smart meter, we would not expect such a shift to coincide with any other changes to unit $i$'s pumping behavior.\footnote{
-During our 2008--2017 sample period, PGE gradually installed smart meters for the vast majority of its customers. The timing of PGE's smart meter rollout was determined by institutional and geographic factors, which were outside of customers' control. Previous research has established that PGE did not specify the rollout to target customers with particular usage patterns (\textcite{blonz2016}).
-}
-Hence, meter-induced shifts in tariff categories are unlikely to lead to \emph{endogenous} changes in unit $i$ marginal electricity price. We also instrument with \emph{lagged} default prices to purge potential endogeneity in the timing of unit $i$'s smart meter installation.
+While the tariff schedules are themselves exogenous, many farmers are able to select a menu of tariffs---effectively choosing which marginal electricity price they face.\footnote{As described in Section~\ref{sec:data} above, marginal prices are constant in the amount of electricity consumed. Constant marginal prices simplify our estimation of agricultural electricity demand, because farm $i$'s marginal price is determined solely by its tariff schedule. This is in contrast to PGE's residential electricity tariffs, which have increasing block pricing, wherein a household's marginal price is endogenous to its own consumption (\textcite{ito2014}).} It is therefore important that we purge the resulting endogenous variation in unit $i$'s marginal electricity price. To do this, we take advantage of eligibility restrictions that prevent farmers from choosing across the full menu of 23 tariffs.%\footnote{Appendix~\ref{app:pge_prices} describes the full set of tariffs in detail.} [REMOVED BECAUSE I SAY IT ABOVE]
+As we discuss above, PGE classifies all agricultural consumers into 5 disjoint categories: 
+\begin{itemize}
+\setlength\itemsep{0em}
+\item small pumps ($<35$ hp) with conventional meters
+\item large pumps ($\ge35$ hp) with conventional meters
+\item small pumps ($<35$ hp) with smart meters
+\item large pumps ($\ge35$ hp) with smart meters
+\item pumps with auxiliary internal combustion engines
+\end{itemize}
+\noindent
+While farmers may choose among tariffs \emph{within} a category, they may not choose tariffs from other categories. To ensure that this within-category selection is not biasing our estimates, we instrument for unit $i$'s marginal price with the marginal price of the ``default'' tariff within unit $i$'s category.\footnote{Three categories (conventional meters and internal combustion engines) comprise a single tariff; for these categories, assigning a ``default'' tariff is trivial. The two smart meter categories comprise 8 and 12 separate time-varying tariffs, respectively; for these categories, we choose as ``defaults'' the tariffs with the least time-varying marginal prices that most closely resemble their non-time-varying counterparts (AG-4A, AG-4B). Appendix Table \ref{tab:pge_ag_tariffs} summarizes all 23 tariffs by category, with default tariffs in bold, and Appendix Figure~\ref{fig:marg_price_all_rates} shows the time series of each tariff. We find similar results if we instrument using the modal tariff in each category (see Appendix Table \ref{tab:elec_regs_modal_tariff}).}
+This eliminates selection bias from a high-volume pumper choosing a tariff with advantageously low volumetric prices.
 
-In essence, these identifying assumptions amount to an assumption of parallel counterfactual trends across PGE's five tariff categories. One potential concern would be selection into the $<35$ hp vs.\ $\ge35$ hp groups, if (say) sophisticated, price-responsive farmers are more likely to invest in high-capacity pumps. Figure \ref{fig:pump_hist} reveals no bunching around this 35 hp benchmark, which suggests that farmers are not choosing their pump sizes to game PGE's rate categories. However, even in the absence of gaming, farmers with small vs.\ large pumps may differ across key unobservables. To address this concern, we interact month-of-sample fixed effects with horsepower bins, removing any trends in pump size. This yields quite similar results, which supports our parallel trends assumption.
+For farmers to move \emph{across} tariff categories, they must either adjust their physical pumping capital or have their electricity meter replaced by PGE. Pumping capital-induced category changes have the potential to introduce simultaneity bias: for example, upgrading from a $<35$ hp pump to a $\ge35$ hp pump would lead to both a decrease in default marginal price and a mechanical increase in electricity consumption. Figure~\ref{fig:pump_hist} demonstrates that there is no ``bunching'' in installed capital around this 35 hp threshold, suggesting that farmers are not endogenously choosing their pumping capital to manipulate their tariff category.\footnote{As a robustness check, we estimate Equation (\ref{eq:reg_elec}) interacting month-of-sample fixed effects with deciles of pump horsepower. Our results are nearly identical to those in our main specification, assuaging concerns of differential trends between small vs.\ large pumpers (see Appendix Table \ref{tab:elec_regs_month_bin_hp_fes}).} Nevertheless, we control for potential endogenous changes in price by interacting unit fixed effects with dummies for each type of physical capital: small pumps, large pumps, and auxiliary internal combustion engines.
 
+Moreover, Table \ref{tab:elec_summary_stats} shows that 90 percent of changes in a unit's tariff category come from PGE replacing unit $i$'s conventional meter with a smart meter. It is highly unlikely that such meter upgrades coincided with any other changes in a farmer's pumping behavior.\footnote{
+During our 2008--2017 sample period, PGE gradually installed smart meters for the vast majority of its customers. The timing of PGE's smart meter rollout was determined by institutional and geographic factors, which were outside of customers' control. Previous research has established that PGE did not design their smart meter rollouts to target customers with particular usage patterns (\textcite{blonz2016}).} Hence, meter-induced category changes are unlikely to lead to endogenous changes in unit $i$'s marginal electricity price. As a robustness check, we instrument with lagged default prices to purge potential endogeneity in the timing of unit $i$'s smart meter installation.
 
-
-%{\color{red}
-%\begin{itemize}
-%
-%\item Some evidence to back up the assertion (borrowed from Josh) that the smartmeter rollout is exogenous? (I did an event study that appears to check out..)
-%
-%\end{itemize}
-%}
-%
+Figure~\ref{fig:marg_price_5_default_rates} plots both raw and residualized time series of monthly average marginal prices for the five default tariff categories during our sample period.\footnote{Appendix Figure~\ref{fig:marg_price_all_rates} presents an extended version of this same figure, with all 23 PGE tariffs.} The right panel partials out both tariff $\times$ month-of-year fixed effects and common month-of-sample fixed effects, thereby illustrating the the main source of exogenous variation we use identify the demand elasticity in Equation \ref{eq:reg_elec}: that the residualized time series do not move in parallel. We also leverage variation from meter-induced shifts across tariff categories: farmers who received smart meters during our sample saw a systematic decrease in their average monthly marginal prices (i.e., from AG-1A to AG-4A, or from AG-1B to AG-4B).
 
 \subsection{Groundwater demand}\label{sec:empirics_water}
-We seek to estimate the causal effect of groundwater price on groundwater consumption, and this demand elasticity is linearly approximated by the coefficient $\beta$:
+To estimate the causal effect of groundwater price on groundwater consumption, we construct an electricity-to-water conversion ratio, $\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}$, for each observation in our dataset. While we do not directly observe groundwater prices or quantities, we can use these conversion factors to transform the electricity variables we do observe into their water equivalents:
 \begin{equation}
-\log\big(Q^{\text{water}}_{it}\big) = \beta \log\big({P}^{\text{water}}_{it}\big) \label{eq:elast_water}
+Q^{\text{water}}_{it} = Q^{\text{elec}}_{it} \div  \widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}
+\qquad \qquad \qquad 
+P^{\text{water}}_{it} = P^{\text{elec}}_{it} \times  \widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}
+\label{eq:q_water}
 \end{equation}
-We construct $Q^{\text{water}}_{it}$ and $P^{\text{water}}_{it}$ 
-%by transforming $Q^{\text{elec}}_{it}$ and $P^{\text{elec}}_{it}$ 
-using the \emph{estimated} conversion factor $\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}$, which has measurement error and is also potentially endogenous.
-Hence, the same measurement error and endogeneity is present on both the left-hand side and the right-hand side of Equation (\ref{eq:elast_water}).
-We can rewrite this expression decomposing $\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}$ on both sides:
-\begin{equation}
-\log\big(Q^{\text{elec}}_{it}\big) - \log\Big(\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}\Big) = \beta \left[\log\big(P_{it}^{\text{elec}}\big) + \log\Big(\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}\Big) \right]
-%\log\big(Q^{\text{elec}}\big) - \log\Big(\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}\Big) &= \beta\log\big({P}^{\text{elec}}\big) + \beta\log\Big(\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}\Big) \\
-\end{equation}
-Rearranging:
-\begin{equation}
-\log\big(Q^{\text{elec}}_{it}\big) = \beta\log\big({P}^{\text{elec}}_{it}\big) + \big(\beta+1\big)\log\Big(\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}\Big) 
-\end{equation}
-This expression is algebraically equivalent to Equation (\ref{eq:elast_water}), but it isolates the endogenous estimated conversion factor in one right-hand-side variable. We estimate an analogous regression specification:
-\begin{equation}
-\sinh^{-1}\big(Q^{\text{elec}}_{it}\big) = \beta^{\text{e}}\log\big({P}^{\text{elec}}_{it}\big) + \big(\beta^{\text{w}}+1\big)\log\Big(\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}\Big) + \gamma_{i} + \delta_t + \varepsilon_{it} \label{eq:reg_water} 
-\end{equation}
-This specification is similar to Equation (\ref{eq:reg_elec}), except that we can now interpret $\beta^{\text{e}}$ and $\beta^{\text{w}}$ as the price elasticity of demand for groundwater. We allow this elasticity to vary depending on the source of variation in pumping costs---groundwater depths may be more salient to farmers than electricity prices, or vice versa.\footnote{
-A strict Neoclassical interpretation would assume $\beta^{\text{e}} = \beta^{\text{w}}$, as the optimizing farmer should respond to all short-run changes in ${P}^{\text{water}}_{it}$ identically.
-}
-As in the electricity regressions, we purge electricity price endogeneity by instrumenting $P^{\text{elec}}_{it}$ with within-category default prices (see description above).
+Appendix \ref{app:gw_demand} explores this conversion in detail, and describes how we can decompose the implied values of $Q^{\text{water}}_{it}$ and ${P}^{\text{water}}_{it}$ to separately identify farmer responses to changes in electricity price versus changes in pumping costs.
 
-
-To identify $\beta^{\text{w}}$, we must overcome three  potential sources of bias. First, farmers may choose to alter their pumping technologies in order to change $\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}$, and such changes are likely correlated with $Q^{\text{elec}}_{it}$. Second, $\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}$ is a function of unit $i$'s groundwater depth, which is mechanically linked to $Q^{\text{elec}}_{it}$---when unit $i$ consumes electricity to extract groundwater, its localized groundwater level falls, thereby increasing $\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}$. Third, $\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}$ incorporates measurement error both from interpolating rasterized groundwater depths across space and from interpolating/extrapolating unit $i$'s APEP measurements across time.
-
-We instrument for $\log\big(\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}\big)$ using logged groundwater depth averaged across unit $i$'s full groundwater basin.\footnote{
-We instrument with groundwater depth in logs (rather than levels) because logging both sides of Equation (\ref{eq:kwhaf_formula2}) implies that $\log\big({{\text{kWh}}\big/{\text{AF}}}_{it}\big)$ is linear in $\log\big(\text{lift}\big)$, and a percentage change in depth should yield a similar percentage change in lift.
-} This purges potential endogeneity driven by changes in pumping technologies, and eliminates bias induced by measurement error in unit $i$'s pump specifications in month $t$. It also breaks the mechanical relationship between $\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}$ and $Q^{\text{elec}}_{it}$, as farm $i$'s extraction should have a negligible contemporaneous effect on average groundwater levels across the whole basin. Finally, instrumenting with basin-wide average depth mitigates measurement error from having spatially interpolated groundwater measurements into a (potentially overfit) gridded raster.
-
-While Equation (\ref{eq:reg_water}) isolates the shared endogenous component of $Q^{\text{water}}$ and $P^{\text{water}}$ on the right-hand side, a more standard approach would be to estimate:
+Here, we present a more parsimonious specification for estimating groundwater demand: 
 \begin{equation}
 \sinh^{-1}\big(Q^{\text{water}}_{it}\big) = \beta\log\big({P}^{\text{water}}_{it}\big) + \gamma_{i} + \delta_t + \varepsilon_{it} \label{eq:reg_water_combined} 
 \end{equation}
-We also estimate Equation (\ref{eq:reg_water_combined}), instrumenting for $\log\big({P}^{\text{water}}_{it}\big)$ using the logged average marginal electricity price of unit $i$'s within-category default tariff (i.e., the same instrument from Equation (\ref{eq:reg_elec})). This isolates changes in the effective price of groundwater driven \emph{only} by plausibly exogenous changes in the marginal electricity price. It also removes right-hand-side measurement error in  $\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}$, thereby preventing measurement error in $Q^{\text{water}}_{it}$ from biasing our point estimates.\footnote{
-In most cases, classical measurement error on the left-hand side does not bias point estimates. However, consider the regression  $(Y_i + \eta_i) = \beta (X_i + \omega_i) + \varepsilon$, where $\eta_i$ and $\omega_i$ each denote classical measurement error, and where $\newcommand{\Cov}{\mathrm{Cov}} \Cov(\eta_i,\omega_i)\ne0$. After conditioning on $(X_i + \omega_i)$, the remaining measurement error on the left-hand side is no longer \emph{conditionally} classical, and could bias $\hat\beta$. In Equation (\ref{eq:reg_water_combined}),  measurement error from $\widehat{{{\text{kWh}}}\big/{\text{AF}}}_{it}$ enters directly on the right-hand side and inversely on the left-hand side.  Instrumenting with default electricity prices neutralizes this correlation between left-hand- vs.\ right-hand-side measurement error.
-}
+This model uses the same fixed effects as in Equation (\ref{eq:reg_elec}) above, and we instrument for $\log\big({P}^{\text{water}}_{it}\big)$ using the same instrument: logged average marginal electricity price of unit $i$'s within-category default tariff. This isolates changes in the effective price of groundwater driven only by plausibly exogenous changes in the marginal electricity price. The instrument also eliminates the within-pump feedback effect of $Q^{\text{water}}_{it}$ on $P^{\text{water}}_{it}$, whereby extraction lowers a pump's own water level and mechanically increases is effective marginal groundwater price. Finally, instrumenting with default electricity price removes right-hand-side measurement error in $\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}$, which has the potential to bias our elasticity estimates.\footnote{
+In Equation (\ref{eq:reg_water_combined}), measurement error from $\widehat{{{\text{kWh}}}\big/{\text{AF}}}_{it}$ enters directly on the right-hand side and inversely on the left-hand side.  
+Instrumenting with default electricity prices negates the correlation between left-hand- vs.\ right-hand-side measurement error. See Appendix~\ref{app:gw_demand} for further details.}
 
 

@@ -1,0 +1,76 @@
+In this Appendix, we present a variety of sensitivity analyses and robustness checks which build upon the results we present in the main text.
+
+%%{\color{blue} I've broadly organized these as: main identification checks (different IV, pump trends, sensitivity to kwhaf), additional controls (geography, weather), variable construction (clu), and then functional form. Feel free to re-arrange.}
+
+
+\subsection{Instrumenting with modal tariffs}
+\label{app:sens_modal_iv}
+In our main estimates, we instrument for $\log\big(P^{\text{elec}}_{it}\big)$ and $\log\big(P^{\text{water}}_{it}\big)$ using the ``default'' within-category electricity tariff for each of PGE's 5 rate categories.  For the AG-1A, AG-1B, and AG-ICE tariffs, this designation is trivial -- each of these rates is a singleton within its category. However, for the small pumps and smart meters category and the large pumps and small meters category, there are 8 and 12 separate tariffs, respectively. We define the default tariff as the rate within each category that has the least complex marginal pricing structure: AG-4A and AG-4B. In Appendix Table~\ref{tab:elec_regs_modal_tariff}, we instead present results where we instrument for $\log\big(P^{\text{elec}}_{it}\big)$ with the \emph{modal} tariff in each category: AG-1A, AG-1B, AG-ICE, AG-4A, and AG-5B. Our preferred specification, shown in Column (2), produces an identical elasticity ($-1.17$) to our preferred estimate in Table~\ref{tab:elec_regs_main} in the main text.
+\input{Tables/table_elec_regs_modal_tariff.tex}
+
+\FloatBarrier
+\subsection{Sensitivity to trends in pump characteristics}
+\label{app:sens_pump_trends}
+A potential endogeneity concern in our setting is farmers choosing their pumping capital in order to attain a more favorable electricity tariff. We find no evidence of farmers ``bunching'' pump characteristics around the 35 hp cutoff in Figure~\ref{fig:pump_hist}, and we include a unit $\times$ physical capital fixed effect in our preferred specifications to help control for this. Ultimately, our identification strategy relies on a parallel-trends type argument, which requires that electricity consumption for farmers in different tariff categories would be trending similarly in the absence of differential rate increases or decreases over time. To provide evidence in support of this assumption, in Appendix Table~\ref{tab:elec_regs_month_bin_hp_fes}, we interact our month-of-sample fixed effects with bins of three different pump characteristics: horsepower, kW, and operating pump efficiency (OPE). We use 11 bins in horsepower: 1 below PGE's 35 hp cutoff, and 10 bins for deciles of the horsepower distribution above 35 hp. We similarly use 11 bins in kW: 1 for measured kW for pumps below PGE's 35 hp cutoff (equivalent to 26.1 kW), and 10 for each decile of kW for pumps above this 35 hp cutoff. Finally, we use 10 bins for OPE. In Columns (1)--(3) of Table~\ref{tab:elec_regs_month_bin_hp_fes}, we exclude our unit $\times$ physical capital fixed effect, and find larger elasticities than in our preferred model. In Columns (4)--(6), we include this fixed effect, and recover estimates that are quantitatively similar to our preferred estimate ($-1.17$ from Table~\ref{tab:elec_regs_main}), providing reassurance that our results are not being driven by differential sorting into tariff categories over time. 
+
+\input{Tables/table_elec_regs_month_bin_hp_fes.tex}
+\FloatBarrier
+
+\subsection{Sensitivity to $\widehat{\text{kWh}/\text{AF}}$ construction}
+\label{app:sens_kwhaf}
+
+Because we do not observe groundwater extraction or costs directly, we must construct $Q^{\text{water}}_{it}$ and $P^{\text{water}}_{it}$ by scaling our electricity data by a conversion factor: 
+$$\widehat{\frac{\text{kWh}}{\text{AF}}}_{it} = \frac{\text{[Lift (feet)]} \times \text{[Constant]}}{\text{Operating pump efficiency (\%)}}_{it}$$
+While operating pump efficiency is a variable in our data, lift is a function of the pump's drawdown and the static water level. We use rasterized versions of CASGEM well measurements to construct lift. %%{\color{blue} LOUIS, CAN YOU FILL THIS BIT IN? YOU KNOW MUCH BETTER THAN ME EXACTLY HOW WE GOT HERE...} 
+Appendix Table~\ref{tab:water_kwhaf_sensitivities} presents sensitivity analyses for our groundwater elasticity estimates using a variety of approaches to construct $\widehat{\frac{\text{kWh}}{\text{AF}}}_{it}$. In Column (1), we instrument \emph{only} with the (log of) the average groundwater depth in each unit's basin. The resulting point estimate, ($-1.36$), lies between our preferred electricity-instrument-only estimate of ($-1.12$) presented in Table~\ref{tab:water_regs_combined} and our preferred dual-instrument $\hat\beta^{\text{w}}$ estimate of $-1.51$ presented in Appendix Table~\ref{tab:water_regs_split}. In Column (2), we use only the average depth instrument, and assign units $\widehat{\frac{\text{kWh}}{\text{AF}}}_{it}$ directly from an APEP test, rather than attempting to estimate it. In Columns (3)--(6), we use the electricity instrument only. In Column (3), we remove units that do not have reliable measures of drawdown in their APEP test data. In Column (4), we predict drawdown as a function of groundwater depth, rather than retaining a static drawdown measurement from an APEP test. In Column (5), we again predict drawdown, this time using the average basin-wide groundwater level. In Column (6), we restrict our sample to units that have a groundwater depth measurement within 8 miles prior to rasterization. Across all specifications, we find estimates that are quantitatively similar to our central estimate of $-1.12$.  
+
+\input{Tables/table_water_kwhaf_sensitivities.tex}
+
+\FloatBarrier
+\subsection{Sensitivity to geographic controls}
+\label{app:sens_geographic_controls}
+
+In our preferred specifications in Tables~\ref{tab:elec_regs_main} and \ref{tab:water_regs_combined}, we include unit-by-month-of-year fixed effects and month-of-sample fixed effects. However, it is possible that confounders that vary both by location and time remain. In Appendix Tables~\ref{tab:elec_regs_month_int_fes} and \ref{tab:water_regs_month_int_fes}, we add additional geographic controls by interacting our month-of-sample fixed effects with fixed effects for a variety of different geographic scales that may be relevant for agricultural production: climate zone, county, groundwater basin, groundwater sub-basin, and water district to allay these concerns. 
+In Appendix Table \ref{tab:elec_regs_month_int_fes}, we present results for electricity. When we interact our month-of-sample fixed effects with these geographic fixed effects, we find very similar estimates to those in Table~\ref{tab:elec_regs_main}. Including month-of-sample-by-water-district fixed effects attenuates the estimates the most, to $-1.02$, though we cannot reject that this is the same as the $-1.12$ in our preferred specification.  
+Appendix Table \ref{tab:water_regs_month_int_fes}, presents results for groundwater. When we interact our month-of-sample fixed effects with these geographic fixed effects, we again find very similar estimates to those in Table~\ref{tab:water_regs_combined}. Once again, including month-of-sample-by-water-district fixed effects attenuates the estimates the most, to $-0.95$, though this elasticity is still large and highly statistically significant.
+
+\input{Tables/table_elec_regs_month_int_fes.tex}
+\input{Tables/table_water_regs_month_int_fes.tex}
+
+\FloatBarrier
+\subsection{Sensitivity to weather controls}
+\label{app:sens_weather_controls}
+
+Weather is a key input in the agricultural production process. While we do not include weather controls in our main estimates, because we expect weather to be orthogonal to our within-category electricity tariff instrument, conditional on unit-by-month-of-year and month-of-sample fixed effects. Nevertheless, we present sensitivities to the inclusion of weather controls here. We obtained gridded daily temperature and precipitation data from PRISM, and geographically matched this weather data to our units using CLU centroids. We average daily maximum and minimum temperatures and sum daily precipitation over all days in each month to construct monthly weather controls. Appendix Table~\ref{tab:elec_water_regs_weather} presents the results of adding weather controls to our main estimates. In Columns (1) and (4), we add a monthly precipitation control to our electricity and water regressions, respectively. In Columns (2) and (5), we also add average daily minimum and maximum temperature. In Columns (3) and (6), we also add 1-month-lagged temperature and precipitation. Across all specifications, our electricity and groundwater elasticity estimates remain quantitatively similar to our preferred estimates in Table~\ref{tab:elec_regs_main} and \ref{tab:water_regs_combined}: $-1.17$ and $-1.12$, respectively.
+
+\input{Tables/table_elec_water_regs_weather.tex}
+\FloatBarrier
+
+
+\subsection{Sensitivity to field assignments}
+\label{app:sens_clu_assignments}
+
+Our PGE data are geographically resolved to the service point (SP) level. In order to estimate impacts of electricity and groundwater costs on land use, we must match these SPs to geographic features with agricultural meaning. We use the USDA's Common Land Unit (CLU) as our main agricultural unit of analysis. A CLU is defined as ``is the smallest unit of land that has a permanent, contiguous boundary, a common land cover and land management, a common owner and a common producer in agricultural land associated with USDA farm programs. CLU boundaries are delineated from relatively permanent features such as fence lines, roads, and/or waterways.''\footnote{https://www.fsa.usda.gov/programs-and-services/aerial-photography/imagery-products/common-land-unit-clu/index} We use a 2008 CLU shapefile: in the 2008 Farm Bill, CLUs were deemed to be confidential, and future shapefiles were not made publicly available. In part because PGE's SPs often lie at the edge of property boundaries (i.e., on roads, and therefore easily accessible), there is the potential for measurement error in the SP--CLU match. In Appendix Table~\ref{tab:water_clu_sensitivities}, we present sensitivities on this assignment process. In Column (1), we keep only units that lie within a CLU polygon. In Column (2), we drop units with inconsistent CLU assignments. %% {\color{blue} what does this mean?}
+ In Column (3), we restrict the sample to SPs whose CLUs do not contain any other APEP pumps. In Column (4), we restrict the sample to SPs whose CLUs contain multiple pumps. In Column (5), we two-way cluster our standard errors by CLU and month-of-sample. %%{\color{blue} why does this change the point estimate, tho??}
+  We find similar elasticities across all specifications. %%{\color{blue} is there supposed to be something about tax parcels here?}
+
+\input{Tables/table_water_clu_sensitivities.tex}
+
+
+\FloatBarrier
+\subsection{Sensitivity to functional form}
+\label{app:sens_functional_form}
+
+In our main specifications in Tables~\ref{tab:elec_regs_main} and \ref{tab:water_regs_combined}, we use the inverse hyperbolic sine (IHS) transformation for our dependent variables, $\sinh^{-1}\big(Q^{\text{elec}}_{it}\big)$ and $\sinh^{-1}\big(Q^{\text{water}}_{it}\big)$, since 14 percent of our monthly observations are zeroes. The IHS behaves much like the log, but admits zeroes (\textcite{bellemare2020}). Here, we present sensitivities using different dependent variables: the IHS transformation, excluding zero-valued observations, $\log(Q)$, $\log(1+Q)$, and $\log(1+100Q)$. Appendix Table~\ref{tab:elec_regs_ihs_logs} presents electricity results, and Appendix Table~\ref{tab:water_regs_ihs_logs} presents groundwater results. Both tables are laid out identically. In Column (1), we replicate our preferred specification from the main text, where we use the IHS transformation with no sample restrictions. In Column (2), we retain the IHS transformation, but only use strictly positive-valued observations, to match the sample used by the standard log. We find that our estimates attenuate strongly, moving from an elasticity of $-1.17$ to $-0.31$ (electricity) and $-1.12$ to $-0.30$ (water). Reassuringly, we find identical point estimates when we use $\log(Q)$ as the dependent variable in Column (3). In Column (4), we use $\log(1+Q)$, in order to use the log while retaining the zero-valued observations, and our point estimates rise (a much larger $-0.78$ for electricity; a smaller $-0.36$ for water). Finally, Column (5) uses $\log(1+100Q$), and we again recover less attenuated estimates: $-1.12$ for electricity and $-0.71$ for water. This suggests that our choice of functional form is not driving our results. However, zeroes are important in this context, because they are likely associated with farmers fallowing their land or switching crops. Finding that our elasticity estimates are driven in part by these mechanisms is consistent with our discussion in Section~\ref{sec:mechanisms} in the main text, and echoed by our intensive-vs.-extensive margin results in Table~\ref{tab:elec_water_intens_extens}.
+
+
+\input{tables/table_elec_regs_ihs_logs}
+\input{tables/table_water_regs_ihs_logs}
+
+\FloatBarrier
+%\input{Tables/table_elec_water_regs_summer_winter.tex} [I'm removing this because I don't think it really adds to the story we're currently telling.]
+
+
+%\input{Tables/table_water_months_from_pump_test.tex} [Removing this because I moved it to the main text.]
+
+

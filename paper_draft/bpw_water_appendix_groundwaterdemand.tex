@@ -1,0 +1,63 @@
+In Section~\ref{sec:empirics_water} of the main text, we present an approach for estimating the price elasticity of demand for groundwater. Here, we use a decomposition approach and estimate the elasticity with respect to electricity prices and water pumping costs separately.
+
+As in Section~\ref{sec:empirics_water}, we aim to estimate causal effect of groundwater price on groundwater consumption, and this demand elasticity is linearly approximated by the coefficient $\beta$:
+\begin{equation}
+\log\big(Q^{\text{water}}_{it}\big) = \beta \log\big({P}^{\text{water}}_{it}\big) \label{eq:elast_water}
+\end{equation}
+
+
+We construct $Q^{\text{water}}_{it}$ and $P^{\text{water}}_{it}$ 
+%by transforming $Q^{\text{elec}}_{it}$ and $P^{\text{elec}}_{it}$ 
+using the estimated conversion factor $\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}$, which has measurement error and is also potentially endogenous.
+
+%%{\color{blue} WOULD BE GOOD HERE TO DESCRIBE EXACTLY HOW WE CONSTRUCT $\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}$}.
+
+
+
+Hence, the same measurement error and endogeneity is present on both the left-hand side and the right-hand side of Equation (\ref{eq:elast_water}).
+We can rewrite this expression decomposing $\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}$ on both sides:
+\begin{equation}
+\log\big(Q^{\text{elec}}_{it}\big) - \log\Big(\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}\Big) = \beta \left[\log\big(P_{it}^{\text{elec}}\big) + \log\Big(\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}\Big) \right]
+%\log\big(Q^{\text{elec}}\big) - \log\Big(\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}\Big) &= \beta\log\big({P}^{\text{elec}}\big) + \beta\log\Big(\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}\Big) \\
+\end{equation}
+Rearranging:
+\begin{equation}
+\log\big(Q^{\text{elec}}_{it}\big) = \beta\log\big({P}^{\text{elec}}_{it}\big) + \big(\beta+1\big)\log\Big(\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}\Big) 
+\end{equation}
+This expression is algebraically equivalent to Equation (\ref{eq:elast_water}), but it isolates the endogenous estimated conversion factor in one right-hand-side variable. We estimate an analogous regression specification:
+\begin{equation}
+\sinh^{-1}\big(Q^{\text{elec}}_{it}\big) = \beta^{\text{e}}\log\big({P}^{\text{elec}}_{it}\big) + \big(\beta^{\text{w}}+1\big)\log\Big(\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}\Big) + \gamma_{i} + \delta_t + \varepsilon_{it} \label{eq:reg_water} 
+\end{equation}
+This specification is similar to Equation (\ref{eq:reg_elec}), except that we can now interpret $\beta^{\text{e}}$ and $\beta^{\text{w}}$ as the price elasticity of demand for groundwater. We allow this elasticity to vary depending on the source of variation in pumping costs---groundwater depths may be more salient to farmers than electricity prices, or vice versa.\footnote{
+A strict Neoclassical interpretation would assume $\beta^{\text{e}} = \beta^{\text{w}}$, as the optimizing farmer should respond to all short-run changes in ${P}^{\text{water}}_{it}$ identically.
+}
+As in the electricity regressions, as well as those in the main text, we purge electricity price endogeneity by instrumenting $P^{\text{elec}}_{it}$ with within-category default prices.
+
+
+To identify $\beta^{\text{w}}$, we must overcome three  potential sources of bias. First, farmers may choose to alter their pumping technologies in order to change $\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}$, and such changes are likely correlated with $Q^{\text{elec}}_{it}$. Second, $\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}$ is a function of unit $i$'s groundwater depth, which is mechanically linked to $Q^{\text{elec}}_{it}$---when unit $i$ consumes electricity to extract groundwater, its localized groundwater level falls, thereby increasing $\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}$. Third, $\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}$ incorporates measurement error both from interpolating rasterized groundwater depths across space and from interpolating/extrapolating unit $i$'s APEP measurements across time.
+
+We instrument for $\log\big(\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}\big)$ using logged groundwater depth averaged across unit $i$'s full groundwater basin.\footnote{
+We instrument with groundwater depth in logs (rather than levels) because logging both sides of Equation (\ref{eq:kwhaf_formula2}) implies that $\log\big({{\text{kWh}}\big/{\text{AF}}}_{it}\big)$ is linear in $\log\big(\text{lift}\big)$, and a percentage change in depth should yield a similar percentage change in lift.
+} This purges potential endogeneity driven by changes in pumping technologies, and eliminates bias induced by measurement error in unit $i$'s pump specifications in month $t$. It also breaks the mechanical relationship between $\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}$ and $Q^{\text{elec}}_{it}$, as farm $i$'s extraction should have a negligible contemporaneous effect on average groundwater levels across the whole basin. Finally, instrumenting with basin-wide average depth mitigates measurement error from having spatially interpolated groundwater measurements into a (potentially overfit) gridded raster.
+
+
+Table \ref{tab:water_regs_split} presents our results for estimating farmers' groundwater demand. Each column estimates Equation (\ref{eq:reg_water}) using our preferred strategy for identifying the elasticity with respect to the electricity price: instrumenting for $\log\big(P_{it}^{\text{elec}}\big)$ with within-category default prices, and interacting unit fixed effects with indicators for each category of physical pumping capital. Note that we report $\hat\beta^{\text{e}}$ and $\hat\beta^{\text{w}}$, where the latter subtracts 1 from the regression coefficient on $\log\big(\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}\big)$. We interpret each coefficient as the elasticity of demand for groundwater with respect to one component of the price of groundwater, holding the other component constant.
+
+In Column (1), we present a quasi-OLS specification: while we instrument for $\log\big(P_{it}^{\text{elec}}\big)$ with the within-category default electricity price, we do not instrument for $\log\big({{\text{kWh}}\big/{\text{AF}}}_{it}\big)$. In this specification, we recover a somewhat lower elasticity of demand with respect to pumping costs ($-0.99$) than with respect to electricity prices ($-1.21$).
+
+Column (2) reports our preferred estimates of $\hat\beta^{\text{e}}$ and $\hat\beta^{\text{w}}$, where we instrument for $\log\big(\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}\big)$ with logged groundwater depth in month $t$ averaged across unit $i$'s groundwater basin. Comparing $\hat\beta^{\text{w}}$ in Columns (2) vs.\ (1), instrumenting with average depth appears to alleviate bias due to measurement error in $\log\big(\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}\big)$, and our estimate rises to ($-1.51$).\footnote{
+We discuss three potential sources of bias in $\beta^{\text{w}}$ in Section \ref{sec:empirics_water}: (i) endogenous changes to pumping technologies, (ii) the mechanical relationship between extraction and depth at a given location, and (iii) measurement error. Bias from (i) and (ii) appear unlikely, as they should bias our $\beta^{\text{w}}$ away from zero, rather than towards zero.
+}
+The exclusion restriction requires that unit $i$'s pumping behavior have no contemporaneous impact on basin-wide average groundwater depths. Such feedback effects between the dependent variable and the instrument would be extremely unlikely for three reasons: (i) unit $i$ is small relative to the geographic footprint of its groundwater basin; (ii) thousands of other pumpers are also extracting from the same basin; (iii) basin-wide average groundwater levels do not instantaneously reequilibrate after extraction at one point in space. Column (3) restricts the sample to the 3 largest groundwater basins, each of which has over 1,000 units in our estimation sample.\footnote{These basins are the San Joaquin Valley, the Sacramento Valley, and the Salinas Valley. The number of agricultural groundwater pumpers in each basin is likely much larger, as our estimation sample comprises only the subset of PGE customers that we can confident match to an APEP-subsidized pump test.
+}
+
+The magnitudes of our $\hat\beta^{\text{e}}$ estimates are relatively similar (if slightly larger) than the results in our electricity-only regressions, especially comparing $\hat\beta^{\text{e}} = -1.21$ from Column (1) of Table \ref{tab:water_regs_split} with the analogous estimate ($\hat\beta = -1.17$) from Column (3) of Table \ref{tab:elec_regs_main}. This is not surprising, since Equation (\ref{eq:reg_water}) simply adds one regressor to Equation (\ref{eq:reg_elec}). $\hat\beta^{\text{e}}$ is quite close to our instrumented $\hat\beta^{\text{w}}$ estimate ($-1.27$ vs.\ $-1.51$). This implies that a 1 percent change in the effective price of groundwater has close to the same effect on farmers' pumping behavior, whether that change comes via their marginal electricity price or via their pump's kWh/AF conversion factor. It also suggests that farmers are quite attentive to their true costs of pumping, and that they reoptimize their pumping behavior relatively similarly in response to either type of price variation---as Neoclassical theory would predict.
+
+
+Columns (4)--(6) report three alternate versions of our preferred estimates in Column (2). First, to account for the inherent tradeoff between spatial density vs.\ temporal frequency of groundwater measurements, Column (4)  re-estimates  Equation (\ref{eq:reg_water}) using groundwater data rasterized at the quarterly (rather than monthly) level. Whereas our preferred monthly rasters are able to capture groundwater measurements at greater temporal frequency, quarterly rasters have greater accuracy in the cross-section by incorporating more distinct measurement sites. The resulting $\hat\beta^{\text{w}}$ estimate decreases in magnitude slightly, and comes closer to the $\hat\beta^{\text{e}}$ estimate.
+Column (5) includes water basin by year and water district by year fixed effects, yielding only slightly attenuated point estimates despite eliminating much of the variation in the average depth instrument.
+In Column (6), we instrument with 6- and 12-month lags of average depth (rather than contemporaneous depth), as it is possible (albeit unlikely) that farmers pump less in months with lower groundwater levels for some reason other than pumping costs. These lagged instruments marginally increase $\hat\beta^{\text{e}}$ and substantially increase $\hat\beta^{\text{w}}$; however, the small first stage $F$-statistic indicates a weak instrument, and we interpret these results with caution.
+
+\input{Tables/table_water_regs_split.tex}
+
+\FloatBarrier
