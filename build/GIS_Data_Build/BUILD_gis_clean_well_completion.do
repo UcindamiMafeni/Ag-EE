@@ -2,9 +2,9 @@ clear all
 version 13
 set more off
 
-********************************************************
-**** Script to clean California Well Completion Data ***
-********************************************************
+**************************************************************************************
+**** Script to clean California Well Completion Data, assign wells to CLU polygons ***
+**************************************************************************************
 
 global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
@@ -707,3 +707,152 @@ outsheet using "$dirpath_data/misc/wcr_coordinates.txt", names comma replace
 
 *******************************************************************************
 *******************************************************************************
+
+** 3. Run auxilary GIS script "BUILD_gis_clu_wells.R" to export 
+**    all RDS files as csvs  (THIS TAKES A WEEK TO RUN)
+
+*******************************************************************************
+*******************************************************************************
+
+** 4. Assign wells to CLUs
+{
+
+** Import output from R script, and save as temp file
+insheet using "$dirpath_data/misc/wcr_well_coord_polygon_clu.csv", double clear
+replace in_clu = "1" if in_clu=="TRUE"
+replace in_clu = "0" if in_clu=="FALSE"
+foreach v of varlist clu_id-nearest2_cluacres {
+	replace `v' = "" if `v'=="NA"
+}
+destring in_clu *acres *dist_m, replace
+rename well_latitude well_lat
+rename well_longitude well_lon
+unique wcrnumber
+assert r(unique)==r(N)
+compress
+tempfile wells
+save `wells'
+
+** Merge GIS output into master
+use "$dirpath_data/cleaned_spatial/wcr_data_full.dta", clear
+keep wcrnumber county use_category_ag use_category_irr well_latitude well_longitude
+merge 1:1 wcrnumber using `wells'
+assert _merge!=2
+assert well_latitude==. | well_longitude==. if _merge==1
+assert _merge==1 if in_clu==.
+assert in_clu==. if _merge==1
+count if round(well_latitude,0.01)!=round(well_lat,0.01) & _merge==3
+count if round(well_longitude,0.01)!=round(well_lon,0.01) & _merge==3
+drop well_lat well_lon well_latitude well_longitude _merge
+
+** Some checks for sanity and internal consistency
+foreach v of varlist clu_id cluacres edge_dist_m neighbor* {
+	assert nearest_clu_id=="" if !mi(`v')
+	assert nearest2_clu_id=="" if !mi(`v')
+	assert nearest_clu_id!="" if mi(`v') & in_clu!=.
+	assert nearest2_clu_id!="" if mi(`v') & in_clu!=.
+}
+foreach v of varlist nearest* {
+	assert clu_id=="" if !mi(`v')
+	assert clu_id!="" if mi(`v') & in_clu!=.
+}
+
+	// is 2nd-nearest always different from 1st-nearest?
+assert nearest_clu_id!=nearest2_clu_id if nearest_clu_id!="" // yes
+
+	// is 2nd-nearest always weakly further than 1st-nearest?
+gen temp = nearest2_dist_m - nearest_dist_m
+sort temp
+br
+sum temp, detail // not 5% of the time!
+sum nearest_dist_m if temp<0, detail
+sum nearest_dist_m if temp>=0, detail
+gen flag_nearest_clu_error = temp<0
+drop temp
+
+** Diagnostics
+replace in_clu = 0 if in_clu==.
+tab in_clu
+tab in_clu if use_category_ag==1
+tab in_clu if use_category_irr==1
+tab in_clu if use_category_ag==1 | use_category_irr==1
+tab use_category_ag use_category_irr, missing
+
+sum edge_dist_m if in_clu==1, detail // 50% of matches w/in 21m
+sum edge_dist_m if in_clu==1 & (use_category_ag==1 | use_category_irr), detail 
+	// 15% of matched w/in 15m
+	
+sum nearest_dist_m if in_clu==0, detail // 10% of non-matches w/in 22m
+sum nearest_dist_m if in_clu==0 & (use_category_ag==1 | use_category_irr), detail 
+	// 50% of non-matches w/in 132m
+
+** Transfer assignmentss
+replace clu_id = nearest_clu_id if in_clu==0 & clu_id==""
+replace edge_dist_m = nearest_dist_m if in_clu==0 & edge_dist_m==.
+replace cluacres = nearest_cluacres if in_clu==0 & cluacres==.
+replace neighbor_clu_id = nearest2_clu_id if in_clu==0 & neighbor_clu_id==""
+replace neighbor_dist_m = nearest2_dist_m if in_clu==0 & neighbor_dist_m==.
+replace neighbor_cluacres = nearest2_cluacres if in_clu==0& neighbor_cluacres==.
+drop nearest*
+	
+** Remove assignments more than 1km in distance
+gen temp = in_clu==0 & edge_dist_m>1000
+tab temp
+replace clu_id = "" if temp==1
+replace cluacres = . if temp==1
+replace edge_dist_m = . if temp==1
+replace neighbor_clu_id = "" if temp==1
+replace neighbor_dist_m = . if temp==1
+replace neighbor_cluacres = . if temp==1
+replace flag_nearest_clu_error = 0 if temp==1
+drop temp
+gen clu_nearest_dist_m = edge_dist_m
+replace clu_nearest_dist_m = 0 if in_clu==1
+		
+** Label variables
+rename cluacres clu_acres
+rename edge_dist_m clu_edge_dist_m
+rename neighbor_dist_m neighbor_clu_dist_m
+la var in_clu "Dummy for wells properly within CLU polygons"
+la var clu_id "Unique CLU ID (county, lon, lat, area)"	
+la var clu_acres "Area (acres) of assigned CLU"
+la var clu_edge_dist_m "Meters to edge of assigned CLU polygon (cut off at 1 km for unmatched)"
+la var clu_nearest_dist_m "Meters to assigned CLU polygon (cut off at 1 km, 0 for matched)"
+la var neighbor_clu_dist_m "Meters to nearest non-assigned CLU polygon"
+la var flag_nearest_clu_error "Flag for errors in GIS nearest feature algorithm"
+drop neighbor_clu_id neighbor_cluacres // don't think we actually need these
+
+** Final diagnostics
+unique wcrnumber
+assert r(unique)==r(N)
+local N = r(unique)
+count if clu_id!=""
+di r(N)/`N' // 48% of wells have an assigned CLU
+
+count if (use_category_ag==1 | use_category_irr==1)
+local N = r(N)
+count if (use_category_ag==1 | use_category_irr==1) & clu_id!=""
+di r(N)/`N' // 79% of ag/irr wells have a CLU_id
+
+count if clu_id!=""
+local N = r(N)
+count if clu_id!="" & (use_category_ag==1 | use_category_irr==1)
+di r(N)/`N' // only 15% of wells with CLU assignments are flagged as ag/irr wells
+
+count if in_clu==1
+local N = r(N)
+count if in_clu==1 & (use_category_ag==1 | use_category_irr==1)
+di r(N)/`N' // only 24% of wells in CLU polygons are flagged as ag/irr wells
+
+** Save
+sort wcrnumber
+unique wcrnumber
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/cleaned_spatial/wcr_well_clu_assignments.dta", replace
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
