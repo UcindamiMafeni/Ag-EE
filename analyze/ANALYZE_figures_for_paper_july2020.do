@@ -84,7 +84,58 @@ graph export "$dirpath/output/marg_price_5_default_rates_resid.eps", replace
 ************************************************
 ************************************************
 
-** 2. Davis Cost studies lines crossing figure
+** 2. Hourly prices against hourly usage histogram
+{
+use "$dirpath_data/merged_pge/sp_hourly_elec_panel_20180719.dta", clear
+keep if inlist(month(date),5,6,7,8,9,10)
+collapse (sum) kwh (mean) p_kwh, by(sp_uuid hour) fast
+*merge m:1 sp_uuid using "$dirpath_data/merged/sp_rate_switchers.dta", nogen ///
+*	keep(1 3) keepusing(sp_same_rate_always sp_same_rate_dumbsmart sp_same_rate_in_cat)
+	
+tabstat kwh, by(hour) s(sum p5 p25 p50 p75 p95)	
+
+*gen group = .
+*replace group = 0 if sp_same_rate_dumbsmart==1
+*replace group = 1 if sp_same_rate_dumbsmart==0 & sp_same_rate_in_cat==1
+*replace group = 2 if sp_same_rate_in_cat==0
+
+egen double kwh_sum = sum(kwh), by(hour) // group)
+egen double p_kwh_mean = sum(p_kwh*kwh/kwh_sum), by(hour) //group)
+	
+keep kwh_sum p_kwh_mean hour //group
+duplicates drop
+unique hour //group
+assert r(unique)==r(N)	
+sort /*group*/ hour	
+
+egen double denom = sum(kwh_sum) //, by(group)
+gen kwh_pct = kwh_sum / denom
+	
+twoway ///
+	(bar kwh_pct hour /*if group==0*/, lw(medium) lcolor(eltblue) color(eltblue) yaxis(1)) ///
+	(scatter p_kwh_mean hour /*if group==0*/, mcolor(dknavy) msize(medlarge) yaxis(2)) ///
+	, ///
+	xscale(r(0,23)) xlab(0(2)23, labsize(medium)) ///
+	xtitle("Hour", size(medium)) ///
+	yscale(r(0,.05) axis(1)) ///
+	yscale(r(0,.20) axis(2)) ///
+	ylab(0 0.01 0.02 0.03 0.04 0.05,nogrid angle(0) labcolor(eltblue) labsize(medium) axis(1)) ///
+	ylab(0 0.05 0.10 0.15 0.20,nogrid angle(0) labcolor(dknavy) labsize(medium) axis(2)) ///
+	ytitle("kWh density", color(eltblue) size(medium) axis(1)) ///
+	ytitle("Avg marg price ($\kWh)", color(dknavy) size(medium) axis(2)) ///
+	graphr(color(white) lc(white)) ///
+	///title("Consumption vs. Mean Hourly Price" "(Summer Months)", size(large) color(black)) ///
+	legend(off) ///
+	aspectratio(0.6)
+graph export "$dirpath/output/hourly_hist_prices_pooled_summer.eps", replace
+
+
+}
+
+************************************************
+************************************************
+
+** 3. Davis Cost studies lines crossing figure
 {
 use "$dirpath_data/Davis cost studies/Davis_cost_studies_processed_all.dta", clear
 
