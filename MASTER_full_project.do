@@ -142,7 +142,7 @@ do "$dirpath_code/build/SCE_Data_Build/BUILD_sce_tariff_diagnostics.do"
 
 
 ***
-*** B.GIS.1-B.GIS.9 build the full set of geographic datasets that rely on publicly available spatial data
+*** B.GIS.1-B.GIS.10 build the full set of geographic datasets that rely on publicly available spatial data
 ***
 {
 *** B.GIS.1: CONVERT PARCEL SHAPEFILES TO USABLE FORMAT
@@ -177,12 +177,8 @@ do 	"$dirpath_code/build/GIS_Data_Build/BUILD_gis_process_clu_joins.do"
 	//                     and "BUILD_gis_clu_basins.R"
 	//                     and "BUILD_gis_clu_water_districts.R"
 
-*** B.GIS.10: CLEAN CA WELL COMPLETION REPORT DATA 
+*** B.GIS.10: CLEAN CA WELL COMPLETION REPORT DATA, AND ASSIGN WELS TO CLUS [B.GIS.3]
 do "$dirpath_code/build/GIS_Data_Build/BUILD_gis_clean_well_completion.do"
-
-*** B.GIS.11: ASSIGN WELL COMPLETION REPORTS LAT/LONS TO CLUS [B.GIS.3 B.GIS.10]
-WRITE THIS FILE
-do "$dirpath_code/build/GIS_Data_Build/BUILD_gis_wells_in_clus.do"
 	// calls auxiliary script "BUILD_gis_clu_wells.R"
 
 }
@@ -241,7 +237,7 @@ do "$dirpath_code/build/Combined_Data_Build/BUILD_clean_cadwr_groundwater.do"
 ************ MERGE (M) ************ MERGE (M) ************ MERGE (M) ************  
 
 ***
-*** M.PGE.1-M.PGE.17 build the full set of PGE-exclusive datasets
+*** M.PGE.1-M.PGE.8 build the full set of PGE-exclusive datasets
 ***
 
 *** M.PGE.1: MERGE BILLING/INTERVAL DATA WITH RATE DATA [B.PGE.6 B.PGE.9 B.PGE.16 B.PGE.17]
@@ -256,18 +252,20 @@ do "$dirpath_code/merge/merge_PGE/MERGE_pge_bills_rates_nomerge.do"
 *** M.PGE.4: CONSTRUCT INSTRUMENTS FOR ELECTRICITY PRICE [B.PGE.16 B.PGE.17 M.PGE.1 M.PGE.3]
 do "$dirpath_code/merge/merge_PGE/MERGE_pge_instruments.do"
 
-*** M.PGE.5: CONSTRUCT PANEL DATASETS FOR ELECTRICITY REGRESSIONS [B.PGE.9 B.PGE.12 B.PGE.13 B.GIS.8 B.COM.4 B.COM.5 B.COM.6 M.PGE.1 M.PGE.3 M.PGE.4]
+*** M.PGE.5: CONSTRUCT MONTHLY/HOURLY PANEL DATASETS FOR ELECTRICITY REGRESSIONS [B.PGE.9 B.PGE.12 B.PGE.13 B.GIS.8 B.COM.4 B.COM.5 B.COM.6 M.PGE.1 M.PGE.3 M.PGE.4]
 do "$dirpath_code/merge/merge_PGE/MERGE_pge_analysis_elec_regs.do"
 
 *** M.PGE.6: MERGE CUSTOMER DETAILS & APEP DATASETS TO CONSTRUCT MASTER XSECTION(S) [B.PGE.9 B.PGE.11 B.PGE.12 B.PGE.14 B.PGE.15 B.COM.4 B.COM.6]
 do "$dirpath_code/merge/merge_PGE/MERGE_pge_customer_apep_units.do"
 
-*** M.PGE.7: CONSTRUCT PANEL OF KWH/AF CONVERSION RATES [B.PGE.14 B.COM.4 B.COM.6 M.PGE.6]
+*** M.PGE.7: CONSTRUCT MONTHLY PANEL OF KWH/AF CONVERSION RATES [B.PGE.14 B.COM.4 B.COM.6 M.PGE.6]
 do "$dirpath_code/merge/merge_PGE/MERGE_pge_panel_kwhaf.do"
 
-*** M.PGE.8: CONSTRUCT PANEL DATASETS FOR WATER REGRESSIONS [B.COM.4 B.COM.6 M.PGE.5 M.PGE.7]
+*** M.PGE.8: CONSTRUCT MONTHLY PANEL DATASETS FOR WATER REGRESSIONS [B.COM.4 B.COM.6 M.PGE.5 M.PGE.7]
 do "$dirpath_code/merge/merge_PGE/MERGE_pge_analysis_water_regs.do"
 
+*** M.PGE.9: COLLAPSE MONTHLY PANEL DATASETS TO ANNUAL LEVEL [M.PGE.8]
+do "$dirpath_code/merge/merge_PGE/MERGE_pge_collapsed_analysis_regs.do"
 
 
 
