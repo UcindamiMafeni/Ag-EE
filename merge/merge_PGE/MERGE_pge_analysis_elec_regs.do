@@ -10,7 +10,7 @@ global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
 
 ** PENDING:
-** Daily datasets, and maybe also put yearlyhere?
+** Daily datasets, and maybe also put yearly here?
 
 *******************************************************************************
 *******************************************************************************
@@ -375,23 +375,22 @@ foreach tag in "20180719" "20180322" "20180827" {
 ** 4. Transform Q and P, merge in instruments, and collapse SP-hour datasets
 if 1==0{
 
-foreach tag in "20180719" "20180322" "20180827" {
+foreach tag in /*"20180719"*/ "20180322" /*"20180827"*/ {
 
-	** Loop over years
-	forvalues y = 2011/2017 {
-	
-		** Load SP-hourly datasets
-		if 	`y'==2011 {
-			use "$dirpath_data/merged_pge/sp_hourly_elec_panel_`tag'.dta" if date<=mdy(12,31,`y'), clear
-			assert year(date)==`y'
+	** Loop over years and build yearly collapsed files
+	forvalues y = 2015/2017 {
+
+		** Load SP-hourly dataset
+		if `y'==2011 {
+			use "$dirpath_data/merged_pge/sp_hourly_elec_panel_`tag'.dta" if year(date)<=`y', clear
 		}
 		else if `y'>2011 & `y'<2017 {
-			use "$dirpath_data/merged_pge/sp_hourly_elec_panel_`tag'.dta" if inrange(date,mdy(1,1,`y'),mdy(12,31,`y')), clear			
+			use "$dirpath_data/merged_pge/sp_hourly_elec_panel_`tag'.dta" if year(date)==`y', clear
 		}
-		else `y'==2017 {
-			use "$dirpath_data/merged_pge/sp_hourly_elec_panel_`tag'.dta" if date>=mdy(1,1,`y'), clear			
-			assert year(date)==`y'
+		else if `y'==2017 {
+			use "$dirpath_data/merged_pge/sp_hourly_elec_panel_`tag'.dta" if year(date)>=`y', clear
 		}
+		assert year(date)==`y'
 
 		** Drop negative kWh hours before transform/collapse
 		drop if kwh<0
@@ -431,7 +430,7 @@ foreach tag in "20180719" "20180322" "20180827" {
 		** Merge in instrument: default ag rates
 		preserve 
 		use "$dirpath_data/merged_pge/sp_month_elec_panel.dta" if year==`y', clear
-		keep sp_uuid modate rt_sched
+		keep sp_uuid modate rt_sched_cd
 		tempfile ratesched
 		save `ratesched'
 		restore
@@ -440,9 +439,11 @@ foreach tag in "20180719" "20180322" "20180827" {
 		duplicates drop
 		merge 1:1 sp_uuid modate using `ratesched', nogen keep(1 3)
 		joinby rt_sched_cd modate using "$dirpath_data/merged_pge/ag_default_prices_hourly.dta", ///
-			unmatched(master)
-		drop _merge rt_sched_cd rt_default
-		duplicates drop sp_uuid date hour, force // not sure why this is necessary; shouldn't be dups!
+			unmatched(none)
+		drop rt_sched_cd rt_default
+		cap drop _merge
+		unique sp_uuid date hour
+		assert r(unique)==r(N)
 		tempfile sp_rates
 		save `sp_rates'
 		restore
@@ -474,14 +475,14 @@ foreach tag in "20180719" "20180322" "20180827" {
 		compress
 		save "$dirpath_data/merged_pge/sp_hourly_elec_panel_collapsed_`tag'_`y'.dta", replace
 	}	
-	
+
 	** Append yearly collapsed files
 	clear
 	forvalues y = 2011/2017 {
 		append using "$dirpath_data/merged_pge/sp_hourly_elec_panel_collapsed_`tag'_`y'.dta"
 	}
 	sort *
-	comperss
+	compress
 	save "$dirpath_data/merged_pge/sp_hourly_elec_panel_collapsed_`tag'.dta", replace
 	
 	** Delete yearly collapsed files
