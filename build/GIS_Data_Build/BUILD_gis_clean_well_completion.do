@@ -694,3 +694,16 @@ save "$dirpath_data/cleaned_spatial/wcr_data_full.dta", replace
 
 *******************************************************************************
 *******************************************************************************
+
+** 2. Outsheet list of well coordinates
+{
+use "$dirpath_data/cleaned_spatial/wcr_data_full.dta", clear
+keep wcrnumber well_latitude well_longitude
+drop if well_latitude==. | well_longitude==.
+sum well_latitude, detail
+sum well_longitude, detail
+outsheet using "$dirpath_data/misc/wcr_coordinates.txt", names comma replace
+}
+
+*******************************************************************************
+*******************************************************************************
