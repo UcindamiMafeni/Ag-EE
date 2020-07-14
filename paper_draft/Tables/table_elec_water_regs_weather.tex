@@ -1,0 +1,65 @@
+\begin{table}[t!]\centering
+\small
+\caption{Sensitivity to weather controls  \label{tab:elec_water_regs_weather}}
+\vspace{-0.1cm}
+\small
+\begin{adjustbox}{center} 
+\begin{tabular}{lcccccccc} 
+\hline \hline
+\vspace{-0.37cm}
+\\
+ & \multicolumn{3}{c}{Electricity} & \multicolumn{3}{c}{Groundwater} \\
+ \cmidrule(r){2-4} \cmidrule(l){5-7}
+ & (1)  & (2)  & (3)  & (4)  & (5) & (6)   \\ 
+[0.1em]
+ & IV & IV & IV & IV & IV & IV  \\
+\vspace{-0.37cm}
+\\
+\cline{2-7}
+\vspace{-0.27cm}
+\\
+ $\log\big(P^{\text{elec}}_{it}\big)$ ~ & $-1.18$$^{***}$  & $-1.17$$^{***}$ & $-1.19$$^{***}$ & $-1.12$$^{***}$ & $-1.12$$^{***}$ & $-1.14$$^{***}$ \\ 
+& $(0.16)$ & $(0.16)$ & $(0.16)$ & $(0.15)$ & $(0.15)$ & $(0.15)$  \\
+[1.5em] 
+Weather controls: \\
+[0.1em] 
+~~ Precipitation  & Yes & Yes & Yes &  Yes  &  Yes & Yes \\
+[0.1em] 
+~~ Temperature  & & Yes & Yes & &  Yes  &  Yes \\
+[0.1em] 
+~~ Lagged precipitation  &  &  & Yes & &  &  Yes \\
+[0.1em] 
+~~ Lagged temperature   &  &  & Yes & &  &  Yes \\
+[1em] 
+IV: Default $\log\big(P^{\text{elec}}_{it}\big)$  & Yes & Yes & Yes & Yes &  Yes  &  Yes \\
+[1em] 
+Fixed effects: \\
+[0.1em] 
+~~Unit $\times$ month-of-year  & Yes & Yes & Yes & Yes &  Yes  &  Yes  \\ 
+[0.1em] 
+~~Month-of-sample  & Yes & Yes & Yes & Yes &  Yes  &  Yes   \\ 
+[0.1em] 
+~~Unit $\times$ physical capital & Yes & Yes & Yes & Yes &  Yes  &  Yes  \\
+[1em] 
+Service point units & 11,173 & 11,173 & 11,172 & 10,155 & 10,155 & 10,154  \\ 
+[0.1em] 
+Months  & 117 & 117 & 116 & 117 & 117 & 116  \\ 
+[0.1em] 
+Observations & 1.05M & 1.05M & 1.04M & 0.93M & 0.93M & 0.93M \\ 
+[0.1em] 
+First stage $F$-statistic & 7387 & 7390 & 7348 & 3033 & 3054 & 2977   \\ 
+[0.15em]
+\hline
+\end{tabular}
+\end{adjustbox}
+\captionsetup{width=\textwidth}
+\caption*{\scriptsize \emph{Notes:} This table adds weather controls to our preferred specifications for electricity 
+(Column (3) of Table \ref{tab:elec_regs_main}) and groundwater (Column (2) of Table \ref{tab:water_regs_combined}). 
+We assign daily precipitation, maximum temperature, and minimum temperatures to each unit's latitude and longitude, 
+using daily rasters from PRISM. We sum daily precipitation over all days in each month, and average daily maximum  
+and minimum temperatures over all days in each month. Columns (3) and (6) control for 1-month lags in all three variables. 
+See notes under Tables \ref{tab:elec_regs_main} and  Table \ref{tab:water_regs_combined} for further details. 
+Standard errors (in parentheses) are two-way clustered by service point and by month-of-sample.
+Significance: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$.
+}
+\end{table}

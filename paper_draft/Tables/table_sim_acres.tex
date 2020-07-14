@@ -1,0 +1,45 @@
+\begin{table}[t!]\centering
+\small
+\caption{Counterfactual groundwater taxes \label{tab:sim_acres}}
+\vspace{-0.1cm}
+\small
+\begin{adjustbox}{center} 
+\begin{tabular}{lcccc} 
+\hline \hline
+\vspace{-0.37cm}
+\\
+ & No tax & \$5 tax & \$10 tax & \$15 tax \\
+\vspace{-0.37cm}
+\\
+\cline{2-5}
+\vspace{-0.27cm}
+\\
+Simulated acreage (thousands of acres) & & & & \\ 
+~~Annuals & $61.74$ & $57.85$ & $54.09$ & $50.45$ \\ 
+[0.1em]
+~~Fruit and nut perennials & $147.30$ & $151.69$ & $155.93$ & $160.03$ \\ 
+[0.1em]
+~~Other perennials & $34.24$ & $31.94$ & $29.71$ & $27.57$ \\ 
+[0.1em]
+~~Fallow & $71.60$ & $73.40$ & $75.15$ & $76.83$ \\ 
+[0.5em]
+~~Total reallocation & & $12.37$ & $24.35$ & $35.92$ \\ 
+~~Total reallocation (percent) & & $(3.9\%)$ & $(7.7\%)$ & $(11.4\%)$ \\ 
+[0.5em]
+Change in groundwater consumption (percent) & & $-13.7\%$ & $-27.3\%$ & $-41.0\%$ \\ 
+[0.15em]
+\hline
+\end{tabular}
+\end{adjustbox}
+\captionsetup{width=\textwidth}
+\caption*{\scriptsize \emph{Notes:} This table reports the results of adding counterfactual taxes on groundwater to the observed electricity prices in our sample.
+To simulate the impacts of a groundwater tax, we first calculate the choice probability of each crop type (annuals, fruit/nut perennials, other perennials, and no crop) for each CLU in our sample over our time series.
+This baseline allocation is represented in the first column, labeled ``No tax.'' The sample average marginal price is \$41.00 per acre-foot. 
+In the subsequent columns, we take each CLU's average annual marginal price and add the reported tax level to it. We then calculate choice probabilities for this counterfactual groundwater price.
+The first four rows correspond to the four crop types in our analysis, and the table displays the total acreage in our sample that we predict would be cropped in each crop type under each of the tax levels.
+The fifth row reports the total acreage of cropland that is reallocated to a different crop type due to the groundwater tax, as compared to no tax.
+The sixth row displays the total percent change in land use for each tax level, as compared to no tax.
+These reallocations estimates are based on the 314,884 acres of agricultural land matched to our sample.
+The final row reports the estimated change in groundwater consumption, using our groundwater elasticity estimate of $-1.12$, for each tax level. 
+}
+\end{table}

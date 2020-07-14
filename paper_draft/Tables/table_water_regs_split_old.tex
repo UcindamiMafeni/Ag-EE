@@ -1,0 +1,90 @@
+\begin{table}[t!]\centering
+\small
+\caption{Estimated Demand Elasticities -- Groundwater  \label{tab:water_regs_main}}
+\vspace{-0.1cm}
+\small
+\begin{adjustbox}{center} 
+\begin{tabular}{lcccccccc} 
+\hline \hline
+\vspace{-0.37cm}
+\\
+ & (1)  & (2)  & (3)  & (4)  & (5)  & (6) \\ 
+[0.1em]
+ & IV & IV & IV & IV & IV & IV \\
+\vspace{-0.37cm}
+\\
+\cline{2-7}
+\vspace{-0.27cm}
+\\
+ $\log\big(P^{\text{elec}}_{it}\big)$: $\hat\beta^{\text{e}}$ ~ & 
+ $-1.21$$^{***}$  & $-1.39$$^{***}$ & $-1.38$$^{***}$ & $-1.26$$^{***}$ & $-1.23$$^{***}$  & $-1.68$$^{***}$ \\ 
+& $(0.17)$ & $(0.18)$ & $(0.19)$ & $(0.17)$ & $(0.16)$ & $(0.21)$ \\
+[0.75em] 
+ $\log\Big(\widehat{\tfrac{{\text{kWh}}}{\text{AF}}}_{it}\Big)$: $\hat\beta^{\text{w}}$ ~ & 
+ $-0.92$$^{***}$  & $-1.37$$^{***}$ & $-1.32$$^{***}$ & $-1.72$$^{***}$ & $-1.24$$^{***}$  & $-2.04$$^{***}$ \\ 
+[-0.3em] 
+& $(0.11)$ & $(0.25)$ & $(0.28)$ & $(0.30)$ & $(0.24)$ & $(0.45)$ \\
+[1.5em] 
+Instrument(s): \\
+[0.1em] 
+~~ Default $\log\big(P^{\text{elec}}_{it}\big)$  & Yes & Yes & Yes  & Yes  & Yes & Yes \\
+[0.1em] 
+~~ $\log\big(\text{Avg depth in basin}\big)$  & & Yes & Yes & Yes & Yes & \\
+[0.1em] 
+~~ $\log\big(\text{Avg depth in basin}\big)$, lagged  & & & & & & Yes \\
+[1.5em] 
+Fixed effects: \\
+[0.1em] 
+~~Unit $\times$ month-of-year  & Yes  & Yes  & Yes  & Yes  & Yes  & Yes   \\ 
+[0.1em] 
+~~Month-of-sample  & Yes  & Yes  & Yes  & Yes  & Yes  & Yes   \\ 
+[0.1em] 
+~~Unit $\times$ physical capital & Yes & Yes & Yes & Yes & Yes & Yes  \\
+[0.1em] 
+~~Water basin $\times$ year & & &  & & Yes &   \\
+[0.1em] 
+~~Water district $\times$ year & & & & & Yes &  \\
+[1.5em] 
+Groundwater time step & Month & Month & Month & Quarter & Month & Month  \\ 
+[0.1em] 
+Only basins with $>1000$ SPs &  &  & Yes &  &  &   \\ 
+[1.5em] 
+Service point units & 10,159 & 10,121 & 9,324 & 10,134 & 10,086 & 9,890  \\ 
+[0.1em] 
+Months  & 117 & 116 & 116 & 117 & 116 & 105 \\ 
+[0.1em] 
+Observations & 0.93M & 0.83M & 0.80M & 0.89M & 0.83M & 0.70M \\ 
+[0.1em] 
+First stage $F$-statistic & 6932 & 129 & 144 & 61 & 69 & 20 \\ 
+[0.15em]
+\hline
+\end{tabular}
+\end{adjustbox}
+\captionsetup{width=\textwidth}
+\caption*{\scriptsize \emph{Notes:} 
+Each regression estimates Equation (\ref{eq:reg_water}) at the service point by month level,
+where the dependent variable is the inverse hyperbolic sine transformation 
+of electricity consumed by service point $i$ in month $t$.
+We report estimates for $\hat\beta^{\text{e}}$ and $\hat\beta^{\text{w}}$, where the latter subtracts 
+1 from the estimated coefficient on $\log \big(\widehat{\text{kWh}\big/\text{AF}}_{it}\big)$.
+We estimate IV specifications via two-stage least squares, and all regressions instrument 
+for $P^{\text{elec}}_{it}$ with unit $i$'s within-category default logged electricity price 
+in month $t$ (consistent with our preferred specification from Table \ref{tab:elec_regs_main}).
+We instrument for $\log \big(\widehat{\text{kWh}\big/\text{AF}}_{it}\big)$ with either logged 
+average groundwater depth across unit $i$'s basin, or the 6- and 12-month lags of this variable.
+``Physical capital'' is a categorical variable for (i) small pumps, (ii) large pumps, and (iii) 
+internal combustion engines, and unit $\times$ physical capital fixed effects control for shifts 
+in tariff category triggered by the installation of new pumping equipment.
+Water basin $\times$ year fixed effects control for broad geographic trends in groundwater depth.
+Water district $\times$ year fixed effects control for annual variation in surface water allocations.
+Column (3) restricts the sample to only the three most common water basins (San Joaquin Valley, 
+Sacramento Valley, and Salinas Valley), each of which contains over 1000 unique SPs in our estimation sample.
+Column (4) uses a quarterly panel of groundwater depths to construct $\log \big(\widehat{\text{kWh}\big/\text{AF}}_{it}\big)$ 
+and the instrument, rather than a monthly panel.
+All regressions drop solar NEM customers, customers with bad geocodes, months with irregular electricity bills 
+(e.g.\ first/last bills, bills longer/shorter than 1 month, overlapping bills for a single account),
+and pumps with implausible test measurements.
+Standard errors (in parentheses) are clustered by service point and by month-of-sample.
+Significance: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$.
+}
+\end{table}

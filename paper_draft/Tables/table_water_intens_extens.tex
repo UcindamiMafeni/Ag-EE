@@ -1,0 +1,77 @@
+\begin{table}[t!]\centering
+\small
+\caption{Annual demand elasticities -- Intensive vs.\ extensive margin \label{tab:elec_water_intens_extens}}
+\vspace{-0.1cm}
+\small
+\begin{adjustbox}{center} 
+\begin{tabular}{lcccc} 
+\hline \hline
+\vspace{-0.37cm}
+\\
+ & Electricity & \multicolumn{3}{c}{Groundwater} \\
+ \cmidrule(r){2-2} \cmidrule(l){3-5}
+ & Overall   & Overall & Intensive & Extensive \\
+ & elasticity   & elasticity & margin & margin \\
+[0.1em]
+ & (1)   & (2)  & (3)  & (4) \\ 
+\vspace{-0.37cm}
+\\
+\cline{2-5}
+\vspace{-0.27cm}
+\\
+ $\log\big(P^{\text{elec}}_{iy}\big)$ ~ & $-0.99$$^{***}$  &  &  &  \\ 
+& $(0.25)$ &  &  &  \\
+[0.1em] 
+ $\log\big(P^{\text{water}}_{iy}\big)$ ~ &  & $-0.93$$^{***}$ & $-0.22$$^{**}$  & $-0.04$$^{***}$ \\ 
+&   & $(0.24)$ & $(0.09)$ & $(0.01)$ \\
+[1.5em] 
+Outcome: \\
+~~ $\sinh^{-1}\big(Q_{iy}\big)$ & Yes& Yes & Yes & \\
+[0.1em] 
+~~ $1\big[Q_{iy}>0\big]$ & & & & Yes \\
+[1.5em] 
+Sample restriction: \\
+~~ $Q_{iy} > 0$ in all years & & & Yes & \\
+[1.5em] 
+Instrument: \\
+[0.1em] 
+~~ Default $\log\big(P^{\text{elec}}_{iy}\big)$  & Yes   & Yes  & Yes & Yes \\
+[1.5em] 
+Fixed effects: \\
+[0.1em] 
+~~Unit $\times$ physical capital & Yes & Yes & Yes & Yes  \\
+[0.1em] 
+~~Water basin $\times$ year & Yes & Yes & Yes & Yes \\
+[0.1em] 
+~~Water district $\times$ year &  Yes & Yes & Yes & Yes \\
+[1.5em] 
+Service point units & 10,113  & 9,058 & 4,270 & 9,058  \\ 
+[0.1em] 
+County $\times$ years  & 270 & 268 & 236 & 268 \\ 
+[0.1em] 
+Observations & 58.2K  & 51.8K & 25.0K & 51.8K \\ 
+[0.1em] 
+First stage $F$-statistic & 2165  & 2425 & 1092 & 2425 \\ 
+[0.15em]
+\hline
+\end{tabular}
+\end{adjustbox}
+\captionsetup{width=\textwidth}
+\caption*{\scriptsize \emph{Notes:} Each regression estimates Equation (\ref{eq:reg_elec_annual}) or Equation (\ref{eq:reg_water_annual}) at the service point by year level.
+Column (1) reports results for electricity consumption, and Columns (2)--(4) report results for groundwater consumption.
+Columns (1) and (2) report annual demand elasticities for electricity and water, respectively. These results are analogous to the monthly demand elasticities reported 
+in Column (4) of Table \ref{tab:elec_regs_main} and in Column (5) of Table \ref{tab:water_regs_combined}, respectively.
+Column (3) reports an analogous demand elasticity for the subset of service points that consume water in every year of our sample.
+Column (4) reports the semi-elasticity for the extensive margin by replacing the outcome variable with a binary indicator water consumption.
+We estimate these regressions using two-stage least squares, instrumenting with unit $i$'s within-category default logged electricity price in year $y$.
+``Physical capital'' is a categorical variable for (i) small pumps, (ii) large pumps, and (iii) internal combustion engines, and unit $\times$
+physical capital fixed effects control for shifts in tariff category triggered by the installation of new pumping equipment.
+Water basin $\times$ year fixed effects control for broad geographic trends in groundwater depth.
+Water district $\times$ year fixed effects control for annual variation in surface water allocations.
+All regressions drop solar NEM customers, customers with bad geocodes, years with irregular electricity bills
+(e.g.\ first/last bills, bills longer/shorter than 1 month, overlapping bills for a single account), and incomplete years.
+Groundwater regressions use a monthly time interval to assign rasterized groundwater levels.
+Standard errors (in parentheses) are two-way clustered by service point and by county-year.
+Significance: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$.
+}
+\end{table}

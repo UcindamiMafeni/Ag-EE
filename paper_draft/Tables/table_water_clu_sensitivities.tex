@@ -1,0 +1,70 @@
+\begin{table}[t!]\centering
+\small
+\caption{Sensitivity to CLU assignments and groupings -- Groundwater  \label{tab:water_clu_sensitivities}}
+\vspace{-0.1cm}
+\small
+\begin{adjustbox}{center} 
+\begin{tabular}{lcccccccc} 
+\hline \hline
+\vspace{-0.37cm}
+\\
+ & (1)  & (2)  & (3)  & (4)  & (5)  \\ 
+[0.1em]
+ & IV & IV & IV & IV & IV \\
+\vspace{-0.37cm}
+\\
+\cline{2-6}
+\vspace{-0.27cm}
+\\
+ $\log\big(P^{\text{water}}_{it}\big)$ ~ & 
+ $-1.11$$^{***}$  & $-1.09$$^{***}$ & $-1.35$$^{***}$ & $-0.96$$^{***}$ & $-1.09$$^{***}$ \\ 
+& $(0.19)$ & $(0.16)$ & $(0.26)$ & $(0.19)$ & $(0.17)$  \\
+[1.5em] 
+Sample criteria: \\
+[0.1em] 
+~~ Inside CLU polygon  & Yes & & & & \\
+[0.1em] 
+~~ Drop CLU inconsistencies  & & Yes & & & \\
+[0.1em] 
+~~ Pumps per CLU group  & &  & 1 & 2+ & \\
+[0.1em] 
+~~ Cluster by CLU group  & &  &  &  & Yes \\
+[1em] 
+IV: Default $\log\big(P^{\text{elec}}_{it}\big)$  & Yes & Yes & Yes  & Yes  & Yes  \\
+[1em] 
+Fixed effects: \\
+[0.1em] 
+~~Unit $\times$ month-of-year  & Yes  & Yes  & Yes   & Yes  & Yes   \\ 
+[0.1em] 
+~~Month-of-sample  & Yes  & Yes  & Yes  & Yes  & Yes    \\ 
+[0.1em] 
+~~Unit $\times$ physical capital & Yes & Yes & Yes & Yes & Yes  \\
+[1em] 
+Groundwater time step & Month & Month & Month & Month & Month  \\ 
+[1em] 
+Service point units & 5,913 & 9,702 & 2,677 & 7,072 & 4,708  \\ 
+[0.1em] 
+Months  & 117 & 117 & 117 & 117 & 117 \\ 
+[0.1em] 
+Observations & 0.55M & 0.89M & 0.25M & 0.65M & 0.90M  \\ 
+[0.1em] 
+First stage $F$-statistic & 2059 & 2896 & 1334 & 2009 & 2548  \\ 
+[0.15em]
+\hline
+\end{tabular}
+\end{adjustbox}
+\captionsetup{width=\textwidth}
+\caption*{\scriptsize \emph{Notes:} 
+Each regression replicates our preferred specification in Column (2) from Table \ref{tab:water_regs_combined}, 
+while conducting sensitivity on unit-specific assignments to CLU polygons (i.e.\ fields). 
+Column (1) includes only units with coordinates that are fully inside their assigned CLU polygon.
+Column (2) drops units with inconsistent, problematic, or internally conflicting CLU assignments.
+Columns (3)--(5) group CLUs that lie within the same tax parcels.
+Columns (3) includes only units that are the singleton (confirmed) groundwater pump in their CLU group.
+Columns (4) includes units in CLU groups with multiple (confirmed) groundwater pumps.
+Columns (5) two-way clusters by CLU group and by month-of-sample, with 4708 unique CLU groups.
+See notes under Table \ref{tab:water_regs_combined} for further detail. 
+Standard errors (in parentheses) are two-way clustered by service point and by month-of-sample, except in Column (5).
+Significance: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$.
+}
+\end{table}

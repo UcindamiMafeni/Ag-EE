@@ -1,0 +1,81 @@
+\begin{table}[t!]\centering
+\small
+\caption{Estimated Annual Demand Elasticities  \label{tab:elec_water_regs_annual}}
+\vspace{-0.1cm}
+\small
+\begin{adjustbox}{center} 
+\begin{tabular}{lcccccccc} 
+\hline \hline
+\vspace{-0.37cm}
+\\
+ & \multicolumn{1}{c}{Electricity} & \multicolumn{5}{c}{Groundwater} \\
+ \cmidrule(r){2-2} \cmidrule(l){3-7}
+  & Pooled & Pooled & 1 Crop & 1 Crop Type & Crop Type & Crop Switchers \\
+ &  &  & Type & and Fallow & Switchers & and Fallowers \\
+ &  &  & Crop Type & or Fallow & Switchers & and Fallowers \\
+[0.1em]
+ & (1)  & (2)  & (3)  & (4)  & (5)  & (6) \\ 
+[0.1em]
+ & IV & IV & IV & IV & IV & IV \\
+\vspace{-0.37cm}
+\\
+\cline{2-7}
+\vspace{-0.27cm}
+\\
+ $\log\big(P^{\text{elec}}_{iy}\big)$ ~ & 
+ $-0.99$$^{***}$  & \\ 
+& $(0.25)$ \\
+[0.1em] 
+ $\log\big(P^{\text{water}}_{iy}\big)$ ~ & 
+& $-0.93$$^{***}$ & $-1.35$$^{***}$ & $-0.28$ & $-1.11$$^{**}$  & $-0.87$$^{*}$ \\ 
+& & $(0.24)$ & $(0.48)$ & $(0.37)$ & $(0.50)$ & $(0.47)$ \\
+[1.5em] 
+Instrument: \\
+[0.1em] 
+~~ Default $\log\big(P^{\text{elec}}_{iy}\big)$  & Yes & Yes & Yes  & Yes  & Yes & Yes \\
+[1.5em] 
+Fixed effects: \\
+[0.1em] 
+~~Unit $\times$ physical capital & Yes & Yes & Yes & Yes & Yes & Yes  \\
+[0.1em] 
+~~Water basin $\times$ year  & Yes & Yes & Yes & Yes & Yes & Yes    \\
+[0.1em] 
+~~Water district $\times$ year  & Yes & Yes & Yes & Yes & Yes & Yes  \\
+[1.5em] 
+Service point units & 10,113 & 9,058 & 3,167 & 1,964 & 1,391 & 1,709  \\ 
+[0.1em] 
+County $\times$ years  & 270 & 268 & 183 & 244 & 110 & 207 \\ 
+[0.1em] 
+Observations & 58.2K & 51.8K & 17.3K & 10.9K & 8.2K & 10.4K \\ 
+[0.1em] 
+First stage $F$-statistic & 2165 & 2425 & 890 & 466 & 550 & 817 \\ 
+[0.15em]
+\hline
+\end{tabular}
+\end{adjustbox}
+\captionsetup{width=\textwidth}
+\caption*{\scriptsize \emph{Notes:} 
+Each regression estimates Equation (\ref{eq:reg_elec_annual}) or Equation (\ref{eq:reg_water_annual}) at the service point by year level.
+Columns (1) report results for electricity consumption, while Columns (2)--(6) report results for groundwater consumption.
+Columns (1)--(2) include the full annual panel of SPs; they are analogous to the monthly regressions 
+in Column (4) of Table \ref{tab:elec_regs_main} and in Column (5) of Table \ref{tab:water_regs_combined}, respectively. 
+Columns (3)--(6) restrict the sample based on the observed crop history at each service point's assigned CLU (from 2008 to 2016). 
+We classify individual CLU-years as annual crop, fruit/nut perennial crop, other perennial crop, or non-crop.
+Column (3) includes service points in CLUs that always have the same crop type (annual, fruit/nut, other perennial) during our sample period.
+Column (4) includes units in CLUs that always have at most 1 of the 3 crop types, and also fallow.
+Column (5) includes units in CLUs that swtich between at least 2 of the crop types, and never fallow.
+Column (6) includes units in CLUs that switch between at least 2 of the crop types, and also fallow.
+These four subsamples are disjoint but not exhaustive, due to ambiguities in land cover classifications
+(we require that at least 50 percent for CLU fall into a single category). 
+All regressions apply two-stage least squares, instrumenting with unit $i$'s within-category default logged electricity price in year $y$.
+``Physical capital'' is a categorical variable for (i) small pumps, (ii) large pumps, and (iii) internal combustion engines, and unit $\times$
+physical capital fixed effects control for shifts in tariff category triggered by the installation of new pumping equipment.
+Water basin $\times$ year fixed effects control for broad geographic trends in groundwater depth.
+Water district $\times$ year fixed effects control for annual variation in surface water allocations.
+All regressions drop solar NEM customers, customers with bad geocodes, years with irregular electricity bills
+(e.g.\ first/last bills, bills longer/shorter than 1 month, overlapping bills for a single account), and incomplete years.
+Groundwater regressions use a monthly time interval to assign rasterized groundwater levels.
+Standard errors (in parentheses) are two-way clustered by service point and by county-year.
+Significance: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$.
+}
+\end{table}

@@ -1,0 +1,58 @@
+\begin{table}[t!]\centering
+\small
+\caption{Sensitivity to geographic controls -- Water  \label{tab:water_regs_month_int_fes}}
+\vspace{-0.1cm}
+\small
+\begin{adjustbox}{center} 
+\begin{tabular}{lcccccccc} 
+\hline \hline
+\vspace{-0.37cm}
+\\
+ & (1)  & (2)  & (3)  & (4)  & (5)   \\ 
+[0.1em]
+ & IV & IV & IV & IV & IV  \\
+\vspace{-0.37cm}
+\\
+\cline{2-6}
+\vspace{-0.27cm}
+\\
+ $\log\big(P^{\text{water}}_{it}\big)$ ~ & $-1.08$$^{***}$  & $-1.05$$^{***}$ & $-1.05$$^{***}$ & $-1.05$$^{***}$ & $-0.95$$^{***}$ \\ 
+& $(0.15)$ & $(0.15)$ & $(0.15)$ & $(0.15)$ & $(0.14)$  \\
+[1.5em] 
+Month-of-sample FEs & Climate & County & Basin  & Sub-Basin  &  Water  \\
+~~~~~~~interaction & zone & & & & district \\ 
+[1em] 
+IV: Default $\log\big(P^{\text{elec}}_{it}\big)$  & Yes & Yes & Yes  & Yes  &  Yes \\
+[1em] 
+Fixed effects: \\
+[0.1em] 
+~~Unit $\times$ month-of-year  & Yes  & Yes  & Yes  & Yes  & Yes   \\ 
+[0.1em] 
+~~Month-of-sample  & Yes  & Yes  & Yes  & Yes  & Yes     \\ 
+[0.1em] 
+~~Unit $\times$ physical capital & Yes & Yes & Yes & Yes & Yes  \\
+[1em] 
+Service point units & 10,150 & 10,152 & 10,142 & 10,135 & 10,136   \\ 
+[0.1em] 
+Months  & 117 & 117 & 117 & 117 & 117  \\ 
+[0.1em] 
+Observations & 0.93M & 0.93M & 0.93M & 0.93M & 0.93M  \\ 
+[0.1em] 
+First stage $F$-statistic & 3827 & 4379 & 3573 & 4511 & 4239  \\ 
+[0.15em]
+\hline
+\end{tabular}
+\end{adjustbox}
+\captionsetup{width=\textwidth}
+\caption*{\scriptsize \emph{Notes:} This table conducts sensitivity analysis on our preferred water specification from Column (2) 
+of Table \ref{tab:water_regs_combined}, by interacting month-of-sample fixed effects with different geographic variables.  
+California comprises 16 climate zones, and PGE agriculture customers are distributed across 11 distinct climate zones.
+Sub-basins are administrative sub-divisions of groundwater basins; this estimation sample includes agricultural consumers  
+from 46 unique groundwater basins and 95 unique sub-basins.  
+The sample also includes units assigned to 125 unique water districts; Column (5) includes a separate set of month-of-sample 
+fixed effects for units not assigned to a water district.
+See notes under Table \ref{tab:elec_regs_main} for further detail. 
+Standard errors (in parentheses) are two-way clustered by service point and by month-of-sample.
+Significance: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$.
+}
+\end{table}

@@ -1,0 +1,81 @@
+\begin{table}[t!]\centering
+\small
+\caption{Sensitivity to $\widehat{\text{kWh}/\text{AF}}$ construction -- Groundwater  \label{tab:water_kwhaf_sensitivities}}
+\vspace{-0.1cm}
+\small
+\begin{adjustbox}{center} 
+\begin{tabular}{lcccccccc} 
+\hline \hline
+\vspace{-0.37cm}
+\\
+ & (1)  & (2)  & (3)  & (4)  & (5) & (6) \\ 
+[0.1em]
+ & IV & IV & IV & IV & IV & IV \\
+\vspace{-0.37cm}
+\\
+\cline{2-7}
+\vspace{-0.27cm}
+\\
+ $\log\big(P^{\text{water}}_{it}\big)$ ~ & 
+ $-1.36$$^{***}$  & $-1.09$$^{***}$ & $-1.26$$^{***}$ & $-1.12$$^{***}$ & $-1.13$$^{***}$ & $-1.28$$^{***}$ \\ 
+& $(0.32)$ & $(0.15)$ & $(0.37)$ & $(0.16)$ & $(0.15)$ & $(0.18)$  \\
+[1.5em] 
+$\widehat{{{\text{kWh}}}/{\text{AF}}}_{it}$ criteria: \\
+[0.1em] 
+~~ Measured, not estimated  & & Yes & & & & \\
+[0.1em] 
+~~ Drop tests with bad drawdown  & &  & Yes & & \\
+[0.1em] 
+~~ Time-varying predicted drawdown  & &  &  & Yes & Yes & \\
+[0.1em] 
+~~ Mean groundwater depth  & &  &  &  & Yes & \\
+[0.1em] 
+~~ Depth measured w/in 8 miles  & &  &  &  &  & Yes \\
+[1em] 
+Instrument: \\
+[0.1em] 
+~~ $\log\big(\text{Avg depth in basin}\big)$  & Yes & Yes &  &  & & \\
+[0.1em] 
+~~ Default $\log\big(P^{\text{elec}}_{it}\big)$  & & & Yes  & Yes  & Yes & Yes \\
+[1em] 
+Fixed effects: \\
+[0.1em] 
+~~Unit $\times$ month-of-year  & Yes  & Yes  & Yes   & Yes  & Yes   \\ 
+[0.1em] 
+~~Month-of-sample  & Yes  & Yes  & Yes  & Yes  & Yes    \\ 
+[0.1em] 
+~~Unit $\times$ physical capital & Yes & Yes & Yes & Yes & Yes  \\
+[1em] 
+Groundwater time step & Month & Month & Month & Month & Month & Month \\ 
+[1em] 
+Service point units & 10,141 & 10,155 & 1,562 & 10,155 & 10,155  & 9,930  \\ 
+[0.1em] 
+Months  & 117 & 117 & 117 & 117 & 117 & 117 \\ 
+[0.1em] 
+Observations & 0.87M & 0.93M & 0.12M & 0.93M & 0.93M & 0.45M  \\ 
+[0.1em] 
+First stage $F$-statistic & 161 & 5398 & 645 & 2824 & 2420 & 2382  \\ 
+[0.15em]
+\hline
+\end{tabular}
+\end{adjustbox}
+\captionsetup{width=\textwidth}
+\caption*{\scriptsize \emph{Notes:} 
+Each regression replicates our preferred specification from Column (2) of Table \ref{tab:water_regs_combined}, 
+while altering our preferred method of specifying units' kWh/AF conversion factor. 
+Columns (1)--(2) maintain our preferred $\widehat{\text{kWh}/\text{AF}}$ definition, but instrument for groundwater price 
+using basin-wide average groundwater depths. This leverages only variation in $P^{\text{water}}$ driven by changes in depth. 
+Column (2) directly assigns kWh/AF as measured in an APEP pump test, which yields a $P^{\text{water}}$ variable that is 
+independent of changes in groundwater depth. 
+Column (3) removes units without a reliable drawdown measurement from an APEP pump test. 
+Columns (4)--(5) construct $\widehat{\text{kWh}/\text{AF}}$ using predicted drawdown as a function of groundwater depth, 
+rather than fixed drawdown within pumps over time. 
+Column (5) also applies basin-wide average depth to construct  $\widehat{\text{kWh}/\text{AF}}$, rather than 
+using localized measurements from groundwater rasters. 
+Column (6) uses rasterized groundwater measurements, but drop the (roughly half of) observations without a contemporaneous 
+groundwater measurement within 8 miles. 
+See notes under Table \ref{tab:water_regs_combined} for further detail. 
+Standard errors (in parentheses) are two-way clustered by service point and by month-of-sample.
+Significance: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$.
+}
+\end{table}

@@ -1,0 +1,59 @@
+\begin{table}[t!]\centering
+\small
+\caption{Instrumenting with within-category modal tariffs -- Electricity  \label{tab:elec_regs_modal_tariff}}
+\vspace{-0.1cm}
+\small
+\begin{adjustbox}{center} 
+\begin{tabular}{lcccccccc} 
+\hline \hline
+\vspace{-0.37cm}
+\\
+ & (1)  & (2)  & (3) & (4)  \\ 
+[0.1em]
+ & IV & IV & IV & IV \\
+\vspace{-0.37cm}
+\\
+\cline{2-5}
+\vspace{-0.27cm}
+\\
+ $\log\big(P^{\text{elec}}_{it}\big)$ ~ & $-1.53$$^{***}$  & $-1.17$$^{***}$ & $-1.00$$^{***}$ & $-1.19$$^{***}$  \\ 
+& $(0.15)$ & $(0.16)$ & $(0.15)$ & $(0.20)$ \\
+[1.5em] 
+Instrument(s): \\
+[0.1em] 
+~~ Modal $\log\big(P^{\text{elec}}_{it}\big)$  & Yes & Yes & Yes  & \\
+[0.1em] 
+~~ Modal $\log\big(P^{\text{elec}}_{it}\big)$, lagged  & & & & Yes \\
+[1em] 
+Fixed effects: \\
+[0.1em] 
+~~Unit $\times$ month-of-year  & Yes  & Yes  & Yes  & Yes  \\ 
+[0.1em] 
+~~Month-of-sample  & Yes  & Yes  & Yes  & Yes    \\ 
+[0.1em] 
+~~Unit $\times$ physical capital & & Yes & Yes & Yes  \\
+[0.1em] 
+~~Water basin $\times$ year & & & Yes &  \\
+[0.1em] 
+~~Water district $\times$ year & & & Yes &  \\
+[1em] 
+Service point units & 11,173 & 11,173 & 11,142 & 10,922    \\ 
+[0.1em] 
+Months  & 117 & 117 & 117 & 105 \\ 
+[0.1em] 
+Observations & 1.05M & 1.05M & 1.04M & 0.91M    \\ 
+[0.1em] 
+First stage $F$-statistic & 5796 & 5006 & 5202 & 1043   \\ 
+[0.15em]
+\hline
+\end{tabular}
+\end{adjustbox}
+\captionsetup{width=\textwidth}
+\caption*{\scriptsize \emph{Notes:} This table reestimates Columns (2)--(5) from Table \ref{tab:elec_regs_main}, 
+instrumenting with the average marginal price of the modal tariff within each category. 
+These instruments produce very similar results, demonstrating that our main results are not sensitive to our choice of default tariff. 
+See notes under Table \ref{tab:elec_regs_main} for further detail. 
+Standard errors (in parentheses) are two-way clustered by service point and by month-of-sample.
+Significance: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$.
+}
+\end{table}

@@ -1,0 +1,54 @@
+\begin{table}[t!]\centering
+\small
+\caption{Crop switching estimates -- Discrete choice model \label{tab:probit_results}}
+\vspace{-0.1cm}
+\small
+\begin{adjustbox}{center} 
+\begin{tabular}{lcc} 
+\hline \hline
+\vspace{-0.37cm}
+\\
+ & Marginal effect & Semi-elasticity \\
+\vspace{-0.37cm}
+\\
+\cline{2-3}
+\vspace{-0.27cm}
+\\
+Annuals & $-0.252$$^{***}$ & $-0.088$$^{***}$ \\ 
+& $(0.042)$ & $(0.013)$ \\ 
+[0.1em]
+Fruit and nut perennials & $0.307$$^{***}$ & $0.104$$^{***}$ \\ 
+& $(0.055)$ & $(0.020)$ \\ 
+[0.1em]
+Other perennials & $-0.162$$^{***}$ & $-0.053$$^{***}$ \\ 
+& $(0.034)$ & $(0.010)$ \\ 
+[0.1em]
+Fallow & $0.107$$^{***}$ & $0.038$$^{***}$ \\ 
+& $(0.033)$ & $(0.013)$ \\ 
+[1.5em]
+Instrument: \\ 
+[0.1em] 
+~~Default $\log(P^{\text{elec}}_{iy})$ & \multicolumn{2}{c}{Yes} \\ 
+Fixed effects: \\ 
+[0.1em] 
+~~County $\times$ year $\times$ crop type & \multicolumn{2}{c}{Yes} \\ 
+[1.5em] 
+Common land units & \multicolumn{2}{c}{7,380} \\ 
+[0.1em] 
+Observations & \multicolumn{2}{c}{36,799} \\ 
+[0.1em] 
+First stage $\chi^2$-statistic & \multicolumn{2}{c}{1134} \\ 
+[0.15em]
+\hline
+\end{tabular}
+\end{adjustbox}
+\captionsetup{width=\textwidth}
+\caption*{\scriptsize \emph{Notes:} We estimate the discrete choice model of Equation (\ref{eq:discrete_choice}) using IV probit, instrumenting for groundwater price with the default within-category electricity price. 
+We include county-by-year-by-crop-type fixed effects to flexibly estimate profit excluding the cost of groundwater pumping.
+The left column presents the average marginal effects of groundwater price on crop type choice probabilities.
+The right column reports the average semi-elasticities for each crop type choice probability with respect to the groundwater price.
+Each value is calculated for every observation in our analysis, and then we take the mean over all observations to yield these average values. 
+Standard errors (in parentheses) are clustered at the common land unit (CLU).
+Significance: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$.
+}
+\end{table}

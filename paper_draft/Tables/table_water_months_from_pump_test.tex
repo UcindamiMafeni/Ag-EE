@@ -1,0 +1,61 @@
+\begin{table}[t!]\centering
+\small
+\caption{Sensitivity to recent pump tests -- Groundwater  \label{tab:water_months_from_pump_test}}
+\vspace{-0.1cm}
+\small
+\begin{adjustbox}{center} 
+\begin{tabular}{lcccccccc} 
+\hline \hline
+\vspace{-0.37cm}
+\\
+ & (1)  & (2)  & (3)  & (4)  & (5)  \\ 
+[0.1em]
+ & IV & IV & IV & IV & IV \\
+\vspace{-0.37cm}
+\\
+\cline{2-6}
+\vspace{-0.27cm}
+\\
+ $\log\big(P^{\text{water}}_{it}\big)$ ~ & 
+ $-1.10$$^{***}$  & $-1.00$$^{***}$ & $-0.92$$^{***}$ & $-1.01$$^{***}$ & $-0.90$$^{***}$ \\ 
+& $(0.16)$ & $(0.17)$ & $(0.18)$ & $(0.20)$ & $(0.23)$  \\
+[1.5em] 
+Months away from pump test: & 60 & 48 & 36 & 24 & 12 \\
+[1em] 
+IV: Default $\log\big(P^{\text{elec}}_{it}\big)$  & Yes & Yes & Yes  & Yes  & Yes  \\
+[1em] 
+Fixed effects: \\
+[0.1em] 
+~~Unit $\times$ month-of-year  & Yes  & Yes  & Yes   & Yes  & Yes   \\ 
+[0.1em] 
+~~Month-of-sample  & Yes  & Yes  & Yes  & Yes  & Yes    \\ 
+[0.1em] 
+~~Unit $\times$ physical capital & Yes & Yes & Yes & Yes & Yes  \\
+[1em] 
+Groundwater time step & Month & Month & Month & Month & Month  \\ 
+[1.5em] 
+Service point units & 10,144 & 10,129 & 10,110 & 10,054 & 9,826  \\ 
+[0.1em] 
+Months  & 117 & 117 & 117 & 105 & 93 \\ 
+[0.1em] 
+Observations & 0.82M & 0.74M & 0.63M & 0.48M & 0.28M  \\ 
+[0.1em] 
+First stage $F$-statistic & 2803 & 2557 & 2098 & 1517 & 902  \\ 
+[0.15em]
+\hline
+\end{tabular}
+\end{adjustbox}
+\captionsetup{width=\textwidth}
+\caption*{\scriptsize \emph{Notes:} 
+Each regression replicates our preferred specification in Column (2) from Table \ref{tab:water_regs_combined}, 
+while restricting the sample to units with pump tests within $m$ months of sample month $t$. 
+For example, a March 2013 observation for unit $i$ is only included in Column (3) if we observe 
+a pump test for unit $i$ between March 2010 and March 2016. 
+These regressions reveal that unobserved changes in pump specifications are unlikely to be systematically biasing our 
+groundwater elasticity estimates. Stated differently, the mechanism underlying our estimates is unlikely to be 
+unobserved changes to farmers' irrigation capital. 
+See notes under Table \ref{tab:water_regs_combined} for further detail. 
+Standard errors (in parentheses) are two-way clustered by service point and by month-of-sample.
+Significance: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$.
+}
+\end{table}

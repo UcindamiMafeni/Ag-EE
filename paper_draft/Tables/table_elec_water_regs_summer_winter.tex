@@ -1,0 +1,55 @@
+\begin{table}[t!]\centering
+\small
+\caption{Monthly Elasticities during summer vs.\ winter  \label{tab:elec_water_regs_summer_winter}}
+\vspace{-0.1cm}
+\small
+\begin{adjustbox}{center} 
+\begin{tabular}{lcccccccc} 
+\hline \hline
+\vspace{-0.37cm}
+\\
+ & \multicolumn{2}{c}{Electricity} & \multicolumn{2}{c}{Groundwater} \\
+ \cmidrule(r){2-3} \cmidrule(l){4-5}
+ & (1)  & (2)  & (3)  & (4)     \\ 
+[0.1em]
+ & IV & IV & IV & IV  \\
+\vspace{-0.37cm}
+\\
+\cline{2-5}
+\vspace{-0.27cm}
+\\
+ $\log\big(P^{\text{elec}}_{it}\big)$ ~ & $-1.29$$^{***}$  & $-1.10$$^{***}$ & $-1.19$$^{***}$ & $-1.09$$^{***}$ \\ 
+& $(0.19)$ & $(0.19)$ & $(0.18)$ & $(0.18)$  \\
+[1.5em] 
+Sample months: & Summer & Winter & Summer & Winter \\
+[1em] 
+IV: Default $\log\big(P^{\text{elec}}_{it}\big)$  & Yes & Yes &  Yes  &  Yes \\
+[1em] 
+Fixed effects: \\
+[0.1em] 
+~~Unit $\times$ month-of-year  & Yes  & Yes   & Yes  & Yes   \\ 
+[0.1em] 
+~~Month-of-sample  & Yes  & Yes   & Yes  & Yes     \\ 
+[0.1em] 
+~~Unit $\times$ physical capital & Yes & Yes & Yes & Yes  \\
+[1em] 
+Service point units & 11,159 & 11,019 & 10,141 & 9,946   \\ 
+[0.1em] 
+Months  & 59 & 58 & 59 & 58   \\ 
+[0.1em] 
+Observations & 0.53M & 0.51M & 0.47M & 0.46M \\ 
+[0.1em] 
+First stage $F$-statistic & 5255 & 5837 & 1735 & 2560   \\ 
+[0.15em]
+\hline
+\end{tabular}
+\end{adjustbox}
+\captionsetup{width=\textwidth}
+\caption*{\scriptsize \emph{Notes:} This table estimates demand elasticities separately for summer (May--October) vs.\ winter (November--April). 
+Columns (1)--(2) replicate Column (3) from Table \ref{tab:elec_regs_main}, splitting the sample by season. 
+Columns (3)--(4) replicate Column (2) from Table \ref{tab:water_regs_combined}, splitting the sample by season. 
+See notes under these tables for further detail. 
+Standard errors (in parentheses) are two-way clustered by service point and by month-of-sample.
+Significance: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$.
+}
+\end{table}

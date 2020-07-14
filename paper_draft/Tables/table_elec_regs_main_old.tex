@@ -1,6 +1,6 @@
 \begin{table}[t!]\centering
 \small
-\caption{Estimated demand elasticities -- Electricity  \label{tab:elec_regs_main}}
+\caption{Estimated Demand Elasticities -- Electricity  \label{tab:elec_regs_main}}
 \vspace{-0.1cm}
 \small
 \begin{adjustbox}{center} 
@@ -16,7 +16,7 @@
 \cline{2-7}
 \vspace{-0.27cm}
 \\
- $\log\big(P^{\text{elec}}_{it}\big)$ ~ & $-1.31$$^{***}$  & $-1.58$$^{***}$ & $-1.17$$^{***}$ & $-0.95$$^{***}$ & $-1.18$$^{***}$  & $-0.76$$^{***}$ \\ 
+ $\log\big(P^{\text{elec}}_{it}\big)$ ~ & $-1.31$$^{***}$  & $-1.58$$^{***}$ & $-1.17$$^{***}$ & $-1.02$$^{***}$ & $-1.18$$^{***}$  & $-0.76$$^{***}$ \\ 
 & $(0.11)$ & $(0.17)$ & $(0.16)$ & $(0.14)$ & $(0.21)$ & $(0.17)$ \\
 [1.5em] 
 Instrument(s): \\
@@ -33,19 +33,19 @@ Fixed effects: \\
 [0.1em] 
 ~~Unit $\times$ physical capital & & & Yes & Yes & Yes & Yes  \\
 [0.1em] 
-~~Water basin $\times$ year & & &  & Yes & &  \\
+~~Water basin $\times$ year & & &  & Yes &  &   \\
 [0.1em] 
-~~Water district $\times$ year & & &  & Yes & & \\
+~~Water district $\times$ year & & &  & Yes &  &  \\
 [0.1em] 
 ~~Unit-specific linear time trends & & & & & &  Yes \\
 [1.5em] 
-Service point units & 11,173 & 11,173 & 11,173 & 11,167 & 10,922 & 11,173  \\ 
+Service point units & 11,175 & 11,175 & 11,175 & 11,121 & 10,924 & 11,175  \\ 
 [0.1em] 
 Months  & 117 & 117 & 117 & 117 & 105 & 117 \\ 
 [0.1em] 
-Observations & 1.05M & 1.05M & 1.05M & 1.05M & 0.91M & 1.05M \\ 
+Observations & 1.05M & 1.05M & 1.05M & 1.04M & 0.91M & 1.05M \\ 
 [0.1em] 
-First stage $F$-statistic &  & 4136 & 7382 & 7542 & 757 & 4776 \\ 
+First stage $F$-statistic &  & 4136 & 7382 & 7508 & 757 & 4776 \\ 
 [0.15em]
 \hline
 \end{tabular}
@@ -58,11 +58,10 @@ logged electricity price in month $t$ \emph{or} the 6- and 12- month lags of thi
 ``Physical capital'' is a categorical variable for (i) small pumps, (ii) large pumps, and (iii) internal combustion engines, and unit $\times$
 physical capital fixed effects control for shifts in tariff category triggered by the installation of new pumping equipment.
 Water basin $\times$ year fixed effects control for broad geographic trends in groundwater depth.
-Water district $\times$ year fixed effects control for annual variation in surface water allocations; 
-we include a common ``no-water-district'' dummy for units not assigned to a water district, to avoid dropping them from the regression. 
+Water district $\times$ year fixed effects control for annual variation in surface water allocations.
 All regressions drop solar NEM customers, customers with bad geocodes, and months with irregular electricity bills
 (e.g.\ first/last bills, bills longer/shorter than 1 month, overlapping bills for a single account).
-Standard errors (in parentheses) are two-way clustered by service point and by month-of-sample.
+Standard errors (in parentheses) are clustered by service point and by month-of-sample.
 Significance: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$.
 }
 \end{table}

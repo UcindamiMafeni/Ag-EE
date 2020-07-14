@@ -1,0 +1,59 @@
+\begin{table}[t!]\centering
+\small
+\caption{Sensitivity to IHS vs.\ log transformation -- Electricity  \label{tab:elec_regs_ihs_logs}}
+\vspace{-0.1cm}
+\small
+\begin{adjustbox}{center} 
+\begin{tabular}{lcccccccc} 
+\hline \hline
+\vspace{-0.37cm}
+\\
+ & (1)  & (2)  & (3)  & (4)  & (5)   \\ 
+[0.1em]
+ & IV & IV & IV & IV & IV  \\
+\vspace{-0.37cm}
+\\
+\cline{2-6}
+\vspace{-0.27cm}
+\\
+ $\log\big(P^{\text{elec}}_{it}\big)$ ~ & $-1.17$$^{***}$  & $-0.31$$^{***}$ & $-0.31$$^{***}$ & $-0.78$$^{***}$ & $-1.12$$^{***}$ \\ 
+& $(0.16)$ & $(0.08)$ & $(0.08)$ & $(0.11)$ & $(0.15)$  \\
+[1.5em] 
+LHS transformation: & $ \sinh^{-1}(Q) $ & $ \sinh^{-1}(Q) $ & $\log(Q)$  & $\log(1+Q)$   &  $\log(1+100Q)$  \\
+[1.5em] 
+Sample restriction: \\
+~~ $Q_{it} > 0$ &  &Yes &Yes  &   &    \\
+[1em] 
+IV: Default $\log\big(P^{\text{elec}}_{it}\big)$  & Yes & Yes & Yes  & Yes  &  Yes \\
+[1em] 
+Fixed effects: \\
+[0.1em] 
+~~Unit $\times$ month-of-year  & Yes  & Yes  & Yes  & Yes  & Yes   \\ 
+[0.1em] 
+~~Month-of-sample  & Yes  & Yes  & Yes  & Yes  & Yes     \\ 
+[0.1em] 
+~~Unit $\times$ physical capital & Yes & Yes & Yes & Yes & Yes  \\
+[1em] 
+Service point units & 11,173 & 11,109 & 11,109 & 11,173 & 11,173   \\ 
+[0.1em] 
+Months  & 117 & 117 & 117 & 117 & 117  \\ 
+[0.1em] 
+Observations & 1.05M & 0.89M & 0.89M & 1.05M & 1.05M  \\ 
+[0.1em] 
+First stage $F$-statistic & 7382 & 6841 & 6841 & 7382 & 7382  \\ 
+[0.15em]
+\hline
+\end{tabular}
+\end{adjustbox}
+\captionsetup{width=\textwidth}
+\caption*{\scriptsize \emph{Notes:} This table conducts sensitivity analysis on the transformation of the dependent variable $Q^{\text{elec}}$.
+Column (1) reproduces our preferred specification from Column (3) of Table \ref{tab:elec_regs_main} using the inverse hyperbolic sine transformation.
+where the dependent variable is the inverse hyperbolic sine transformation of electricity consumed by service point $i$ in month $t$.
+Column (2) uses the same transformation but removed zeros to align with the natural log transformation in Column (3). 
+Columns (4)--(5) apply the natural log + 1 transformation. Column (5) also scales the dependent variable by 100, which nearly matches 
+our results using the inverse hyperbolic sine transformation. 
+See notes under Table \ref{tab:elec_regs_main} for further detail. 
+Standard errors (in parentheses) are two-way clustered by service point and by month-of-sample.
+Significance: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$.
+}
+\end{table}

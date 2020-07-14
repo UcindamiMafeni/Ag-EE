@@ -1,6 +1,6 @@
 \begin{table}[t!]\centering
 \small
-\caption{Estimated Demand Elasticities -- Groundwater  \label{tab:water_regs_combined}}
+\caption{Estimated demand elasticities -- Groundwater  \label{tab:water_regs_combined}}
 \vspace{-0.1cm}
 \small
 \begin{adjustbox}{center} 
@@ -17,8 +17,8 @@
 \vspace{-0.27cm}
 \\
  $\log\big(P^{\text{water}}_{it}\big)$ ~ & 
- $-0.81$$^{***}$  & $-1.12$$^{***}$ & $-1.16$$^{***}$ & $-1.12$$^{***}$ & $-0.97$$^{***}$  & $-1.14$$^{***}$ \\ 
-& $(0.09)$ & $(0.15)$ & $(0.17)$ & $(0.15)$ & $(0.14)$ & $(0.21)$ \\
+ $-0.88$$^{***}$  & $-1.12$$^{***}$ & $-1.16$$^{***}$ & $-1.12$$^{***}$ & $-0.90$$^{***}$  & $-1.14$$^{***}$ \\ 
+& $(0.07)$ & $(0.15)$ & $(0.17)$ & $(0.15)$ & $(0.14)$ & $(0.21)$ \\
 [1.5em] 
 Instrument(s): \\
 [0.1em] 
@@ -42,13 +42,13 @@ Groundwater time step & Month & Month & Month & Quarter & Month & Month  \\
 [0.1em] 
 Only basins with $>1000$ SPs &  &  & Yes &  &  &   \\ 
 [1.5em] 
-Service point units & 10,159 & 10,159 & 9,342 & 10,159 & 10,118 & 9,926  \\ 
+Service point units & 10,155 & 10,155 & 9,337 & 10,155 & 10,149 & 9,922  \\ 
 [0.1em] 
 Months  & 117 & 117 & 117 & 117 & 117 & 105 \\ 
 [0.1em] 
 Observations & 0.93M & 0.93M & 0.85M & 0.93M & 0.93M & 0.82M \\ 
 [0.1em] 
-First stage $F$-statistic &  & 2835 & 2735 & 2846 & 4633 & 486 \\ 
+First stage $F$-statistic &  & 3021 & 2791 & 3198 & 4562 & 477 \\ 
 [0.15em]
 \hline
 \end{tabular}
@@ -65,7 +65,8 @@ Column (6) instruments with the 6- and 12- month lags of this variable.
 internal combustion engines, and unit $\times$ physical capital fixed effects control for shifts 
 in tariff category triggered by the installation of new pumping equipment.
 Water basin $\times$ year fixed effects control for broad geographic trends in groundwater depth.
-Water district $\times$ year fixed effects control for annual variation in surface water allocations.
+Water district $\times$ year fixed effects control for annual variation in surface water allocations; 
+we include a common ``no-water-district'' dummy for units not assigned to a water district, to avoid dropping them from the regression. 
 Column (3) restricts the sample to only the three most common water basins (San Joaquin Valley, 
 Sacramento Valley, and Salinas Valley), each of which contains over 1000 unique SPs in our estimation sample.
 Column (4) uses a quarterly panel of groundwater depths to construct both $Q^{\text{water}}_{it}$ and $P^{\text{water}}_{it}$, 
@@ -73,7 +74,7 @@ rather than a monthly panel.
 All regressions drop solar NEM customers, customers with bad geocodes, months with irregular electricity bills 
 (e.g.\ first/last bills, bills longer/shorter than 1 month, overlapping bills for a single account),
 and pumps with implausible test measurements.
-Standard errors (in parentheses) are clustered by service point and by month-of-sample.
+Standard errors (in parentheses) are two-way clustered by service point and by month-of-sample.
 Significance: *** $p < 0.01$, ** $p < 0.05$, * $p < 0.10$.
 }
 \end{table}
