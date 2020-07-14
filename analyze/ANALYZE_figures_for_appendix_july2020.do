@@ -1,16 +1,21 @@
+
 clear all
 version 13
 set more off
 set matsize 11000
 
-************************************************
-** Script to make marginal rates appx figure  **
-************************************************
+*******************************************************
+**** Script to make figures for paper and appendix ****
+*******************************************************
 
 global dirpath "T:/Projects/Pump Data"
 global dirpath_data "$dirpath/data"
-global dirpath_output "$dirpath/output"
 
+************************************************
+************************************************
+  
+** A1. Time series rate changes, 5 default rates
+{
 
 use "$dirpath_data/merged_pge/ag_rates_avg_by_month.dta", clear
 replace rt_sched_cd = subinstr(rt_sched_cd,"AG-","",1)
@@ -174,4 +179,7 @@ twoway  ///
 	title("Residualized marginal prices", size(vlarge) color(black)) ///
 	legend(order(19 "AG-1A " 20 "AG-1B " 22 "AG-4A " 23 "AG-4B " 21 "AG-ICE")  col(3) size(medlarge))
 graph export "$dirpath/output/marg_price_all_rates_resid_wtitle.eps", replace
+}
 
+************************************************
+************************************************
