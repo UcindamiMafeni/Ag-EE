@@ -375,10 +375,10 @@ foreach tag in "20180719" "20180322" "20180827" {
 ** 4. Transform Q and P, merge in instruments, and collapse SP-hour datasets
 if 1==0{
 
-foreach tag in /*"20180719"*/ "20180322" /*"20180827"*/ {
+foreach tag in "20180719" "20180322" "20180827" {
 
 	** Loop over years and build yearly collapsed files
-	forvalues y = 2015/2017 {
+	forvalues y = 2011/2017 {
 
 		** Load SP-hourly dataset
 		if `y'==2011 {
@@ -983,7 +983,7 @@ save "$dirpath_data/merged_pge/sp_month_elec_panel.dta", replace
 
 *******************************************************************************
 *******************************************************************************
-RERUN (AFTER RERUNNING STEP 4 ABOVE) TO INCORPORATE UPDATED GIS VARIABLES)
+
 ** 7. Merge GIS vars, SP vars, gw depth, and switchers in to collapsed SP-hour panels
 if 1==0{
 
@@ -998,15 +998,13 @@ foreach tag in "20180719" "20180322" "20180827" {
 	cap drop rt_group
 	cap drop flag_geocode_badmiss
 	merge m:1 sp_uuid modate using "$dirpath_data/merged_pge/sp_month_elec_panel.dta", ///
-		nogen keep(1 3) keepusing(flag_nem climate_zone_cd rt_sched_cd ///
+		nogen keep(1 3) keepusing(flag_nem cz_group rt_sched_cd ///
 		bad_geocode_flag missing_geocode_flag)
 	encode rt_sched_cd, gen(rt_group)
 	la var rt_group "Ag tariff group (numeric)"
-	encode climate_zone_cd, gen(cz_group)
-	la var cz_group "Climate zone (numeric)"
 	gen flag_geocode_badmiss = bad_geocode_flag==1 | missing_geocode_flag==1
 	la var flag_geocode_badmiss "SP geocode either missing or not in California"
-	drop rt_sched_cd climate_zone_cd bad_geocode_flag missing_geocode_flag
+	drop rt_sched_cd bad_geocode_flag missing_geocode_flag
 
 	** Merge in GIS variables
 	cap drop county_group
