@@ -1,7 +1,7 @@
-#####################################################################################
-### CODE TO SCRAPE DAILY MAX/MIN TEMPERATURE AND PRECIPITATION RASTERS FROM PRISM ###
-### AND ASSIGN DAILY VALUES TO 3 SETS OF LAT/LONS: PGE SPs, APEP PUMPS, SCE SPs   ### 
-#####################################################################################
+##############################################################################################
+### CODE TO SCRAPE DAILY MAX/MIN TEMPERATURE AND PRECIPITATION RASTERS FROM PRISM, AND     ###
+### ASSIGN DAILY VALUES TO 4 SETS OF LAT/LONS: PGE SPs, APEP PUMPS, SCE SPs, CLU CENTROIDS ### 
+##############################################################################################
 
 ############################################################################
 ################################# SETUP ####################################
@@ -13,6 +13,7 @@ rm(list = ls())
 
 library(raster)
 library(sp)
+library(sf)
 library(data.table)
 library(reshape2)
 library(lubridate)
@@ -84,6 +85,8 @@ unzip.fun <- function(zip.names, out.paths){
   return(NULL)
 }
 mapply(unzip.fun, zip.names=zip.names, out.paths=out.paths)
+
+## STOP HERE if it's not the first time thru
 
 # Identify bad downloads (i.e. empty folders)
 dirs <- list.dirs(path = "./prism/unzipped")
@@ -247,7 +250,7 @@ for (y in 2008:2019){
 ############################################################################
 ############################################################################
 
-## 4. Stack rasters, read in APEP pump coordinates and assign each a daily {precip, tmax, tmin}
+## 4. Stack rasters, read in APEP pump coordinates, and assign each a daily {precip, tmax, tmin}
 
 # Stack daily rasters for plunking
 raster.names <- list.files(path="./prism/unzipped", pattern=".bil$", full.names=TRUE, recursive=TRUE)
@@ -335,7 +338,7 @@ for (y in 2008:2019){
 ############################################################################
 ############################################################################
 
-## 5. Stack rasters, read in SCE SP coordinates and assign each a daily {precip, tmax, tmin}
+## 5. Stack rasters, read in SCE SP coordinates, and assign each a daily {precip, tmax, tmin}
 
 # Stack daily rasters for plunking
 raster.names <- list.files(path="./prism/unzipped", pattern=".bil$", full.names=TRUE, recursive=TRUE)
@@ -410,6 +413,99 @@ for (y in 2008:2019){
     
     # Write output to csv, and remove everything from memory
     write.csv(output2, file=paste0("./prism/temp/sce_prem_coord_daily_temperatures_",yyyymm,".csv"))
+    
+    # Remove loop variables before next iteration
+    rm(raster.names.month,raster.stack,value,output,ppt,tmax,tmin,output2)
+    gc()
+    
+    # Print intermediate output
+    print(c(as.character(Sys.time()),yyyymm))
+  }  
+}
+
+############################################################################
+############################################################################
+
+## 6. Stack rasters, read in CLU centroids, and assign each a daily {precip, tmax, tmin}
+
+# Stack daily rasters for plunking
+raster.names <- list.files(path="./prism/unzipped", pattern=".bil$", full.names=TRUE, recursive=TRUE)
+raster.stack.temp <- stack(raster.names[grep("20080101",raster.names)])
+
+# Prep points to plunk
+clu_sf <- readRDS(file="./cleaned_spatial/CLU/clu_centroids.RDS")
+latlon <- do.call(rbind, st_geometry(clu_sf)) %>%  as_tibble() %>% setNames(c("lon","lat")) %>% as.data.frame(stringsAsFactors=FALSE)
+coords <- as.data.frame(cbind(as.data.frame(clu_sf$rowID),latlon))
+coords <- coords[is.na(coords$lat)==0,]
+coords <- coords[is.na(coords$lon)==0,]
+names(coords) <- c("rowID","lon","lat")
+map.data <- as.data.table(coords)
+map.data <- map.data[,list(rowID, lon, lat)]
+map.data <- map.data[is.na(lon) == FALSE & is.na(lat) == FALSE]
+store.points <- SpatialPointsDataFrame(coords=map.data[,list(lon, lat)], 
+                                       data=map.data,
+                                       proj4string = CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"))
+store.points <- spTransform(store.points, CRS(as.character(crs(raster.stack.temp))))
+
+# Store CLU_ID to rowID concordance
+temp_out <- st_drop_geometry(clu_sf)
+write.csv(temp_out, file="./misc/clu_id_row_concordance.csv")
+rm(clu_sf,latlon,temp_out)
+
+# Loop over sample months
+for (y in 2008:2019){
+  for (m in 1:12){
+    
+    # Add leading zero to month
+    mm <- ifelse(m<10,paste0("0",m),paste0(m))
+    yyyymm <- paste0(y,mm)
+    
+    # Subset rasters for the month, and stack
+    raster.names.month <- raster.names[grep(yyyymm,raster.names)]
+    raster.stack <- stack(raster.names.month)
+    
+    # Plunk
+    system.time(value <- extract(raster.stack, store.points, df=TRUE))
+    
+    # Simpligy names of plunking output
+    names(value) <- gsub("PRISM_", "", names(value))
+    names(value) <- gsub("stable_4kmD2_", "", names(value))
+    names(value) <- gsub("provisional_4kmD2_", "", names(value))
+    names(value) <- gsub("_bil", "", names(value))
+    names(value)
+    
+    # Merge back into main data frame, and reshape
+    output <- cbind(map.data, value)
+    output <- melt(output, id.vars=c("rowID", "lon", "lat", "ID"))
+    output$which <- gsub("_","",substring(output$variable,1,4))
+    output$date <- gsub("_","",substring(output$variable,5,13))
+    output <- as.data.frame(cbind(output$rowID, output$date, output$which, output$value))
+    names(output) <- c("rowID","date","which","value")
+    
+    # Filter on precipitation, for manual reshape wide
+    ppt <- output %>% filter(which=="ppt")
+    ppt <- ppt[,names(ppt)!="which"]
+    names(ppt)[3] <- "ppt"
+    ppt$ppt <- round(as.numeric(as.character(ppt$ppt)), digits=3)
+    
+    # Filter on max temperature, for manual reshape wide
+    tmax <- output %>% filter(which=="tmax")
+    tmax <- tmax[,names(tmax)!="which"]
+    names(tmax)[3] <- "tmax"
+    tmax$tmax <- round(as.numeric(as.character(tmax$tmax)), digits=3)
+    
+    # Filter on min temperature, for manul reshape wide
+    tmin <- output %>% filter(which=="tmin")
+    tmin <- tmin[,names(tmin)!="which"]
+    names(tmin)[3] <- "tmin"
+    tmin$tmin <- round(as.numeric(as.character(tmin$tmin)), digits=3)
+    
+    # Join three metrics into a single wide data.frame
+    output2 <- full_join(ppt,tmax, by= c("rowID","date"))
+    output2 <- full_join(output2,tmin, by= c("rowID","date"))
+    
+    # Write output to csv, and remove everything from memory
+    write.csv(output2, file=paste0("./prism/temp/clu_centroid_daily_temperatures_",yyyymm,".csv"))
     
     # Remove loop variables before next iteration
     rm(raster.names.month,raster.stack,value,output,ppt,tmax,tmin,output2)
