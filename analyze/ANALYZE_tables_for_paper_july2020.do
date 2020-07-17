@@ -1117,8 +1117,8 @@ foreach t in 0 5 10 15 20 25 {
 	}
 	// save results for total reallocation
 	qui summ abs_delta_`t'tax
-	local acres_`t'tax_reall = string(r(sum)/1000,"%9.2f")
-	local acres_`t'tax_reall_pct = string(r(sum)/`acres_total'*100,"%9.1f")
+	local acres_`t'tax_reall = string((r(sum)/2)/1000,"%9.2f")
+	local acres_`t'tax_reall_pct = string((r(sum)/2)/`acres_total'*100,"%9.1f")
 }
 
 // calculate groundwater response for each tax level
@@ -1169,7 +1169,7 @@ file write textab "& $(`mfx_se_1')$ & $(`elas_se_1')$ \\ " _n
 file write textab "[1.5em]" _n
 file write textab "Instrument: \\ " _n
 file write textab "[0.1em] " _n
-file write textab "~~Default $\log(P^{\text{elec}}_{iy})$ & \multicolumn{2}{c}{Yes} \\ " _n
+file write textab "~~Default \$P^{\text{elec}}_{iy}$ & \multicolumn{2}{c}{Yes} \\ " _n
 file write textab "Fixed effects: \\ " _n
 file write textab "[0.1em] " _n
 file write textab "~~County $\times$ year $\times$ crop type & \multicolumn{2}{c}{Yes} \\ " _n
