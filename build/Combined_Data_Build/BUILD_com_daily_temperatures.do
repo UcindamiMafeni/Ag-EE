@@ -201,12 +201,68 @@ forvalues y = 2008/2019 {
 		
 *******************************************************************************
 *******************************************************************************
-	
-** 5. Append to yearly dtas for daily temperatures		
+
+** 5. Construct daily temperatures for CLU centroids SP coordinates
 if 1==0{
 
-// Loop over 3 types of units
-foreach id in pge_sp apep_pump sce_sp {
+** Loop over sample months
+forvalues y = 2008/2019 {
+	forvalues m = 1/12 {
+			
+		** Import results from GIS script
+		local ym = "`y'" + substr("0" + "`m'",-2,2)
+		insheet using "$dirpath_data/prism/temp/clu_centroid_daily_temperatures_`ym'.csv", double comma clear
+		drop v1
+		duplicates drop
+		
+		** Destring precip and temperatures
+		cap replace ppt = "" if ppt=="NA"
+		cap replace tmax = "" if tmax=="NA"
+		cap replace tmin = "" if tmin=="NA"
+		destring ppt tmax tmin, replace 
+		rename ppt precip_mm
+		rename tmax degreesC_max 
+		rename tmin degreesC_min 
+				
+		**Reformat date
+		gen temp = date(substr(string(date,"%12.0g"),1,4) + "/" + ///
+						substr(string(date,"%12.0g"),5,2) + "/" + ///
+						substr(string(date,"%12.0g"),7,2),"YMD")
+		format %td temp
+		assert temp!=.
+		drop date
+		rename temp date
+
+		** Confirm uniqueness
+		assert rowid!=.
+		unique rowid date
+		assert r(unique)==r(N)
+
+		** Label
+		la var rowid "CLU row identifier (numeric)"	
+		la var date "Date"	
+		la var precip_mm "Daily precipitation (mm) at premise"
+		la var degreesC_max "Daily max temperature (C) at premise"
+		la var degreesC_min "Daily min temperature (C) at premise"
+
+		** Sort and save
+		sort rowid date
+		order rowid date
+		compress
+		save "$dirpath_data/prism/temp_daily/clu_centroid_temperature_daily_`ym'.dta", replace	
+	}
+}
+		
+}		
+		
+*******************************************************************************
+*******************************************************************************
+
+** 6. Append to yearly dtas for daily temperatures		
+if 1==0{
+
+// Loop over 4 types of units
+foreach id in pge_sp apep_pump sce_sp clu_centroid {
 	
 	// Loop over sample years
 	forvalues y = 2008/2019 {
@@ -216,6 +272,9 @@ foreach id in pge_sp apep_pump sce_sp {
 		}
 		else if inlist("`id'","apep_pump") {
 			local uniq = "latlon_group"
+		}
+		else if inlist("`id'","clu_centroid") {
+			local uniq = "rowid"
 		}
 	
 		clear
@@ -238,11 +297,11 @@ foreach id in pge_sp apep_pump sce_sp {
 *******************************************************************************
 *******************************************************************************
 
-** 6. Collapse daily dta to the monthly level
+** 7. Collapse daily dtas to the monthly level
 if 1==0{
 
-// Loop over 3 types of units
-foreach id in pge_sp apep_pump sce_sp {
+// Loop over 4 types of units
+foreach id in /*pge_sp apep_pump sce_sp*/ clu_centroid {
 	
 	if inlist("`id'","pge_sp","sce_sp") {
 		local uniq = "sp_uuid"
@@ -251,6 +310,9 @@ foreach id in pge_sp apep_pump sce_sp {
 	else if inlist("`id'","apep_pump") {
 		local uniq = "latlon_group"
 		local lab = "pump"
+	}
+	else if inlist("`id'","clu_centroid") {
+		local uniq = "rowid"
 	}
 
 	// Collapse daily data to month, by year
@@ -273,6 +335,7 @@ foreach id in pge_sp apep_pump sce_sp {
 	// Label
 	cap la var sp_uuid "Unique service point identifier"	
 	cap la var latlon_group "APEP pump location identifier"	
+	cap la var rowid "CLU row identifier (use xwalk to assign clu_id)"	
 	la var modate "Year-Month"	
 	la var precip_mm "Total monthly precipitation (mm) at `lab'"
 	la var degreesC_max "Avg daily max temperature (C) at `lab'"
@@ -292,7 +355,29 @@ foreach id in pge_sp apep_pump sce_sp {
 *******************************************************************************
 *******************************************************************************
 
-** 7. Some quick diagnostics, to make sure the temperature build worked, and fix nonmissing precip
+** 8. Build CLU_id to rowid concordance
+{
+	// CLU_id is a long string, so to save memory for these massive daily weather 
+	// datasets, I created a new numeric id
+	
+insheet using "$dirpath_data/misc/clu_id_row_concordance.csv", double comma clear
+drop v1
+la var clu_id "Unique CLU identifier"
+la var rowid "Numeric CLU identifier to save memory"
+unique clu_id
+assert r(unique)==r(N)
+unique rowid
+assert r(unique)==r(N)
+sort clu_id
+compress
+save "$dirpath_data/prism/clu_id_row_concordance.dta", replace
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 9. Some quick diagnostics, to make sure the temperature build worked, and fix nonmissing precip
 {
 
 	// Confirm sensible values
@@ -320,8 +405,18 @@ foreach v of varlist precip_mm degreesC* {
 	unique sp_uuid if `v'==.
 }
 
+use "$dirpath_data/prism/clu_centroid_temperature_monthly.dta", clear
+foreach v of varlist precip_mm degreesC* {
+	sum `v', detail
+	sum `v' if substr(string(modate,"%tm"),-2,2)=="m1", detail
+	sum `v' if substr(string(modate,"%tm"),-2,2)=="m8", detail
+	unique rowid if `v'==.
+}
+
+
+
 	// Convert precipitation from zero to missing if temperature is missing
-foreach id in pge_sp apep_pump sce_sp {
+foreach id in pge_sp apep_pump sce_sp clu_centroid {
 	use "$dirpath_data/prism/`id'_temperature_monthly.dta", clear
 	replace precip_mm = . if degreesC_max==.
 	compress
@@ -333,7 +428,7 @@ foreach id in pge_sp apep_pump sce_sp {
 *******************************************************************************
 *******************************************************************************
 
-** 8. Remove memory hogging files we no longer need
+** 10. Remove memory-hogging files we no longer need
 if 1==0{
 
 	// Remove csv output from R raster script
