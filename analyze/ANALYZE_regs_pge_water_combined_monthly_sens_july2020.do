@@ -26,6 +26,14 @@ gen LdegreesC_min = L.degreesC_min
 gen LdegreesC_max = L.degreesC_max
 gen LdegreesC_mean = L.degreesC_mean
 
+// Create crop type groups
+gen mode50_group = 0
+replace mode50_group = 1 if mode50_Annual==1
+replace mode50_group = 2 if mode50_FruitNutPerennial==1
+replace mode50_group = 3 if mode50_OtherPerennial==1
+replace mode50_group = 4 if mode50_Noncrop==1
+tab mode50_group
+
 // Drop solar NEM customers
 keep if flag_nem==0 
 
@@ -93,7 +101,7 @@ forvalues v = 1/4 {
 }
 	
 // Loop over sensitivities
-foreach c of numlist 40 53 {
+foreach c of numlist 83(1)84 {
 
 	// Reset default locals
 	local ifs_sample = ""
@@ -443,6 +451,15 @@ foreach c of numlist 40 53 {
 		local sens = "Control for distance to nearest contemporaneous groundwater measurement"
 		local RHS = "${RHS} gw_rast_dist_mth_2SP" 
 	}
+	if `c'==83 {
+		local sens = "Interact month-of-sample FEs with crop type"
+		local FEs = "sp_group#month sp_group#rt_large_ag modate#mode50_group"
+	}
+	if `c'==84 {
+		local sens = "Interact month-of-sample FEs with crop typ + WByr and WDyr FEs"
+		local FEs = "sp_group#month sp_group#rt_large_ag basin_group#year wdist_group#year modate#mode50_group"
+	}
+
 
 		
 	// Run non-IV specification	
