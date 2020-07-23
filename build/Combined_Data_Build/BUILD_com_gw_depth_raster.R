@@ -122,7 +122,7 @@ for (ym in levels(gwmth$modate)) {
   print(Sys.time())
   
   #Save image of workspace
-  save.image(file = paste0(path,"data/misc/temp_gw_idw_rasters.RData"))
+  save.image(file = paste0(path,"data/misc/gw_idw_rasters.RData"))
   
 }
 
@@ -213,12 +213,12 @@ for (yq in levels(gwqtr$qtr)) {
   print(Sys.time())
   
   #Save image of workspace
-  save.image(file = paste0(path,"data/misc/temp_gw_idw_rasters.RData"))
+  save.image(file = paste0(path,"data/misc/gw_idw_rasters.RData"))
   
 }
 
 #Save image of workspace
-save.image(file = paste0(path,"data/misc/temp_gw_idw_rasters.RData"))
+save.image(file = paste0(path,"data/misc/gw_idw_rasters.RData"))
 
 
 
@@ -337,7 +337,7 @@ for (ym in levels(gwmth$modate)) {
   print(Sys.time())
   
   #Save image of workspace
-  save.image(file = paste0(path,"data/misc/temp_gw_idw_rasters_SJ.RData"))
+  save.image(file = paste0(path,"data/misc/gw_idw_rasters_SJ.RData"))
   
 }
 
@@ -428,12 +428,12 @@ for (yq in levels(gwqtr$qtr)) {
   print(Sys.time())
   
   #Save image of workspace
-  save.image(file = paste0(path,"data/misc/temp_gw_idw_rasters_SJ.RData"))
+  save.image(file = paste0(path,"data/misc/gw_idw_rasters_SJ.RData"))
   
 }
 
 #Save image of workspace
-save.image(file = paste0(path,"data/misc/temp_gw_idw_rasters_SJ.RData"))
+save.image(file = paste0(path,"data/misc/gw_idw_rasters_SJ.RData"))
 
 
 
@@ -553,7 +553,7 @@ for (ym in levels(gwmth$modate)) {
   print(Sys.time())
   
   #Save image of workspace
-  save.image(file = paste0(path,"data/misc/temp_gw_idw_rasters_SAC.RData"))
+  save.image(file = paste0(path,"data/misc/gw_idw_rasters_SAC.RData"))
   
 }
 
@@ -644,11 +644,11 @@ for (yq in levels(gwqtr$qtr)) {
   print(Sys.time())
   
   #Save image of workspace
-  save.image(file = paste0(path,"data/misc/temp_gw_idw_rasters_SAC.RData"))
+  save.image(file = paste0(path,"data/misc/gw_idw_rasters_SAC.RData"))
   
 }
 
 #Save image of workspace
-save.image(file = paste0(path,"data/misc/temp_gw_idw_rasters_SAC.RData"))
+save.image(file = paste0(path,"data/misc/gw_idw_rasters_SAC.RData"))
 
 
