@@ -814,7 +814,7 @@ filename <- paste0("clus_gw_depths_from_rasters_mth.csv")
 write.csv(clus, file=filename , row.names=FALSE, quote=FALSE)
 
 #Remove monthly columns from output dataframes
-clus <- clus %>% select(c(sp_uuid,prem_lat,prem_long,bad_geocode_flag,missing_geocode_flag,pull,x,y))
+clus <- clus %>% select(c(rowID,lon,lat,x,y))
 
 #Loop over quarters to extract quarterly groundwater depths
 for (yq in levels(gwqtr$qtr)) {
