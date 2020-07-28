@@ -80,3 +80,58 @@ save "$dirpath_data/sce_raw/customer_id_xwalk_20200504.dta", replace
 
 ************************************************
 ************************************************
+
+** JUL 22 2020 DATA
+global dirpath_raw "T:/Raw Data/PumpData/SCE07222020"
+
+*** load customer data and save as dta file // NO NEW CUSTOMER DETAILS FILE
+*insheet using "$dirpath_raw/ADHQ1376_EDRP_2019Q3Q4/adhq1376_1.csv", comma clear
+*tostring *, replace
+*save "$dirpath_data/sce_raw/customer_data_20200722.dta", replace
+
+*** load monthly billing data and save as dta file
+insheet using "$dirpath_raw/ADHQ1376_EDRP_2019Q3Q4/adhq1376_4_mnthly_bill_2019_Q3Q4.csv", comma clear
+tostring *, replace
+save "$dirpath_data/sce_raw/bill_data_20200722.dta", replace
+
+*** load energy efficiency data and save as dta file
+insheet using "$dirpath_raw/ADHQ1376_EDRP_2019Q3Q4/adhq1376_5_ee_2018_19.csv", comma clear
+tostring *, replace
+save "$dirpath_data/sce_raw/energy_efficiency_data_20200722.dta", replace
+
+*** load demand response data and save as dta file
+insheet using "$dirpath_raw/ADHQ1376_EDRP_2019Q3Q4/adhq1376_6_dr.csv", comma clear
+tostring *, replace
+save "$dirpath_data/sce_raw/demand_response_data_20200722.dta", replace
+
+*** load pump test project data and save as dta file
+import excel "$dirpath_raw/Pump Overhauls 2011 to 2019_Rebate.xlsx", firstrow allstring clear
+save "$dirpath_data/sce_raw/pump_test_project_data_20200722.dta", replace
+
+*** load pump test data and save as dta file
+	// NOTE: SCE gave us this file in a weird format, so I resaved as an xlsx in the SCE_raw folder
+*import excel using "$dirpath_raw/Pump Test Data Extract - 7-14-20.xlsb", firstrow allstring clear
+import excel using "$dirpath_data/sce_raw/Pump Test Data Extract - 7-14-20.xlsx", firstrow allstring clear
+tostring *, replace
+save "$dirpath_data/sce_raw/pump_test_data_20200722.dta", replace
+
+
+*** load interval data and save as dta file
+foreach year in "2019" {
+	foreach week in "1" "2" "3" "4" {
+		foreach month in "01" "02" "03" "04" "05" "06" "07" "08" "09" "10" "11" "12" {
+			local mth = real("`month'")
+			clear
+			cap confirm file "$dirpath_raw/ADHQ1376_INTRVL_`year'`month'/ADHQ1376_intrvl_`year'`month'wk`week'.csv"
+			if _rc == 0 {
+				insheet using "$dirpath_raw/ADHQ1376_INTRVL_`year'`month'/ADHQ1376_intrvl_`year'`month'wk`week'.csv", comma clear
+				save "$dirpath_data/sce_raw/interval_data_`year'_m`mth'_w`week'_20200722.dta", replace
+			}
+			else {
+				di "The file does not exist"
+			}
+		}
+	}
+}
+
+
