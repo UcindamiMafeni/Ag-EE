@@ -16,6 +16,9 @@ global R_exe_path "C:/PROGRA~1/MICROS~4/ROPEN~1/R-35~1.1/bin/x64/R"
 *******************************************************************************
 *******************************************************************************
 
+** 1. Sept 2019 data pull (the only customer details in the July 2020 data pull is a DR participation file
+{
+
 ** Start with raw customer data
 use "$dirpath_data/sce_raw/customer_data_20190916.dta", clear
 
@@ -160,15 +163,33 @@ assert !missing(net_mtr_ind)
 replace net_mtr_ind = 0 if missing(nem_proatr_id)
 la var net_mtr_ind "Dummy for NEM participation"
 
-** Presumably no DR information
-/*
 ** Demand response
-tab dr_program, missing
-assert dr_program!=""
-la var dr_program "Demand response program"
-gen dr_ind = dr_program!="NOT ENROLLED"
-la var dr_ind "Dummy for demand response participation"
-*/
+preserve
+use "$dirpath_data/sce_raw/demand_response_data_20190916.dta" , clear
+gen pull = "20190916"
+append using "$dirpath_data/sce_raw/demand_response_data_20200722.dta"
+gen date_dr_start = date(subinstr(subinstr(lower(start_date),"-","",1),"-","20",1),"DMY")
+gen date_dr_end = date(subinstr(subinstr(lower(end_date),"-","",1),"-","20",1),"DMY")
+format %td date*
+assert date_dr_start!=. & date_dr_end!=.
+replace date_dr_start = mdy(month(date_dr_start), day(date_dr_start), year(date_dr_start)-1000) if year(date_dr_start)>2040
+gen ndays = date_dr_end - date_dr_start
+sort ndays
+replace ndays = -ndays if ndays<0
+drop prog_name start_date end_date pull proent_value_text
+duplicates drop
+collapse (sum) ndays, by(serv_acct_num)
+rename serv_acct_num sa_uuid
+sum ndays, detail
+gen dr_ind = ndays>=365
+keep if dr_ind==1
+keep sa_uuid dr_ind
+tempfile dr
+save `dr'
+restore
+merge m:1 sa_uuid using `dr', nogen
+replace dr_ind = 0 if dr_ind==.
+la var dr_ind "Dummy for demand response participation (>=365 days)"
 
 ** Climate zone
 tab climate_zone, missing 
@@ -304,3 +325,8 @@ unique sp_uuid sa_uuid
 assert r(unique)==r(N)
 compress
 save "$dirpath_data/sce_cleaned/sce_cust_detail_20190916.dta", replace
+
+}
+
+*******************************************************************************
+*******************************************************************************
