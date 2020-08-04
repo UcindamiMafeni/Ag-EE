@@ -277,3 +277,117 @@ save "$dirpath_data/sce_cleaned/billing_data_20200722.dta", replace
 
 *******************************************************************************
 *******************************************************************************
+
+** 3. Combine billing data into a single unified dataset
+{
+
+	// unlike with the multiple PGE data pulls, it will be easiest to just combine 
+	// SCE pulls from the get-go, since they're the same set of customers
+	
+** Load cleaned SCE bililng data (both data pulls)
+use "$dirpath_data/sce_cleaned/billing_data_20190916.dta", clear
+gen pull = "20190916"
+append using "$dirpath_data/sce_cleaned/billing_data_20200722.dta"
+replace pull = "20200722" if pull==""
+tab pull
+
+** Remove duplicates (all variables)
+duplicates t sa_uuid-flag_short_bill, gen(dup)
+tab dup
+assert dup<2
+tab bill_start_dt if dup==1
+unique sa_uuid-flag_short_bill
+local uniq = r(unique)
+drop if dup==1 & pull=="20200722"
+unique sa_uuid-flag_short_bill
+assert r(unique)==r(N)
+assert r(unique)==`uniq'
+drop dup
+
+** Resolve dups from SA-specific flags
+duplicates t sa_uuid bill_start_dt, gen(dup)
+tab dup
+sort sa_uuid bill_start_dt
+br if dup>0
+egen temp = max(flag_acct), by(sa_uuid)
+replace flag_acct = temp
+drop temp dup
+unique sa_uuid bill_start_dt
+local uniq = r(unique)
+duplicates drop sa_uuid bill_start_dt, force
+unique sa_uuid bill_start_dt
+assert r(unique)==`uniq'
+
+** Resolve remaining dups by defaulting to the 2020 pull
+duplicates t sa_uuid bill_start_dt, gen(dup)
+tab dup
+unique sa_uuid bill_start_dt
+local uniq = r(unique)
+drop if dup>1 & pull=="20190916"
+unique sa_uuid bill_start_dt
+assert r(unique)==`uniq'
+assert r(unique)==r(N)
+drop dup
+
+** Assess coverage across pulls
+egen sa_in_2019 = max(pull=="20190916"), by(sa_uuid)
+egen sa_in_2020 = max(pull=="20200722"), by(sa_uuid)	
+egen temp_tag = tag(sa_uuid)
+tab sa_in_2019 sa_in_2020 if temp_tag==1, missing
+unique sa_uuid
+
+unique sa_uuid if sa_in_2019==1 & sa_in_2020==0
+hist bill_end_dt if sa_in_2019==1 & sa_in_2020==0
+hist bill_end_dt if sa_in_2019==1 & sa_in_2020==0 & year(bill_end_dt)>=2018, freq
+egen temp_max = max(bill_end_dt), by(sa_uuid)
+format %td temp_max
+hist temp_max if sa_in_2019==1 & sa_in_2020==0 & temp_tag==1 & year(bill_end_dt)>=2017, freq
+unique sa_uuid if sa_in_2019==1 & sa_in_2020==0 & bill_end_dt>mdy(5,31,2019)
+	// 260 SAs that we see in June/July 2019 don't show up in the 2020 data pull
+	// (a bit more mass than we'd naturally expect)
+egen flag_nobill_2020 = max(sa_in_2019==1 & sa_in_2020==0 & bill_end_dt>mdy(5,31,2019)), by(sa_uuid)
+	
+unique sa_uuid if sa_in_2019==0 & sa_in_2020==1	
+egen temp_min = min(bill_start_dt), by(sa_uuid)
+format %td temp_min
+hist temp_min if sa_in_2019==0 & sa_in_2020==1 & temp_tag==1, freq
+	// 153 SAs that we see in the 2020 data pull that don't show up in the 2019 data pull
+	// (this distribution looks smoother)
+egen flag_nobill_2019 = max(sa_in_2019==0 & sa_in_2020==1), by(sa_uuid)
+
+** Clean up and label
+drop sa_in_2019 sa_in_2020 temp*
+la var pull "Which SCE data pull is this bill from?"
+la var flag_nobill_2020 "Flag for SAs that should be in 2020 data pull, but aren't"
+la var flag_nobill_2019 "Flag for SAs that newly appear in 2020 data pull"
+
+** Fix bill discontinuity flag
+gsort sa_uuid bill_end_dt
+by sa_uuid: gen new_start_dt= bill_end_dt[_n-1]+1
+gen diff = bill_start_dt-new_start_dt
+tab diff flag_disct_bill
+tab diff flag_disct_bill if diff>0
+tab diff pull if diff>0 & flag_disct_bill==0
+assert pull=="20200722" if diff>0 & flag_disct_bill==0 & diff!=.
+replace flag_disct_bill = 1 if !missing(new_start_dt) & diff>0 & diff!=. & pull=="20200722" 
+egen temp = max(flag_disct_bill), by(sa_uuid)
+egen temp_tag = tag(sa_uuid)
+tab temp flag_acct if temp_tag
+replace flag_acct = temp
+drop diff new_start_dt temp*
+
+** Save
+sort sa_uuid bill_start_dt
+unique sa_uuid bill_start_dt
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/sce_cleaned/billing_data.dta", replace
+
+** Erase pull-specific files, which are now redundant
+erase "$dirpath_data/sce_cleaned/billing_data_20190916.dta"	
+erase "$dirpath_data/sce_cleaned/billing_data_20200722.dta"	
+	
+}
+
+*******************************************************************************
+*******************************************************************************
