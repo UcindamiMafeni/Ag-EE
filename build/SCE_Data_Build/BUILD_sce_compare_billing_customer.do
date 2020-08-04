@@ -12,12 +12,12 @@ global dirpath_data "$dirpath/data"
 *******************************************************************************
 *******************************************************************************
 
-** 1. SCE data pull
+** 1. SCE 2019 and 2020 data pulls
 
 ** Load cleaned PGE bililng data
-use "$dirpath_data/sce_cleaned/billing_data_20190916.dta", clear
+use "$dirpath_data/sce_cleaned/billing_data.dta", clear
 
-** Flag first and last bill for each SA (if account begins after Jan 2008 or ends before Aug 2017)
+** Flag first and last bill for each SA (if account begins after Jan 2008 or ends before Dec 2019)
 gen month_st = month(bill_start_dt)
 gen year_st = year(bill_start_dt)
 gen modate_st = ym(year_st,month_st)
@@ -53,8 +53,8 @@ di `uniq'/r(unique) // 40% of SAs begin during the sample
 tab modate_end if year_end>=2019
 egen temp_last_end = max(bill_end_dt), by(sa_uuid)
 format %td temp_last_end
-tab temp_last_end if year_end>=2017 & temp_last_end==bill_end_dt
-gen flag_last_bill = temp_last_end==bill_end_dt & bill_end_dt<date("30jun2019","DMY")
+tab temp_last_end if year_end>=2019 & temp_last_end==bill_end_dt
+gen flag_last_bill = temp_last_end==bill_end_dt & bill_end_dt<date("30nov2019","DMY")
 tab flag_last_bill if temp_last_end==bill_end_dt
 preserve 
 unique sa_uuid
@@ -70,7 +70,7 @@ restore
 unique sa_uuid if flag_last_bill==1
 local uniq = r(unique)
 unique sa_uuid
-di `uniq'/r(unique) // 44% of SAs end during the sample
+di `uniq'/r(unique) // 43% of SAs end during the sample
 	
 	// plot first and last bill dates
 preserve 
@@ -118,9 +118,9 @@ twoway ///
 
 restore
 	// 33% of accounts are neither openers nor closers!
-	// 23% of accounts are openers only
-	// 27% of accounts are closers only
-	// for 17% of accoutns, we observe the opening and closing!
+	// 24% of accounts are openers only
+	// 26% of accounts are closers only
+	// for 17% of accounts, we observe the opening and closing!
 	
 	// label flags
 la var flag_first_bill "Flag indicating SA's first bill, when first bill is after start of our sample"	
@@ -128,18 +128,28 @@ la var flag_last_bill "Flag indicating SA's last bill, when last bill is before 
 
 
 ** Keep only essential variables
-keep sa_uuid bill_start_dt bill_end_dt bill_length total_bill_kwh ///
-	flag_first_bill flag_last_bill
+keep sa_uuid bill_start_dt bill_end_dt bill_length total_bill_kwh pull flag_first_bill flag_last_bill
 	
 ** Merge into customer data on SA
 joinby sa_uuid using "$dirpath_data/sce_cleaned/sce_cust_detail_20190916.dta", unmatched(both)
 tab _merge
-unique sa_uuid if _merge==3 //42984 merges
+tab _merge pull, missing
+unique sa_uuid if _merge==3 //43132 merges
 assert _merge!=1 // confirm that all SAs in billing data exist in customer data
+
+	// assess coverage in customer details across data pulls
+egen temp_min = min(pull=="20190916"), by(sa_uuid)
+egen temp_max = max(pull=="20190916"), by(sa_uuid)
+tab _merge pull if temp_max==1, missing
+tab _merge pull if temp_max==0, missing
+unique sa_uuid if temp_max==0 & _merge==3
+	// amazingly, we can match all 152 new SAs into the old customer details
+drop temp*
+
 unique sa_uuid
 local uniq = r(unique)
 unique sa_uuid if _merge==2 
-di r(unique)/`uniq' // 5% of SAs in customer data do not appear in billing data
+di r(unique)/`uniq' // 4.7% of SAs in customer data do not appear in billing data
 gen temp_length = sa_stop - sa_start
 egen temp_tag = tag(sa_uuid)
 sum temp_length if _merge==3 & temp_tag==1, detail
@@ -154,7 +164,7 @@ tab temp_year_stop _merge if temp_tag==1 & temp_length!=0, missing
 unique sa_uuid if temp_year_stop>=2008 & temp_length!=0
 local uniq = r(unique)
 unique sa_uuid if temp_year_stop>=2008 & temp_length!=0 & _merge==2 
-di r(unique)/`uniq' // 3% of SAs in customer data that end after 2007 do not appear in billing data!
+di r(unique)/`uniq' // 2.3% of SAs in customer data that end after 2007 do not appear in billing data!
 
 ** Confirm zero bill dups 
 unique sa_uuid bill_start_dt
@@ -171,7 +181,7 @@ assert temp_start_diff>0 // first bill never starts before SA_start
 gen temp_stop_diff = bill_end_dt-sa_stop if _merge==3 & flag_last_bill==1
 br _merge sa_uuid bill_end_dt flag_last_bill sa_start sa_stop temp_stop_diff sp_uuid if temp_stop_diff!=.
 sum temp_stop_diff, detail // in >95% of cases, the last bill ends 
-sum temp_stop_diff if temp_stop_diff!=0, detail // not a huge issue that 209 of these aren't zero
+sum temp_stop_diff if temp_stop_diff!=0, detail // not a huge issue that 212 of these aren't zero
 
 	// clean up
 drop temp_start* temp_stop*	
@@ -203,7 +213,7 @@ drop temp*
 
 ** Merge back into billing data
 drop bill_length total_bill_kwh flag_first_bill flag_last_bill
-merge 1:1 sa_uuid bill_start_dt bill_end_dt using "$dirpath_data/sce_cleaned/billing_data_20190916.dta"
+merge 1:1 sa_uuid bill_start_dt bill_end_dt using "$dirpath_data/sce_cleaned/billing_data.dta"
 assert _merge==3
 drop _merge
 
@@ -219,7 +229,7 @@ sort sa_uuid bill_start_dt
 unique sa_uuid bill_start_dt
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/sce_cleaned/billing_data_20190916.dta", replace
+save "$dirpath_data/sce_cleaned/billing_data.dta", replace
 
 
 *******************************************************************************
