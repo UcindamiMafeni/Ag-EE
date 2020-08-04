@@ -12,8 +12,10 @@ global dirpath_data "$dirpath/data"
 *******************************************************************************
 *******************************************************************************
 
-** Load cleaned SCE bililng data
-use "$dirpath_data/sce_cleaned/billing_data_20190916.dta", clear
+** 1. Compare billing vs. interval data for both 2019 and 2020 SCE EDRP
+{
+** Load cleaned SCE bililng data (both data pulls)
+use "$dirpath_data/sce_cleaned/billing_data.dta", clear
 
 ** Keep only essential variables
 drop monthly_max_kw total_bill_amount flag_long_bill flag_short_bill
@@ -28,6 +30,7 @@ drop flag_disct_bill
 rename flag_disct_bill2 flag_disct_bill
 
 ** Expand whole dataset by bill length variable
+assert bill_length!=.
 expand bill_length, gen(temp_new)
 sort sa_uuid bill_start_dt temp_new
 tab temp_new
@@ -38,6 +41,8 @@ format %td date
 replace date = date[_n-1]+1 if temp_new==1
 assert date==bill_start_dt if temp_new==0
 assert date==bill_end_dt if temp_new[_n+1]==0
+
+br if temp_new[_n+1]==0 & date!=bill_end_dt
 assert date!=.
 unique sa_uuid bill_start_dt date
 assert r(unique)==r(N)
@@ -55,34 +60,56 @@ replace temp_wt = 0.5 if date==date[_n-1] & date==bill_end_dt[_n-1] & ///
 	// APPARENTLY not an issue for SCE billing data
 	
 ** Merge in daily interval data
-merge m:1 sa_uuid date using "$dirpath_data/sce_cleaned/interval_data_daily_20190916.dta"
+merge m:1 sa_uuid date using "$dirpath_data/sce_cleaned/interval_data_daily_20190916.dta", gen(_merge2019)
+rename kwh kwh2019
+merge m:1 sa_uuid date using "$dirpath_data/sce_cleaned/interval_data_daily_20200722.dta", gen(_merge2020)
+rename kwh kwh2020
+
+count if kwh2019!=. & kwh2020!=.
+local rN = r(N)
+count if kwh2019!=. & kwh2020!=. & kwh2019!=kwh2020
+di r(N)/`rN' // 1% of merged observations with overlap aren't exactly identical
+correlate kwh2019 kwh2020 if kwh2019!=. & kwh2020!=. & kwh2019!=kwh2020 
+	// in this 1%, the correlation is 0.95, so fine for the purposes of this exercise
+rename kwh2020 kwh
+replace kwh = kwh2019 if kwh==.	
+drop kwh2019
 gen year = year(date)
-tab year _merge
+tab year _merge2019
+tab year _merge2020
 drop if year==2015 // interval data start in 2016
 gen month = month(date)
 tab month 
 gen modate = ym(year,month)
 format %tm modate
-count if _merge==2
-count if _merge==2 & kwh!=0
+count if _merge2019==2
+count if _merge2019==2 & kwh!=0
+count if _merge2020==2
+count if _merge2020==2 & kwh!=0
+gen _merge = .
+replace _merge = 3 if (_merge2019==3 | _merge2020==3) & bill_length!=.
+replace _merge = 2 if _merge==. & (_merge2019==2 | _merge2020==2)
+replace _merge = 1 if _merge==. & _merge2019==1 & _merge2020==1
+assert _merge!=.
+tab _merge2019 _merge2020, missing
+tab _merge2019 _merge2020 if _merge==1, missing
+tab _merge2019 _merge2020 if _merge==2, missing
+tab _merge2019 _merge2020 if _merge==3, missing
+drop _merge2019 _merge2020
 
 ** Diagnose non-matches (interval data only)
 egen temp_max_merge = max(_merge), by(sa_uuid)
 egen temp_tag = tag(sa_uuid)
-tab temp_max_merge if temp_tag // 108 SAs only exist in AMI data
+tab temp_max_merge if temp_tag, missing // 13 SAs only exist in AMI data
 tab sa_uuid temp_max_merge if temp_max_merge<3 // most SAs that never merge exist for very few AMI days
 egen temp_count = count(date), by(sa_uuid)
-tab sa_uuid temp_max_merge if temp_max_merge<3 & temp_count>365 // only 3 SAs with >1 year of AMI data that never match
-unique sa_uuid if temp_max_merge>1 & temp_count>365
-local uniq = r(unique)
-unique sa_uuid if temp_max_merge==2 & temp_count>365
-di r(unique)/`uniq' // 3 out of 27,242, we're good
+tab sa_uuid temp_max_merge if temp_max_merge<3 & temp_count>365 // 1 unmatched SA have >1 year of AMI data
 tab _merge
 tab _merge if temp_count>365
 assert _merge==2 if temp_max_merge==2 
 tab _merge temp_max_merge 
 tab month year if temp_max_merge==3 & _merge==2 // bill gaps in 2017 for a lot of them 
-tab _merge temp_max_merge if !(year==2019 & month==7) & kwh>0 & temp_count>365
+tab _merge temp_max_merge if !(year==2019 & month==12) & kwh>0 & temp_count>365
 
 ** Are there werid gaps in billing data in 2017?
 egen temp = max(flag_acct), by(sa_uuid)
@@ -104,14 +131,14 @@ tab temp5 if temp4==3 & temp6==3 & temp_tag, missing
 tab temp5 flag_acct if temp4==3 & temp6==3 & temp_tag, missing
 	// this explains 38% of accounts with billing gaps
 tab _merge flag_acct 
-tab _merge flag_acct if !(year==2019 & month==7) // 90% of _merge==2's are for flagged accounts
-tab _merge flag_acct if !(year==2019 & month==7) & kwh>0 // 91% of _merge==2's are for flagged acocunts
-tab _merge flag_acct if !(year==2019 & month==7) & kwh>0 & temp_count>365 // 92% of _merge==2's are for flagged acocunts
+tab _merge flag_acct if !(year==2019 & month==12) // 90% of _merge==2's are for flagged accounts
+tab _merge flag_acct if !(year==2019 & month==12) & kwh>0 // 91% of _merge==2's are for flagged acocunts
+tab _merge flag_acct if !(year==2019 & month==12) & kwh>0 & temp_count>365 // 92% of _merge==2's are for flagged acocunts
 	// These missing bills appear to be a problem
 drop temp?
 	
 	
-** What about the other  set of non-matches (billing data only)?
+** What about the other type of non-matches (billing data only)?
 tab tariff_sched_text _merge // only 3 rates that are systematically _merge==1
 tab modate _merge // 43% of missing AMI data is in Feb 2016
 tab modate _merge if temp_max_merge==3 // 53% of missing AMI data for ever-merge SAs is in Feb 2016
@@ -170,7 +197,7 @@ rename bill_int_corr interval_bill_corr
 keep sa_uuid bill_start_dt bill_end_dt flag* interval_bill_corr
 unique sa_uuid bill_start_dt
 assert r(unique)==r(N)
-merge 1:1 sa_uuid bill_start_dt bill_end_dt using "$dirpath_data/sce_cleaned/billing_data_20190916.dta"
+merge 1:1 sa_uuid bill_start_dt bill_end_dt using "$dirpath_data/sce_cleaned/billing_data.dta"
 assert _merge!=1
 replace flag_interval_merge = 0 if _merge==2
 replace flag_interval_disp20 = 1 if _merge==2
@@ -187,4 +214,6 @@ sort sa_uuid bill_start_dt
 unique sa_uuid bill_start_dt
 assert r(unique)==r(N)
 compress
-save "$dirpath_data/sce_cleaned/billing_data_20190916.dta", replace
+save "$dirpath_data/sce_cleaned/billing_data.dta", replace
+}
+
