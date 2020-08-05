@@ -18,20 +18,214 @@ global dirpath_data_sce_cleaned "$dirpath_data/sce_cleaned"
 
 ***** PUMP TEST DATA
 use "$dirpath_data_sce_raw/pump_test_data_20190916.dta", clear
+gen pull = 2019
+append using  "$dirpath_data_sce_raw/pump_test_data_20200722.dta"
+replace pull = 2020 if pull==.
+duplicates drop
+
+	// harmonize variable names (sigh)
+replace pump_ref = real(PumpRef) if pump_ref==. & pull==2020	
+count if pump_ref==.
+drop if pump_ref==.
+drop PumpRef
+
+replace customer_name = CustomerName if customer_name=="" & pull==2020
+assert customer_name!=""
+drop CustomerName
+
+replace zip_code = ZipCode if zip_code=="" & pull==2020
+assert zip_code!=""
+drop ZipCode
+
+replace pump_name = PumpName if pump_name=="" & pull==2020
+count if pump_name==""
+drop PumpName
+
+replace pump_serial = PumpSerial if pump_serial=="" & pull==2020
+count if pump_serial==""
+drop PumpSerial
+
+replace pump_location = PumpLocation if pump_location=="" & pull==2020
+count if pump_location==""
+drop PumpLocation
+
+replace service_acct = ServiceAcct if service_acct=="" & pull==2020
+assert service_acct!=""
+drop ServiceAcct
+
+replace sce_meter = SCEMeter if sce_meter=="" & pull==2020
+count if sce_meter==""
+drop SCEMeter
+
+gen temp = date(TestDate,"MDY")
+br test_date TestDate temp
+format %td test_date temp
+replace test_date = temp if test_date==. & pull==2020
+assert test_date!=.
+drop TestDate temp
+
+replace pump_mfg = PumpMfg if pump_mfg=="" & pull==2020
+count if pump_mfg==""
+drop PumpMfg
+
+replace disch_psi = real(DischPSI) if disch_psi==. & pull==2020
+assert disch_psi!=.
+drop DischPSI
+
+replace standing_level = real(StandingLevel) if standing_level==. & pull==2020
+tab pull if standing_level==.
+drop StandingLevel
+
+replace drawdown = real(Drawdown) if drawdown==. & pull==2020
+tab pull if drawdown==.
+drop Drawdown
+
+replace suction_head = real(SuctionHead) if suction_head==. & pull==2020
+tab pull if suction_head==.
+drop SuctionHead
+
+replace suction_lift = real(SuctionLift) if suction_lift==. & pull==2020
+assert suction_lift!=.
+drop SuctionLift
+
+replace discharge_head = real(DischargeHead) if discharge_head==. & pull==2020
+assert discharge_head!=.
+drop DischargeHead
+
+replace pumping_level = real(PumpingLevel) if pumping_level==. & pull==2020
+tab pull if pumping_level==.
+drop PumpingLevel
+
+replace total_head = real(TotalHead) if total_head==. & pull==2020
+assert total_head!=.
+drop TotalHead
+
+replace gpm = real(GPM) if gpm==. & pull==2020
+assert gpm!=.
+drop GPM
+
+replace gpm_foot_drawdown = real(GPMFootDrawdown) if gpm_foot_drawdown==. & pull==2020
+tab pull if gpm_foot_drawdown==.
+drop GPMFootDrawdown
+
+replace acre_feet_24_hours = real(AcreFeet24Hours) if acre_feet_24_hours==. & pull==2020
+assert acre_feet_24_hours!=.
+drop AcreFeet24Hours
+
+replace kw_input_to_motor = real(kWInputtoMotor) if kw_input_to_motor==. & pull==2020
+assert kw_input_to_motor!=.
+drop kWInputtoMotor
+
+replace hp_input_to_motor = real(HPInputtoMotor) if hp_input_to_motor==. & pull==2020
+assert hp_input_to_motor!=.
+drop HPInputtoMotor
+
+replace motor_load = real(MotorLoad) if motor_load==. & pull==2020
+assert motor_load!=.
+drop MotorLoad
+
+replace pump_rpm = real(PumpRPM) if pump_rpm==. & pull==2020
+tab pull if pump_rpm==.
+drop PumpRPM
+
+rename kwh_per_acre_foor kwh_per_acre_foot
+replace kwh_per_acre_foot = real(kWhperAcreFoot) if kwh_per_acre_foot==. & pull==2020
+assert kwh_per_acre_foot!=.
+drop kWhperAcreFoot
+
+replace overall_plant_efficiency = real(OverallPlantEfficiency) if overall_plant_efficiency==. & pull==2020
+assert overall_plant_efficiency!=.
+drop OverallPlantEfficiency
+
+replace customer_meter_gpm = real(CustomerMeterGPM) if customer_meter_gpm==. & pull==2020
+tab pull if customer_meter_gpm==.
+drop CustomerMeterGPM
+
+replace overall_plant_efficiency_existin = real(AC) if overall_plant_efficiency_existin==. & pull==2020
+assert overall_plant_efficiency_existin!=.
+drop AC
+
+replace overall_plant_efficiency_improve = real(AD) if overall_plant_efficiency_improve==. & pull==2020
+assert overall_plant_efficiency_improve!=.
+drop AD
+
+replace pump_kwh_existing = real(PumpkWh) if pump_kwh_existing==. & pull==2020
+assert pump_kwh_existing!=.
+drop PumpkWh
+
+replace pump_kwh_improved = real(AF) if pump_kwh_improved==. & pull==2020
+assert pump_kwh_improved!=.
+drop AF
+
+replace kw_input_existing = real(kWInput) if kw_input_existing==. & pull==2020
+assert kw_input_existing!=.
+drop kWInput
+
+replace kw_input_improved = real(AH) if kw_input_improved==. & pull==2020
+assert kw_input_improved!=.
+drop AH
+
+replace kwh_acre_foot_existing = real(kWhAcreFoot) if kwh_acre_foot_existing==. & pull==2020
+assert kwh_acre_foot_existing!=.
+drop kWhAcreFoot
+
+replace kwh_acre_foot_improved = real(AJ) if kwh_acre_foot_improved==. & pull==2020
+assert kwh_acre_foot_improved!=.
+drop AJ
+
+replace acre_foot_per_year_1 = real(AcreFootperYear) if acre_foot_per_year_1==. & pull==2020
+assert acre_foot_per_year_1!=.
+drop AcreFootperYear
+
+replace acre_foot_per_year_2 = real(AL) if acre_foot_per_year_2==. & pull==2020
+assert acre_foot_per_year_2!=.
+drop AL
+
+replace average_cost_per_acre_foot_exist = real(AverageCostperAcreFoot) if average_cost_per_acre_foot_exist==. & pull==2020
+assert average_cost_per_acre_foot_exist!=.
+drop AverageCostperAcreFoot
+
+replace average_cost_per_acre_foot_impro = real(AN) if average_cost_per_acre_foot_impro==. & pull==2020
+assert average_cost_per_acre_foot_impro!=.
+drop AN
+
+replace total_annual_cost_existing = real(TotalAnnualCost) if total_annual_cost_existing==. & pull==2020
+assert total_annual_cost_existing!=.
+drop TotalAnnualCost
+
+replace total_annual_cost_improved = real(AP) if total_annual_cost_improved==. & pull==2020
+assert total_annual_cost_improved!=.
+drop AP
 
 foreach var of varlist * {
  label variable `var' ""
 }
 br
 
-	// establish a unique identifier
-order pump_ref test_date
-sort pump_ref test_date
-unique pump_ref test_date // close to unique
-duplicates t pump_ref test_date, gen(dup)
+	// drop *exact* duplicates across the 2 pulls
+duplicates drop
+order pull pump_ref test_date
+sort pump_ref test_date pull
+duplicates t pump_ref-total_annual_cost_improved, gen(dup)
 tab dup
-br if dup>0 // only 155 dups out of 40,611
+unique pump_ref-total_annual_cost_improved
+local uniq = r(unique)
+drop if dup==1 & pull==2020
+unique pump_ref-total_annual_cost_improved
+assert r(unique)==`uniq'
 drop dup
+
+	// evaluate remaining dups across/within the 2 pulls
+duplicates t pump_ref test_date pull, gen(dup1)
+duplicates t pump_ref test_date, gen(dup2)
+tab dup1 dup2 // 774 dups 
+br if dup1==0 & dup2>0 // a few variables are causing this, and differences may
+	// come out in the wash as we clean, and we'll circle back to this
+count if dup1>0 
+	// only 99 dups within-pulls
+drop dup*
+
+	// establish a unique identifier
 gen uniq_id = _n
 order uniq_id test_date pump_ref
 hist test_date
@@ -73,7 +267,7 @@ replace sa_uuid = substr(sa_uuid,3,100) if substr(sa_uuid,1,2)=="SA"
 assert real(sa_uuid)!=.
 unique sa_uuid
 duplicates r sa_uuid
-count if meter_no=="" // 66 missing meter numbers, which hopefully doesn't matter
+count if meter_no=="" // 82 missing meter numbers, which hopefully doesn't matter
 
 la var pump_mfg "Pump manufacturer"
 tab pump_mfg, missing
@@ -469,7 +663,7 @@ la var rpm_tachometer "RPM, at tachometer (often missing)"
 hist test_date if rpm_tachometer!=.
 hist test_date if rpm_tachometer==.
 
-rename kwh_per_acre_foor kwhaf
+rename kwh_per_acre_foot kwhaf
 la var kwhaf "Kilowatt-hours per acre-foot, given test conditions"
 assert kwhaf==kwh_acre_foot_existing
 drop kwh_acre_foot_existing
@@ -628,7 +822,7 @@ replace flag_bad_test = 1 if flag_hp_kw_to_fix==1
 replace flag_bad_test = 1 if flag_bad_totlift==1
 tab booster_pump flag_bad_test , missing
 tab booster_pump flag_bad_test if ope!=., missing // missing OPE essentially grabs all bad tests
-drop flag_bad_totlift flag_hp_kw_to_fix flag_kwhaf_to_fix flag_ope_to_fix flag_test_to_drop
+*drop flag_bad_totlift flag_hp_kw_to_fix flag_kwhaf_to_fix flag_ope_to_fix flag_test_to_drop
 la var flag_bad_test "Flag for tests where essential components are missing or internally inconsistent"
 sum kwhaf if flag_bad_test==0, detail
 replace flag_bad_test = 1 if kwhaf>30000 // absurdly large outliers
@@ -764,6 +958,106 @@ drop pump_name
 merge m:1 pump_ref using `pumpnames'
 assert _merge==3
 drop _merge
+
+	// circle back to resolve dups across pulls (exact dups)
+duplicates t test_date pump_ref customer_name-pump_name, gen(dup)
+tab dup	
+unique test_date pump_ref customer_name-pump_name
+local uniq = r(unique)
+drop if dup==1 & pull==2020
+duplicates drop test_date pump_ref customer_name-pump_name, force
+unique test_date pump_ref customer_name-pump_name
+assert r(unique)==`uniq'
+drop dup
+
+	// evaluate remaining dups across/within the 2 pulls
+duplicates t pump_ref test_date pull, gen(dup1)
+duplicates t pump_ref test_date, gen(dup2)
+sort test_date pump_ref pull
+tab dup1 dup2 // 774 dups 
+br if dup1==0 & dup2>0 
+gen mismatch = ""
+gen disp = ""
+foreach v of varlist customer_name-annualcost {
+	replace mismatch = mismatch + " " + "`v'" if dup1==0 & dup2==1 & ///
+		`v'!=`v'[_n+1] & pump_ref==pump_ref[_n+1] & test_date==test_date[_n+1]
+	cap replace disp = disp + " " + "`v'" if dup1==0 & dup2==1 & ///
+		round(`v',0.00001)!=round(`v'[_n+1],0.00001) & pump_ref==pump_ref[_n+1] & test_date==test_date[_n+1]		
+}
+tab mismatch
+tab disp
+assert disp=="" if mismatch==" suction_lift"
+	// all suction_lift mismatches are induced by Stata rounding issues
+tab disp if mismatch==" hp"	 // same for all but 13 of the hp mismatches
+unique test_date pump_ref
+local uniq = r(unique)
+drop if dup1==0 & dup2==1 & pull==2019 & inlist(mismatch," suction_lift"," hp") & disp==""
+unique test_date pump_ref
+assert r(unique)==`uniq'
+drop dup* mismatch disp
+
+	// evaluate remaining dups across/within the 2 pulls (iterate above step again)
+duplicates t pump_ref test_date pull, gen(dup1)
+duplicates t pump_ref test_date, gen(dup2)
+sort test_date pump_ref pull
+tab dup1 dup2 
+br if dup1==0 & dup2>0 
+gen mismatch = ""
+gen disp = ""
+foreach v of varlist customer_name-annualcost {
+	replace mismatch = mismatch + " " + "`v'" if dup1==0 & dup2==1 & ///
+		`v'!=`v'[_n+1] & pump_ref==pump_ref[_n+1] & test_date==test_date[_n+1]
+	cap replace disp = disp + " " + "`v'" if dup1==0 & dup2==1 & ///
+		round(`v',0.00001)!=round(`v'[_n+1],0.00001) & pump_ref==pump_ref[_n+1] & test_date==test_date[_n+1]		
+}
+tab mismatch
+tab disp
+br test_date pump_ref pull mismatch disp drwdwn dchlvl_ft suction_head totlift tdh ///
+	flow_gpm hp mtrload flag* if dup1==0 & dup2>0 
+	// 2020 pull has fewer bad flags, consistently, so we'll keep those
+unique test_date pump_ref
+local uniq = r(unique)
+drop if dup1==0 & dup2==1 & pull==2019 & mismatch!=""
+unique test_date pump_ref
+assert r(unique)==`uniq'
+drop dup* mismatch disp
+
+	// resolve double dups
+duplicates t pump_ref test_date pull, gen(dup1)
+duplicates t pump_ref test_date, gen(dup2)
+sort test_date pump_ref pull
+tab dup1 dup2
+egen temp_dup = min(dup1), by(pump_ref test_date)
+br if temp_dup==0 & dup2>0 
+egen temp1 = max(hp*(pull==2020)), by(pump_ref test_date)
+gen temp2 = abs(hp-temp1) if pull==2019
+egen temp3 = max(kw_input*(pull==2020)), by(pump_ref test_date)
+gen temp4 = abs(kw_input-temp3) if pull==2019
+egen temp5 = max(drwdwn*(pull==2020)), by(pump_ref test_date)
+gen temp6 = abs(drwdwn-temp5) if pull==2019
+egen temp7 = rowtotal(temp2 temp4 temp6)
+egen temp8 = min(temp7) if pull==2019, by(pump_ref test_date)
+unique test_date pump_ref
+local uniq = r(unique)
+drop if temp_dup==0 & dup2>0 & pull==2019 & temp7>temp8 & temp7>1
+unique test_date pump_ref
+assert r(unique)==`uniq'
+drop dup* temp*
+
+	// resolve last dups (across pulls)
+duplicates t pump_ref test_date pull, gen(dup1)
+duplicates t pump_ref test_date, gen(dup2)
+sort test_date pump_ref pull
+tab dup1 dup2
+egen temp_dup = min(dup1), by(pump_ref test_date)
+br if temp_dup==0 & dup2>0  // kepe 2020 values
+unique test_date pump_ref
+local uniq = r(unique)
+drop if temp_dup==0 & dup2>0 & pull==2019 
+unique test_date pump_ref
+assert r(unique)==`uniq'
+drop dup* temp*
+drop pull
 
 	// save
 rename test_date test_date_stata
