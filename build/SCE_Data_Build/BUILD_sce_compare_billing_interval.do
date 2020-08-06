@@ -48,16 +48,18 @@ unique sa_uuid bill_start_dt date
 assert r(unique)==r(N)
 
 ** Flag duplicate account-dates (bill changeover dates where end=start)
+sort sa_uuid date bill_start_dt
 gen temp_wt = 1
-replace temp_wt = 0.5 if date==date[_n+1] & date==bill_end_dt & ///
-	bill_end_dt==bill_start_dt[_n+1] & temp_new==1 & temp_new[_n+1]==0 & ///
-	sa_uuid==sa_uuid[_n+1]
-replace temp_wt = 0.5 if date==date[_n-1] & date==bill_end_dt[_n-1] & ///
-	bill_end_dt[_n-1]==bill_start_dt & temp_new[_n-1]==1 & temp_new==0 & ///
-	sa_uuid==sa_uuid[_n-1]
+replace temp_wt = 0.5 if date==date[_n+1] &	sa_uuid==sa_uuid[_n+1]
+replace temp_wt = 0.5 if date==date[_n-1] & sa_uuid==sa_uuid[_n-1]
 	// this assigns 50% weight to days that are shared by two bills (i.e. the
 	// end_date of the previous bill and the start_date of the current bill)
-	// APPARENTLY not an issue for SCE billing data
+	// APPARENTLY not an issue for SCE billing data, except for 4 SAs at the 
+	// cusp of the 2019-2020 EDRP merge
+tab temp_wt	
+tab sa_uuid if temp_wt==0.5
+assert flag_overlapping_bill==1 if temp_wt==0.5
+drop flag_overlapping_bill
 	
 ** Merge in daily interval data
 merge m:1 sa_uuid date using "$dirpath_data/sce_cleaned/interval_data_daily_20190916.dta", gen(_merge2019)
@@ -207,6 +209,7 @@ drop _merge
 la var interval_bill_corr "SA-wise correlation b/tw billing & interval kWh, where fully merged"
 la var flag_interval_merge "Flag = 1 (0.5) if interval data full (partially) merge, for a given SA-bill"
 la var flag_interval_disp20 "Flag = 1 for >20% disparity b/tw billing & interval kWh (missing = 1)"
+la var flag_disct_bill "Flag = 1 if bill is followed by a gap"
 
 ** Save updated version of biling data
 order flag_interval* interval_bill_corr, after(flag_short_bill)
