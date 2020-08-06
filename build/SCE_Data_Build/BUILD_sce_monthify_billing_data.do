@@ -12,10 +12,10 @@ global dirpath_data "$dirpath/data"
 *******************************************************************************
 *******************************************************************************
 
-** 1. SCE 2019 data pull
+** 1. SCE 2019 and 2020 data pulls
 
 ** Load cleaned SCE billing data
-use "$dirpath_data/sce_cleaned/billing_data_20190916.dta", clear
+use "$dirpath_data/sce_cleaned/billing_data.dta", clear
 
 ** Drop variables I won't be using
 drop monthly_max_kw
@@ -36,15 +36,13 @@ unique sa_uuid bill_start_dt date
 assert r(unique)==r(N)
 
 ** Flag duplicate account-dates (bill changeover dates where end=start)
+sort sa_uuid date
 gen temp_wt = 1
-replace temp_wt = 0.5 if date==date[_n+1] & date==bill_end_dt & ///
-	bill_end_dt==bill_start_dt[_n+1] & temp_new==1 & temp_new[_n+1]==0 & ///
-	sa_uuid==sa_uuid[_n+1]
-replace temp_wt = 0.5 if date==date[_n-1] & date==bill_end_dt[_n-1] & ///
-	bill_end_dt[_n-1]==bill_start_dt & temp_new[_n-1]==1 & temp_new==0 & ///
-	sa_uuid==sa_uuid[_n-1]
+replace temp_wt = 0.5 if date==date[_n+1] & sa_uuid==sa_uuid[_n+1]
+replace temp_wt = 0.5 if date==date[_n-1] & sa_uuid==sa_uuid[_n-1]
 	// this assigns 50% weight to days that are shared by two bills (i.e. the
 	// end_date of the previous bill and the start_date of the current bill)
+	// Only matters for the 4 SAs with bills that overlap at the 2019/2020 EDRP cusp
 	
 ** Distribute kwh and $ evenly across all days within each bill
 egen double temp_denom = sum(temp_wt), by(sa_uuid bill_start_dt bill_end_dt)
@@ -69,7 +67,7 @@ foreach v of varlist total_bill_kwh total_bill_amount {
 }
 	
 ** Drop variables that are no longer necessary and not unique
-drop bill_start_dt bill_end_dt bill_length temp*
+drop bill_start_dt bill_end_dt bill_length temp* pull
 order sa_uuid date	
 	
 ** Duplicates drop; confirm unique
@@ -143,7 +141,7 @@ preserve
 collapse (sum) mnth_bill_kwh mnth_bill_amount, by(sa_uuid) fast
 tempfile monthified
 save `monthified' 
-use "$dirpath_data/sce_cleaned/billing_data_20190916.dta", clear
+use "$dirpath_data/sce_cleaned/billing_data.dta", clear
 collapse (sum) total_bill_kwh total_bill_amount, by(sa_uuid) fast
 merge 1:1 sa_uuid using `monthified'
 assert _merge==3
@@ -158,5 +156,5 @@ drop if modate<ym(2007,12)
 ** Compress and save
 sort sa_uuid modate
 compress
-save "$dirpath_data/sce_cleaned/billing_data_monthified_20190916.dta", replace
+save "$dirpath_data/sce_cleaned/billing_data_monthified.dta", replace
 
