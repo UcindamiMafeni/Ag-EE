@@ -39,7 +39,7 @@ gwqtr$gs_ws_depth_3 <- as.numeric(as.character(gwqtr$gs_ws_depth_3))
 grd_step <- 0.01
 gwmth$modate <- as.factor(gwmth$modate)
 for (ym in levels(gwmth$modate)) {
-  
+
   temp1 <- gwmth[(gwmth$modate==ym & is.na(gwmth$gs_ws_depth_1)==0),] # subset by month ym
   temp1$x <- temp1$longitude 
   temp1$y <- temp1$latitude
@@ -130,7 +130,7 @@ for (ym in levels(gwmth$modate)) {
 grd_step <- 0.01
 gwqtr$qtr <- as.factor(gwqtr$qtr)
 for (yq in levels(gwqtr$qtr)) {
-  
+
   temp1 <- gwqtr[(gwqtr$qtr==yq & is.na(gwqtr$gs_ws_depth_1)==0),] # subset by quarter yq
   temp1$x <- temp1$longitude 
   temp1$y <- temp1$latitude
