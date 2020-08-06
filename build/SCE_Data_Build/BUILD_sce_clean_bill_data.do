@@ -361,6 +361,25 @@ la var pull "Which SCE data pull is this bill from?"
 la var flag_nobill_2020 "Flag for SAs that should be in 2020 data pull, but aren't"
 la var flag_nobill_2019 "Flag for SAs that newly appear in 2020 data pull"
 
+** Deal with overlapping bills across data pulls
+sort sa_uuid bill_start_dt
+gen temp = bill_end_dt>bill_start_dt[_n+1] & sa_uuid==sa_uuid[_n+1]
+tab temp // 8 cases at the cusp of the two datasets
+gen temp2 = temp[_n-1]==1
+br if temp==1 | temp2==1
+	// 2 cases: 2020 dataset has redunant very short bill, which I will drop
+drop if temp[_n-1]==1 & pull=="20200722" & bill_length<10
+	// 1 case: 2019 dataset has redunant very short bill, which I will drop
+drop if temp[_n-1]==1 & pull=="20190916" & bill_length<10
+	// 1 case: 2020 dataset has redunant normal-length bill, which I will drop
+drop if temp[_n-1]==1 & pull=="20200722" & sa_uuid=="46779756"
+	// remaining 4 dups will come out in the wash
+gen temp3 = bill_end_dt>bill_start_dt[_n+1] & sa_uuid==sa_uuid[_n+1]
+gen temp4 = temp3[_n-1]==1
+gen flag_overlapping_bill = temp3==1 | temp4==1
+la var flag_overlapping_bill "Flag for bills with overlapping date ranges"
+drop temp*
+
 ** Fix bill discontinuity flag
 gsort sa_uuid bill_end_dt
 by sa_uuid: gen new_start_dt= bill_end_dt[_n-1]+1
