@@ -38,8 +38,9 @@ tostring *, replace
 save "$dirpath_data/sce_raw/demand_resposne_data_20190916.dta", replace
 
 *** load pump test project data and save as dta file
-import excel "$dirpath_raw/Pump Overhauls 2011 to 2018_Rebate.xlsx", firstrow allstring clear
-save "$dirpath_data/sce_raw/pump_test_project_data_20190916.dta", replace
+	// NOTE: the raw excel isn't playing well with Stata, so I manually extracted it
+import excel "$dirpath_data/sce_raw/Pump Overhauls raw 20190916.xlsx", firstrow allstring clear
+save "$dirpath_data/sce_raw/pump_overhaul_data_20190916.dta", replace
 
 *** load pump test data and save as dta file
 import excel using "$dirpath_raw/Pump Test Data Extract.xlsx", firstrow allstring clear
@@ -105,8 +106,9 @@ tostring *, replace
 save "$dirpath_data/sce_raw/demand_response_data_20200722.dta", replace
 
 *** load pump test project data and save as dta file
-import excel "$dirpath_raw/Pump Overhauls 2011 to 2019_Rebate.xlsx", firstrow allstring clear
-save "$dirpath_data/sce_raw/pump_test_project_data_20200722.dta", replace
+	// NOTE: the raw excel isn't playing well with Stata, so I manually extracted it
+import excel "$dirpath_data/sce_raw/Pump Overhauls raw 20200722.xlsx", firstrow allstring clear
+save "$dirpath_data/sce_raw/pump_overhaul_data_20200722.dta", replace
 
 *** load pump test data and save as dta file
 	// NOTE: SCE gave us this file in a weird format, so I resaved as an xlsx in the SCE_raw folder
