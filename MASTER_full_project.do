@@ -218,11 +218,11 @@ do "$dirpath_code/build/Combined_Data_Build/BUILD_com_assign_water_districts.do"
 	// calls auxilary GIS scripts "BUILD_com_clu_water_districts.R"	
 	//                        and "BUILD_com_points_in_water_districts.R"
 	
-*** B.COM.5: ASSIGN DAILY MIN/MAX TEMPERATURE AND PRECITIPATION TO EACH PGE SP, APEP PUMP, AND SCE SP [B.COM.1]
+*** B.COM.5: ASSIGN DAILY MIN/MAX TEMPERATURE AND PRECITIPATION TO EACH PGE SP, APEP PUMP, SCE SP, CLU CENTROID [B.COM.1]
 do "$dirpath_code/build/Combined_Data_Build/BUILD_com_daily_temperatures.do"
 	// calls auxilary GIS scripts "BUILD_com_prism_daily_temperature.R" 
 
-*** B.COM.6: CLEAN CA DWR GROUNDWATER DATA AND CREATE LAT/LON PANELS [B.COM.1]
+*** B.COM.6: CLEAN CA DWR GROUNDWATER DATA; CREATE MONTHLY PANELS (PGE SP, APEP PUMP, SCE SP, CLU CENTROID) [B.COM.1 B.COM.5]
 do "$dirpath_code/build/Combined_Data_Build/BUILD_clean_cadwr_groundwater.do"
 	// calls auxilary GIS scripts "BUILD_com_gw_depth_raster.R" 
 	//                        and "BUILD_com_gw_depth_extract.R"
