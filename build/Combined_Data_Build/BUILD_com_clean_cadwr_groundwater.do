@@ -2960,7 +2960,201 @@ save "$dirpath_data/groundwater/groundwater_depth_sce_sp_quarter_rast.dta", repl
 *******************************************************************************
 *******************************************************************************
 
-** 12. Diagnostics on PGE depths from basin-agnostic vs -specific rasters
+** 12. Construct panels of groundwater depth for CLU centroids (monthly)
+if 1==1{
+
+** Statewide rasters (ignoring basin boundaries)
+{
+** Read in output from GIS script to extract monthly depths from rasters
+insheet using "$dirpath_data/misc/clus_gw_depths_from_rasters_mth.csv", double comma clear
+
+** Drop CLU-specific variables
+drop lon lat x y
+
+** Destring numeric variables before reshaping, to reduce file size
+foreach v of varlist depth_??_* {
+	cap replace `v' = "" if `v'=="NA"
+	destring `v', replace
+}
+
+** Reshape long, to convert into CLU-month panel
+reshape long depth_1s depth_1b depth_2s depth_2b depth_3s depth_3b ///
+	distkm_1 distkm_2 distkm_3, i(rowid) j(MODATE) string
+
+** Reformat string variables
+gen modate = ym(real(substr(MODATE,2,4)),real(substr(MODATE,7,2)))
+format %tm modate
+assert string(modate,"%tm")==substr(MODATE,2,10)
+drop MODATE
+
+** Confirm uniqueness by CLU-modate
+order rowid modate
+unique rowid modate
+assert r(unique)==r(N)
+sort rowid modate 
+
+** Merge in CLU identifiers from xwalk
+merge m:1 rowid using "$dirpath_data/prism/clu_id_row_concordance.dta"
+assert _merge==3
+drop _merge
+
+** Merge in basin identifiers
+merge m:1 clu_id using "$dirpath_data/cleaned_spatial/clu_basin_conc.dta", keepusing(basin_id)
+assert _merge==3
+drop _merge
+
+** Merge in number of groundwater measurements in each basin/month
+merge m:1 basin_id modate using "$dirpath_data/groundwater/avg_groundwater_depth_basin_month.dta", ///
+	keep(1 3) keepusing(gw_mth_bsn_mean1 gw_mth_bsn_mean2 gw_mth_bsn_mean3 ///
+	gw_mth_bsn_cnt1 gw_mth_bsn_cnt2 gw_mth_bsn_cnt3)
+foreach v of varlist gw_mth_bsn_cnt? {
+	replace `v' = 0 if _merge==1
+	assert `v'!=.
+}
+sum gw_mth_bsn_cnt?, detail
+	
+** Convert kilometers to miles
+foreach v of varlist distkm_? {
+	replace `v' = `v'*0.621371
+	local v2 = subinstr("`v'","km","_miles",1)
+	rename `v' `v2'
+}	
+	
+** Distance threshold from nearest raster point
+sum dist_miles_1 if gw_mth_bsn_cnt1>1, detail
+sum dist_miles_1 if gw_mth_bsn_cnt1>10, detail
+sum dist_miles_1 if gw_mth_bsn_cnt1>50, detail
+sum dist_miles_1 if gw_mth_bsn_cnt1>100, detail
+sum dist_miles_1 if gw_mth_bsn_cnt1>500, detail
+sum dist_miles_1 if gw_mth_bsn_cnt1==0, detail
+
+** Label
+la var rowid "Unique CLU row identifier"
+la var modate "Year-Month"
+la var depth_1s "Extracted gw depth (all measurements, simple, feet)"
+la var depth_1b "Extracted gw depth (all measurements, bilinear, feet)"
+la var depth_2s "Extracted gw depth (non-ques measurements, simple, feet)"
+la var depth_2b "Extracted gw depth (non-ques measurements, bilinear, feet)"
+la var depth_3s "Extracted gw depth (obs non-ques measurements, simple, feet)"
+la var depth_3b "Extracted gw depth (obs non-ques measurements, bilinear, feet)"
+la var dist_miles_1 "Miles to nearest gw measurement in raster (all)"
+la var dist_miles_2 "Miles to nearest gw measurement in raster (non-ques)"
+la var dist_miles_3 "Miles to nearest gw measurement in raster (obs non-ques)"
+rename depth_?? gw_rast_depth_mth_??
+rename dist_miles_? gw_rast_dist_mth_?
+drop _merge clu_id
+
+** Save
+sort rowid modate
+unique rowid modate
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/groundwater/groundwater_depth_clu_month_rast.dta", replace
+}
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 13. Construct panels of groundwater depth for CLU centroids (quarterly)
+if 1==1{
+
+** Statewide rasters (ignoring basin boundaries)
+{
+** Read in output from GIS script to extract quarterly depths from rasters
+insheet using "$dirpath_data/misc/clus_gw_depths_from_rasters_qtr.csv", double comma clear
+
+** Drop CLU-specific variables
+drop lon lat x y
+
+** Destring numeric variables before reshaping, to reduce file size
+foreach v of varlist depth_??_* {
+	cap replace `v' = "" if `v'=="NA"
+	destring `v', replace
+}
+
+** Reshape long, to convert into CLU-quarter panel
+reshape long depth_1s depth_1b depth_2s depth_2b depth_3s depth_3b ///
+	distkm_1 distkm_2 distkm_3, i(rowid) j(QTR) string
+
+** Reformat string variables
+gen qtr = yq(real(substr(QTR,2,4)),real(substr(QTR,7,2)))
+format %tq qtr
+assert string(qtr,"%tq")==substr(QTR,2,10)
+drop QTR
+
+** Confirm uniqueness by CLU-quarter
+order rowid qtr
+unique rowid qtr
+assert r(unique)==r(N)
+sort rowid qtr 
+
+** Merge in CLU identifiers from xwalk
+merge m:1 rowid using "$dirpath_data/prism/clu_id_row_concordance.dta"
+assert _merge==3
+drop _merge
+
+** Merge in basin identifiers
+merge m:1 clu_id using "$dirpath_data/cleaned_spatial/clu_basin_conc.dta", keepusing(basin_id)
+assert _merge==3
+drop _merge
+
+** Merge in number of groundwater measurements in each basin/quarter
+merge m:1 basin_id qtr using "$dirpath_data/groundwater/avg_groundwater_depth_basin_quarter.dta", ///
+	keep(1 3) keepusing(gw_qtr_bsn_mean1 gw_qtr_bsn_mean2 gw_qtr_bsn_mean3 ///
+	gw_qtr_bsn_cnt1 gw_qtr_bsn_cnt2 gw_qtr_bsn_cnt3)
+foreach v of varlist gw_qtr_bsn_cnt? {
+	replace `v' = 0 if _merge==1
+	assert `v'!=.
+}
+sum gw_qtr_bsn_cnt?, detail
+	
+** Convert kilometers to miles
+foreach v of varlist distkm_? {
+	replace `v' = `v'*0.621371
+	local v2 = subinstr("`v'","km","_miles",1)
+	rename `v' `v2'
+}	
+	
+** Distance threshold from nearest raster point
+sum dist_miles_1 if gw_qtr_bsn_cnt1>1, detail
+sum dist_miles_1 if gw_qtr_bsn_cnt1>10, detail
+sum dist_miles_1 if gw_qtr_bsn_cnt1>50, detail
+sum dist_miles_1 if gw_qtr_bsn_cnt1>100, detail
+sum dist_miles_1 if gw_qtr_bsn_cnt1>500, detail
+sum dist_miles_1 if gw_qtr_bsn_cnt1==0, detail
+
+** Label
+la var rowid "Unique CLU row identifier"
+la var qtr "Year-Quarter"
+la var depth_1s "Extracted gw depth (all measurements, simple, feet)"
+la var depth_1b "Extracted gw depth (all measurements, bilinear, feet)"
+la var depth_2s "Extracted gw depth (non-ques measurements, simple, feet)"
+la var depth_2b "Extracted gw depth (non-ques measurements, bilinear, feet)"
+la var depth_3s "Extracted gw depth (obs non-ques measurements, simple, feet)"
+la var depth_3b "Extracted gw depth (obs non-ques measurements, bilinear, feet)"
+la var dist_miles_1 "Miles to nearest gw measurement in raster (all)"
+la var dist_miles_2 "Miles to nearest gw measurement in raster (non-ques)"
+la var dist_miles_3 "Miles to nearest gw measurement in raster (obs non-ques)"
+rename depth_?? gw_rast_depth_qtr_??
+rename dist_miles_? gw_rast_dist_qtr_?
+drop _merge clu_id
+
+** Save
+sort rowid qtr
+unique rowid qtr
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/groundwater/groundwater_depth_clu_quarter_rast.dta", replace
+}
+
+}
+
+*******************************************************************************
+*******************************************************************************
+
+** 14. Diagnostics on PGE depths from basin-agnostic vs -specific rasters
 {
 
 ** 12a. Monthly, SP, SJ
