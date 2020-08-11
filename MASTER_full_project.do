@@ -190,8 +190,15 @@ do "$dirpath_code/build/GIS_Data_Build/BUILD_gis_clean_well_completion.do"
 ***
 *** B.SFW.1-B.SFW.?? build all surface water datasets
 ***
+
+* CREATE SUBSET OF SHAPEFILES
+* run script "$dirpath_code/build/GIS_Data_Build/BUILD_Subset_Shapef_Wallocations.R"
 	
-CHIN's linear code goes here
+* ASSIGN ALLOCATIONS TO CLUS
+* run script "$dirpath_code/build/GIS_Data_Build/BUILD_Hagerty_CLU_assignment_revised.R"
+
+* CHECK THE AREA INTERSECTIONS AND GET SAMPLE EXHIBITS
+* run script "$dirpath_code/build/GIS_Data_Build/BUILD_Check_CLU_UserFile_Intersections.R"
 
 ***
 ***
