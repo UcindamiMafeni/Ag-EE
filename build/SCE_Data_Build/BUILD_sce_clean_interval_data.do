@@ -138,9 +138,12 @@ use "$dirpath_data/sce_cleaned/interval_data_daily_20190916.dta", clear
 gen modate = ym(year(date),month(date))
 format %tm modate
 egen double kwh_monthly = sum(kwh), by(sa_uuid modate)
+assert kwh!=.
+egen ndays_interval = count(date), by(sa_uuid modate)
 drop date kwh
 rename kwh_monthly kwh
 la var kwh "kWh consumed in monthly interval"
+la var ndays_interval "Count of days w/in SA-month in interval data"
 duplicates drop
 sum kwh, detail
 count if kwh<0
@@ -285,9 +288,12 @@ use "$dirpath_data/sce_cleaned/interval_data_daily_20200722.dta", clear
 gen modate = ym(year(date),month(date))
 format %tm modate
 egen double kwh_monthly = sum(kwh), by(sa_uuid modate)
+assert kwh!=.
+egen ndays_interval = count(date), by(sa_uuid modate)
 drop date kwh
 rename kwh_monthly kwh
 la var kwh "kWh consumed in monthly interval"
+la var ndays_interval "Count of days w/in SA-month in interval data"
 duplicates drop
 sum kwh, detail
 count if kwh<0
