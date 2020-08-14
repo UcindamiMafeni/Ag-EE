@@ -37,8 +37,8 @@ coord_sys = dsc.spatialReference
 arcpy.Project_management(clu, clu_proj, coord_sys)
 print("Projection done")
 
-# loop through 2007 to 2017 cdl layers
-for i in range(2007, 2018):
+# loop through 2007 to 2019 cdl layers
+for i in range(2007, 2019):
         print i
         folder = "CDL_" + str(i) + "_06"
         path = folder + ".tif"

@@ -103,7 +103,7 @@ clu_cdl <-
 # read in rasters and clu polygons 
 # ===========================================================================
 cdl <-
-  2007:2017 %>%
+  2007:2019 %>%
   paste0("CDL_", ., "_06") %>%
   file.path(raw_spatial, "CropLand Data Layer", ., paste0(., ".tif")) %>%
   map(raster)
@@ -121,7 +121,7 @@ clu <-
 # ===========================================================================
 # Filter down to CLU-Year combinations not computed in arcpy output
 clu_year <-
-  crossing(clu$CLU_ID, 2007:2017) %>%
+  crossing(clu$CLU_ID, 2007:2019) %>%
   setNames(c("CLU_ID", "Year")) %>%
   mutate(CLU_ID = as.character(CLU_ID)) %>%
   anti_join(clu_cdl) %>%
@@ -146,7 +146,7 @@ tic("CDL CLU Extract")
 plan(multisession, .init = P)
 clu_year <- split(clu_year, clu_year$Year)
 clu_cdl_overlap <- 
-  pmap_df(list(cdl, 2007:2017, clu_year), furrr_extract, P, G) %>%
+  pmap_df(list(cdl, 2007:2019, clu_year), furrr_extract, P, G) %>%
   group_by(CLU_ID, Year) %>% 
   mutate(Total = sum(Freq), 
          Fraction = Freq / Total) %>%
