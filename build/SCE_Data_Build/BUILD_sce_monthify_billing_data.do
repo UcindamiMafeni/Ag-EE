@@ -12,8 +12,8 @@ global dirpath_data "$dirpath/data"
 *******************************************************************************
 *******************************************************************************
 
-** 1. SCE 2019 and 2020 data pulls
-
+** 1. Monthify SCE 2019 and 2020 data pulls
+{
 ** Load cleaned SCE billing data
 use "$dirpath_data/sce_cleaned/billing_data.dta", clear
 
@@ -157,4 +157,224 @@ drop if modate<ym(2007,12)
 sort sa_uuid modate
 compress
 save "$dirpath_data/sce_cleaned/billing_data_monthified.dta", replace
+}
 
+*******************************************************************************
+*******************************************************************************
+
+** 2. Fill gaps using monthly interval data
+{
+	// Start with monthified billing data
+use "$dirpath_data/sce_cleaned/billing_data_monthified.dta", clear
+gen month = real(subinstr(substr(string(modate,"%tm"),5,3),"m","",1))
+gen year = real(substr(string(modate,"%tm"),1,4))
+egen days_max = max(days), by(modate)
+tab month days_max
+sort sa_uuid modate 
+gen flag_end_of_gap = sa_uuid==sa_uuid[_n-1] & flag_disct_bill[_n-1]==1
+gen gap_length_months = modate[_n+1] - modate if flag_disct_bill==1
+
+	// Merge in interval data (collapsed to the monthly level)
+merge 1:1 sa_uuid modate using "$dirpath_data/sce_cleaned/interval_data_monthly_20190916.dta", gen(_merge2019)
+rename kwh kwh2019
+rename ndays_interval ndays_interval2019
+merge 1:1 sa_uuid modate using "$dirpath_data/sce_cleaned/interval_data_monthly_20200722.dta", gen(_merge2020)
+rename kwh kwh2020
+rename ndays_interval ndays_interval2020
+gen max_merge = _merge2019==3 | _merge2020==3
+tab modate max_merge
+
+	// Combine 2019 and 2020 interval data into a single variable
+count if _merge2019==3 & _merge2020==3
+local rN = r(N)
+count if _merge2019==3 & _merge2020==3 & abs(kwh2019-kwh2020)<0.00001
+di r(N)/`rN'
+tab modate if _merge2019==3 & _merge2020==3 & abs(kwh2019-kwh2020)>0.00001
+tab modate if _merge2019==3 & _merge2020==3 // only 1 month of overlap
+replace kwh2019 = kwh2020 if kwh2020!=.
+replace ndays_interval2019 = ndays_interval2020 if ndays_interval2020!=.
+drop kwh2020 ndays_interval2020
+rename kwh2019 kwh_interval
+rename ndays_interval2019 ndays_interval
+assert kwh_interval!=. if max_merge==1
+assert kwh_interval!=. if _merge2019==2 | _merge2020==2
+drop _merge2019 _merge2020 max_merge
+
+	// Use interval data to fill in missings in billing data
+egen temp = max(flag_acct), by(sa_uuid)
+replace flag_acct = temp
+drop temp	
+br sa_uuid modate days_max days day_first day_last mnth_bill_kwh flag_disct_bill flag_acct ///
+	flag_interval_merge flag_interval_disp20 interval_bill_corr kwh_interval ndays_interval ///
+	if flag_acct==1 & year>=2016 & (days<days_max | days==.)
+correlate mnth_bill_kwh kwh_interval
+correlate mnth_bill_kwh kwh_interval if interval_bill_corr!=.
+correlate mnth_bill_kwh kwh_interval if interval_bill_corr!=. & days>=28
+correlate mnth_bill_kwh kwh_interval if interval_bill_corr!=. & days>=28 & day_first==1
+egen interval_bill_corr_filled = mode(interval_bill_corr), by(sa_uuid)
+assert interval_bill_corr==interval_bill_corr_filled | interval_bill_corr==.
+
+gen mnth_bill_kwh_filled = mnth_bill_kwh	
+
+	//  replace where bill covers part of the month, right before the billing gap
+sort sa_uuid modate
+replace mnth_bill_kwh_filled = kwh_interval if kwh_interval!=. & days<days_max & ///
+	ndays_interval==days_max & interval_bill_corr_filled>0.9 & interval_bill_corr_filled!=. & ///
+	flag_disct_bill==1
+	
+	//  replace months during gap
+egen temp = mode(days_max), by(modate)
+assert temp==days_max | days_max==.
+replace days_max = temp
+drop temp	
+forvalues i = 1/35 {
+	replace mnth_bill_kwh_filled = kwh_interval if mnth_bill_kwh_filled==. & ///
+		kwh_interval!=. & days==. & ndays_interval==days_max & ///
+		interval_bill_corr_filled>0.9 & interval_bill_corr_filled!=. & ///
+		flag_disct_bill[_n-`i']==1 & sa_uuid==sa_uuid[_n-`i'] & `i'<gap_length_months[_n-`i']
+}
+
+	//  replace where observed bills resumes, after the billing gap
+replace mnth_bill_kwh_filled = kwh_interval if kwh_interval!=. & days<days_max & ///
+	ndays_interval==days_max & interval_bill_corr_filled>0.9 & interval_bill_corr_filled!=. & ///
+	flag_end_of_gap==1
+
+	// replace cases where bills stop, but AMI continues
+egen temp_max = max(modate), by(sa_uuid)
+egen temp = max(modate) if days!=., by(sa_uuid)
+egen temp_max_bill = mean(temp), by(sa_uuid)
+format %tm temp*
+gen flag_ami_after_bills_stop = 0
+
+br sa_uuid modate days_max days day_first day_last mnth_bill_kwh flag_disct_bill flag_acct ///
+	interval_bill_corr kwh_interval mnth_bill_kwh_filled ndays_interval temp_max temp_max_bill ///
+	if year>=2016 & (days<days_max | days==.) & temp_max>temp_max_bill
+
+replace flag_ami_after_bills_stop = 1 if kwh_interval!=. & days<days_max & ///
+	ndays_interval==days_max & interval_bill_corr_filled>0.9 & interval_bill_corr_filled!=. & ///
+	modate==temp_max_bill 	
+replace mnth_bill_kwh_filled = kwh_interval if kwh_interval!=. & days<days_max & ///
+	ndays_interval==days_max & interval_bill_corr_filled>0.9 & interval_bill_corr_filled!=. & ///
+	modate==temp_max_bill 
+	
+forvalues i = 1/24 {
+	replace flag_ami_after_bills_stop = 1 if mnth_bill_kwh_filled==. & ///
+		kwh_interval!=. & days==. & ndays_interval==days_max & ///
+		interval_bill_corr_filled>0.9 & interval_bill_corr_filled!=. & ///
+		modate==temp_max_bill+`i' & sa_uuid==sa_uuid[_n-`i']
+	replace mnth_bill_kwh_filled = kwh_interval if  mnth_bill_kwh_filled==. & ///
+		kwh_interval!=. & days==. & ndays_interval==days_max & ///
+		interval_bill_corr_filled>0.9 & interval_bill_corr_filled!=. & ///
+		modate==temp_max_bill+`i' & sa_uuid==sa_uuid[_n-`i']	
+}
+
+drop temp*
+
+
+	// replace cases where AMI starts beore bills 
+egen temp_min = min(modate), by(sa_uuid)
+egen temp = min(modate) if days!=., by(sa_uuid)
+egen temp_min_bill = mean(temp), by(sa_uuid)
+format %tm temp*
+gen flag_ami_before_bills_start = 0
+
+br sa_uuid modate days_max days day_first day_last mnth_bill_kwh flag_disct_bill flag_acct ///
+	interval_bill_corr kwh_interval mnth_bill_kwh_filled ndays_interval temp_min temp_min_bill ///
+	if year>=2016 & (days<days_max | days==.) & temp_min<temp_min_bill
+
+replace flag_ami_before_bills_start = 1 if kwh_interval!=. & days<days_max & ///
+	ndays_interval==days_max & interval_bill_corr_filled>0.9 & interval_bill_corr_filled!=. & ///
+	modate==temp_min_bill 	
+replace mnth_bill_kwh_filled = kwh_interval if kwh_interval!=. & days<days_max & ///
+	ndays_interval==days_max & interval_bill_corr_filled>0.9 & interval_bill_corr_filled!=. & ///
+	modate==temp_min_bill 
+
+forvalues i = 1/36 {
+	replace flag_ami_before_bills_start = 1 if mnth_bill_kwh_filled==. & ///
+		kwh_interval!=. & days==. & ndays_interval==days_max & ///
+		interval_bill_corr_filled>0.9 & interval_bill_corr_filled!=. & ///
+		modate==temp_min_bill-`i' & sa_uuid==sa_uuid[_n+`i']
+	replace mnth_bill_kwh_filled = kwh_interval if  mnth_bill_kwh_filled==. & ///
+		kwh_interval!=. & days==. & ndays_interval==days_max & ///
+		interval_bill_corr_filled>0.9 & interval_bill_corr_filled!=. & ///
+		modate==temp_min_bill-`i' & sa_uuid==sa_uuid[_n+`i']	
+}
+	
+drop temp*	
+	
+	// populate single value that somehow didn't populate above
+count if mnth_bill_kwh_filled==. & kwh_interval!=. & interval_bill_corr_filled>0.9 ///
+	& interval_bill_corr_filled!=. & ndays_interval==days_max
+replace mnth_bill_kwh_filled = kwh_interval if mnth_bill_kwh_filled==. & ///
+	kwh_interval!=. & interval_bill_corr_filled>0.9 & interval_bill_corr_filled!=. & /// 
+	ndays_interval==days_max
+assert mnth_bill_kwh_filled!=. if kwh_interval!=. & interval_bill_corr_filled>0.9 ///
+	& interval_bill_corr_filled!=. & ndays_interval==days_max
+ 	
+	
+	// populate values where both billing and interval have days missing, but
+	// interval has FEWER missing days
+replace mnth_bill_kwh_filled = kwh_interval if kwh_interval!=. & ///
+	interval_bill_corr_filled>0.9 & interval_bill_corr_filled!=. & /// 
+	ndays_interval<days_max & days<days_max & ndays_interval>days
+	// 2337 observations
+gen temp = ndays_interval - days if kwh_interval!=. & ///
+	interval_bill_corr_filled>0.9 & interval_bill_corr_filled!=. & /// 
+	ndays_interval<days_max & days<days_max & ndays_interval>days		
+tab temp // adding in a fair amount of days here
+drop temp
+
+	// populate values where billing is entirely missing and interval 
+	// interval is populated but has a few days missing
+replace mnth_bill_kwh_filled = kwh_interval if kwh_interval!=. & ///
+	interval_bill_corr_filled>0.9 & interval_bill_corr_filled!=. & /// 
+	ndays_interval<days_max & days==.
+	// 138 observations
+
+	// confirm all observations with high correlaton are popullated
+assert mnth_bill_kwh_filled!=. if kwh_interval!=. & interval_bill_corr_filled>0.9 ///
+	& interval_bill_corr_filled!=. 
+	
+
+	// 3rd option: flat-out replace monthified kwh with interval data (whenever nonmissing)
+gen mnth_bill_kwh_interval = mnth_bill_kwh
+replace mnth_bill_kwh_interval = kwh_interval if kwh_interval!=.	
+
+	// Flags
+gen flag_kwh_filled_from_interval = abs(mnth_bill_kwh_filled-mnth_bill_kwh)>0.001 | ///
+	(mnth_bill_kwh==. & mnth_bill_kwh_filled!=.)
+count if year>=2016
+local rN = r(N)
+count if year>=2016 & flag_kwh_filled_from_interval==1 & mnth_bill_kwh!=.
+di r(N)/`rN'
+count if year>=2016 & flag_kwh_filled_from_interval==1 & mnth_bill_kwh==.
+di r(N)/`rN'
+
+	// Clean up and label
+replace interval_bill_corr = interval_bill_corr_filled
+la var days_max "Number of days in month"
+rename days days_billing
+rename day_first day_bill_first
+rename day_last day_bill_last
+order days_max day_bill_first day_bill_last ndays_interval, after(days_billing) 
+la var flag_end_of_gap "Flag for end of discontinuous billing gap"
+la var mnth_bill_kwh_filled "Total kWh, monthified from bills, filled from interval data (corr>0.9)" 
+la var flag_ami_after_bills_stop "Flag for if billing data stops before interval data"
+la var flag_ami_before_bills_start "Flag for if billing data starts after interval data"
+la var mnth_bill_kwh_interval "Total kWh, interval data (where nonmissing), then monthified billed kWh" 
+la var flag_kwh_filled_from_interval "Flag if mnth_bill_kwh_filled comes from AMI, rather than bills"
+order mnth_bill_kwh_filled mnth_bill_kwh_interval, after(mnth_bill_kwh)
+order flag_end_of_gap gap_length_months, after(flag_disct_bill)
+drop interval_bill_corr_filled month year kwh_interval gap_length_months
+ 
+	// Save
+sort sa_uuid modate
+unique sa_uuid modate
+assert r(unique)==r(N)
+compress
+save "$dirpath_data/sce_cleaned/billing_data_monthified.dta", replace 	
+ 
+}
+
+*******************************************************************************
+*******************************************************************************
