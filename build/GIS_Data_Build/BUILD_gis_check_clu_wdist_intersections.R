@@ -23,11 +23,11 @@ library(haven)
 path_users_shp <- "T:/Projects/Pump Data/data/surface_water/Subsetted_User_SF"
 path_pa <- "T:/Projects/Pump Data/data/surface_water/Water_Plan_Planning_Areas-shp"
 path_allocations <- "T:/Projects/Pump Data/data/surface_water/hagerty"
-path_clu <- "T:/Projects/Pump Data/data/cleaned_spatial/CLU/clu_poly"
-path_int <- "T:/Projects/Pump Data/data/intermediate/CLU_Assignment"
+#path_clu <- "T:/Projects/Pump Data/data/cleaned_spatial/CLU/clu_poly"
+path_inter <- "T:/Projects/Pump Data/data/intermediate/CLU_Assignment"
 path_outline <- "T:/Projects/Pump Data/data/surface_water/ca-state-boundary"
 path_crop <- "T:/Projects/Pump Data/data/surface_water/Crop__Mapping_2014-shp"
-path_out <- "C:/Users/clohani/Desktop/Code_Chinmay"
+#path_out <- "C:/Users/clohani/Desktop/Code_Chinmay"
 
 #get shapefiles, define constants
 users_shp <- st_read(file.path(path_users_shp, "users_positive_alloc_filtered.shp"))
@@ -38,7 +38,7 @@ outline <- st_read(file.path(path_outline, "CA_State_TIGER2016.shp")) %>%
 m2_to_acre <- 0.000247105
 colors <- c( "#b6edf0",  "#81c0eb", "#4695e3", "#216bd1","#1c3ab0", "#0a0a91")
 
-inter_user_crop <- readRDS(file.path(path_output, "User_Crop.rds"))
+inter_user_crop <- readRDS(file.path(path_inter, "User_Crop.rds"))
 # choose a user shapefile
 
 #set.seed(1) for exhibit 1
@@ -87,5 +87,5 @@ plot_all <- ggplot() +
   geom_sf(data= clu_subset,aes(fill=fracAcres), colour=NA) +
   scale_fill_gradientn(colours = cls,space = "Lab")
 
-ggsave(file.path(path_out, "Exhibit_3.jpg"),dpi=400, plot = plot_all)
+ggsave(file.path(path_inter, "Exhibit_3.jpg"),dpi=400, plot = plot_all)
 # fin

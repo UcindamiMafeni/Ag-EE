@@ -25,7 +25,8 @@ library(stringr)
 path_users_shp <- "T:/Projects/Pump Data/data/surface_water/ca_Final_shapefiles_Nick"
 path_allocations <- "T:/Projects/Pump Data/data/surface_water/hagerty"
 path_out <- "T:/Projects/Pump Data/data/surface_water/Subsetted_User_SF"
-path_output <- "C:/Users/clohani/Desktop/Code_Chinmay"
+path_inter <- "T:/Projects/Pump Data/data/intermediate/CLU_Assignment"
+#path_output <- "T:/Projects/Pump Data/output"
 
 m2_to_km2 <- 0.000001
 
@@ -40,7 +41,7 @@ users_relevant <- read_dta(file = file.path(path_allocations, "allocations_subse
   #mutate(exists=1)
 
 #input user shapes with intersected (2014) crop area
-users_crop_filtered <- readRDS(file.path(path_output, "User_Crop.rds")) %>%
+users_crop_filtered <- readRDS(file.path(path_inter, "User_Crop.rds")) %>%
   select(user_id,geometry) %>%
   mutate(tot_user_m2= as.numeric(st_area(.)) * m2_to_km2) %>%
   st_set_geometry(NULL) %>%
@@ -68,7 +69,7 @@ users_shp_3 <- users_shp %>%
   right_join(.,users_crop_filtered) 
 
 plot <- ggplot() + geom_sf(data=users_shp_2)
-ggsave(file.path(path_output, "Filtered_Nick_Shapes.png"),dpi=300, plot = plot)
+ggsave(file.path(path_inter, "Filtered_Nick_Shapes.png"),dpi=300, plot = plot)
 
 st_write(users_shp_2, file.path(path_out, "users_positive_alloc.shp"),delete_dsn=TRUE)
 st_write(users_shp_3, file.path(path_out, "users_positive_alloc_filtered.shp"),delete_dsn=TRUE)
