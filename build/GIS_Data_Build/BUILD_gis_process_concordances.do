@@ -27,7 +27,13 @@ global dirpath_code "T:/Home/Louis/backup/AgEE/AgEE_code/build"
 ** Import CLU/CDL concordance
 insheet using "$dirpath_data/misc/clu_cdl_conc.csv", double clear
 
-** County
+** Fix NA crop types 
+tab value if landtype=="NA"
+replace landtype = "Avocados" if value==215 & landtype=="NA"
+replace landtype = "Triticale/Corn" if value==228 & landtype=="NA"
+assert landtype!="NA"
+
+** County (as assigned by GIS, not necessarily the county named in CLU_ID)
 merge m:1 clu_id using "$dirpath_data/cleaned_spatial/clu_county_conc.dta", ///
 	keep(1 3) keepusing(county_name)
 assert _merge==3
@@ -88,7 +94,6 @@ replace noncrop = 1 if landtype=="Forest"
 replace noncrop = 1 if landtype=="Grass/Pasture"
 replace noncrop = 1 if landtype=="Herbaceous Wetlands"
 replace noncrop = 1 if landtype=="Mixed Forest"
-replace noncrop = 1 if landtype=="NA"
 replace noncrop = 1 if landtype=="Open Water"
 replace noncrop = 1 if landtype=="Perennial Ice/Snow"
 replace noncrop = 1 if landtype=="Sod/Grass Seed"
@@ -99,7 +104,7 @@ egen ever_crop = max(noncrop==0), by(clu_id)
 unique clu_id
 local uniq = r(unique)
 unique clu_id if ever_crop==1
-di r(unique)/`uniq' // 95.2% of CLUs
+di r(unique)/`uniq' // 95.3% of CLUs
 
 ** Strengthen this definition to remove the tiny slivers of CLUs of a given landtype
 gen noncrop_nontrivial = noncrop
@@ -121,9 +126,9 @@ sum acres_crop if temp_tag, detail
 unique clu_id
 local uniq = r(unique)
 unique clu_id if fraction_crop>0.2
-di r(unique)/`uniq' // 87.3% of CLUs
+di r(unique)/`uniq' // 87.4% of CLUs
 unique clu_id if fraction_crop>0.2 | acres_crop>1
-di r(unique)/`uniq' // 91.8% of CLUs
+di r(unique)/`uniq' // 91.9% of CLUs
 
 ** Flag CLUs that never meet either 20% or 1 acre crop thresholds
 egen ever_crop_pct = max((fraction_crop>0.2) | (acres_crop>1)), by(clu_id)
@@ -152,12 +157,14 @@ la var acres_crop "Total CLU acres with crop in year t"
 la var ever_crop_pct "Dummy if CLU ever has crop coverage >20% or >1 acre"  
 drop temp*
 
-** Save
+** Clean up and save
 order county clu_id year value landtype fraction landtype_acres cluacres ///
 	acres_crop fraction_crop ever_crop ever_crop_nontrivial ever_crop_pct ///
 	noncrop noncrop_nontrivial overlapping
 sort *
 unique clu_id year value
+assert r(unique)==r(N)
+unique clu_id year landtype
 assert r(unique)==r(N)
 compress
 save "$dirpath_data/cleaned_spatial/cdl_panel_crop_year_full.dta", replace
@@ -241,6 +248,7 @@ unique parcelid if merge_ever_crop_clus==3
 gen ever_crop_clu = merge_ever_crop_clus==3 
  
 ** Label variables
+la var county "County (per raw data, not as assigned by GIS!)"
 la var parcelid "Unique parcel ID (county acres lon lat)"
 la var clu_id "Unique CLU ID (county lon lat acres)"
 la var parcelacres "Area of parcel (acres)"
@@ -248,7 +256,6 @@ la var cluacres "Area of CLU (acres)"
 la var intacres "Acres of intersection b/tw CLU and parcel polygons"
 la var pct_int_clu "Pct of CLU acres in intersection"
 la var pct_int_parcel "Pct of parcel acres in intersection"
-la var county "County name"
 la var largest_parcel "Dummy for modal Parcel merged to this CLU"
 la var largest_clu "Dummy for modal CLU merged to this parcel"
 la var ever_crop_clu "Dummy for CLU ever has crop coverage >20% or >1 acre"
@@ -268,9 +275,9 @@ collapse (sum) sum_pct_int_parcel=pct_int_parcel sum_intacres=intacres ///
 	(max) max_intacres=intacres max_largest_parcel=largest_parcel ///
 	(count) n_clus=largest_clu, by(county parcelid parcelacres ever_crop_clu) fast
 tab ever_crop_clu
-unique parcelid if ever_crop_clu==1 // 355587 parcels matched to an ever-crop CLU
+unique parcelid if ever_crop_clu==1 // 356245 parcels matched to an ever-crop CLU
 egen temp = max(ever_crop_clu), by(parcelid)
-unique parcelid if temp==0 // 49053 parcels never matched to an ever-crop CLU
+unique parcelid if temp==0 // 48395 parcels never matched to an ever-crop CLU
 drop temp
 keep if ever_crop_clu==1 // keep only parcels that match to an ever-crop CLU
 unique parcelid
@@ -374,7 +381,7 @@ replace drop_slivers = 0 if largest_parcel==1 // and not if largest parcel match
 unique parcelid
 local uniq = r(unique)
 unique parcelid if drop_parcelid_total==0 & drop_slivers==0
-di r(unique)/`uniq' // 74.5% of parcels will remain
+di r(unique)/`uniq' // 74.6% of parcels will remain
 unique clu_id if ever_crop_clu==1
 local uniq = r(unique)
 unique clu_id if ever_crop_clu==1 & drop_parcelid_total==0 & drop_slivers==0
