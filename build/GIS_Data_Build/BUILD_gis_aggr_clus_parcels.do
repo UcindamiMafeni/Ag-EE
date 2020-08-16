@@ -24,6 +24,20 @@ unique parcelid
 unique clu_id
 unique clu_id if ever_crop_clu==1
 
+	// Bring in county as assigned by GIS (not necessarily the county named in CLU_ID)
+merge m:1 clu_id using "$dirpath_data/cleaned_spatial/clu_county_conc.dta", ///
+	keep(1 3) keepusing(county_name)
+assert _merge==3
+drop _merge
+unique clu_id
+local uniq = r(unique)
+unique clu_id if county==county_name
+di r(unique)/`uniq' 
+	// for 99.8% of CLUs, this distinction doesn't matter
+	// this code will proceed by using the raw county assignments, which form the
+	// basis of the parcel-CLU concordance to begin with
+drop county_name
+	
 	// Drop barely-matched parcels and slivers
 drop if drop_parcelid_total==1
 drop if drop_slivers==1
@@ -373,6 +387,8 @@ unique clu_id parcelid
 assert r(unique)==r(N)
 merge m:1 clu_id using "$dirpath_data/cleaned_spatial/clu_conc_groups.dta", nogen
 merge m:1 parcelid using "$dirpath_data/cleaned_spatial/parcel_conc_groups.dta", nogen
+merge m:1 clu_id using "$dirpath_data/cleaned_spatial/clu_county_conc.dta", ///
+	keep(1 3) keepusing(county_name) nogen
 sort county clu_id parcelid
 order county clu_id parcelid
 compress
