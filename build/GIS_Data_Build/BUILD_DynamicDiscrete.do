@@ -72,6 +72,7 @@ assert landtype_bigcat!=""
 }
 
 
+
 //////////////////////////////
 // Get Crop Prices////////////
 //////////////////////////////
@@ -213,13 +214,21 @@ replace landtype_cat=strproper(landtype_cat)
 replace County = strtrim(County)
 collapse (sum) Harvested_Acreage Total_Value, by(landtype_cat County year)
 gen landcat_price = Total_Value/Harvested_Acreage
-drop Total_Value Harvested_Acreage
 rename County county_name
 tempfile Prices
 save `Prices'
+
+collapse (sum) Harvested_Acreage Total_Value, by(landtype_cat year)
+gen landcat_price_nosp = Total_Value/Harvested_Acreage
+tempfile Prices_nosp
+save `Prices_nosp'
 restore
 
 merge m:1 county_name year landtype_cat using "`Prices'"
+drop if _merge==2
+drop _merge
+
+merge m:1 year landtype_cat using "`Prices_nosp'"
 drop if _merge==2
 drop _merge
 
@@ -231,6 +240,16 @@ collapse (sum) CLUsliver_revenue landtype_acres, by(county_name year landtype_bi
 gen bigcat_price_per_acre = CLUsliver_revenue/landtype_acres
 tempfile bigcat_prices
 save `bigcat_prices'
+restore
+
+
+//Generate prices with no county variation
+preserve
+gen CLUsliver_revenue_nosp = landtype_acres*landcat_price_nosp
+collapse (sum) CLUsliver_revenue landtype_acres, by(year landtype_bigcat)
+gen bigcat_price_per_acre_nosp = CLUsliver_revenue_nosp/landtype_acres
+tempfile bigcat_prices_nosp
+save `bigcat_prices_nosp'
 restore
 }
 
@@ -300,7 +319,12 @@ merge m:1 county_name year landtype_bigcat using "`bigcat_prices'"
 drop if _merge==2
 drop _merge
 drop fraction landtype_acres CLUsliver_revenue
+replace bigcat_price_per_acre=0 if choice==1
 gen counterfactual_revenue=bigcat_price_per_acre*cluacres
+
+merge m:1 year landtype_bigcat using "`bigcat_prices_nosp'"
+drop if _merge==2
+drop _merge
 }
 
 ///////////////////////////////////////
@@ -308,9 +332,11 @@ gen counterfactual_revenue=bigcat_price_per_acre*cluacres
 ///////////////////////////////////////
 
 {
+
 //only use "fallow" observations with 90%+ to calculate fallow water usage
 gen modecrop_temp=modecrop
 replace modecrop_temp=0 if choice==1&modecrop==1&frac_Noncrop<.9
+
 
 egen sum_af_wdist_crop = sum(af_rast_dd_mth_2SP) if modecrop_temp==1&missing(user_id_list)==0, by(user_id_list year choice)
 egen acres_wdist_crop = sum(modal_acres) if modecrop_temp==1&missing(user_id_list)==0, by(user_id_list year choice)
@@ -319,11 +345,114 @@ gen mean_af_per_acre_wdist = sum_af_wdist_crop/acres_wdist_crop
 egen counterfactual_mean_af_per_acre = max(mean_af_per_acre_wdist), by(user_id_list year choice)
 drop sum_af_wdist_crop acres_wdist_crop mean_af_per_acre_wdist
 
-gen counterfactual_groundwater_cost = counterfactual_mean_af_per_acre*cluacres*kwhaf_rast_dd_mth_2SP*mean_p_kwh
+gen counterfactual_groundwater_cost = counterfactual_mean_af_per_acre*kwhaf_rast_dd_mth_2SP*mean_p_kwh
 
 tab choice, sum(counterfactual_mean_af_per_acre)
 drop modecrop_temp
 
+// Use regression method instead of means
+gen acres_FruitNut=cluacres*frac_FruitNut
+gen acres_Annual = cluacres*frac_Annual
+gen acres_OtherPerennial = cluacres*frac_OtherPerennial
+gen acres_Noncrop = cluacres*frac_Noncrop
+tempfile data
+save `data'
+
+statsby, by(user_id_list year): reg af_rast_dd_mth_2SP acres_FruitNut acres_Annual acres_OtherPerennial acres_Noncrop if modecrop==1, nocons
+tempfile coeffs
+save `coeffs'
+
+twoway kdensity _b_acres_FruitNut|| kdensity _b_acres_Annual ||kdensity _b_acres_OtherPerennial||kdensity _b_acres_Noncrop
+merge 1:m user_id_list year using `data'
+drop _merge
+
+gen counterfactual_water_cost = kwhaf_rast_dd_mth_2SP*mean_p_kwh*_b_acres_FruitNut if choice==3
+replace counterfactual_water_cost = kwhaf_rast_dd_mth_2SP*mean_p_kwh*_b_acres_OtherPerennial if choice==4
+replace counterfactual_water_cost = kwhaf_rast_dd_mth_2SP*mean_p_kwh*_b_acres_Annual if choice==2
+replace counterfactual_water_cost = kwhaf_rast_dd_mth_2SP*mean_p_kwh*_b_acres_Noncrop if choice==1
+
 }
-clogit modecrop counterfactual_revenue counterfactual_groundwater_cost i.choice, group(clu_year_id)
+
+////////////////////////////////////////////////
+// figure out what's wrong with af measures////
+///////////////////////////////////////////////
+{
+preserve
+tab choice if choice==mode_crop, sum(af_rast_dd_mth_2SP)
+gen af_per_acre=af_rast_dd_mth_2SP/cluacres
+tab choice if choice==mode_crop, sum(af_per_acre)
+reg af_per_acre frac_Noncrop if mode_crop==1&choice==1
+
+twoway scatter frac_FruitNut frac_Noncrop if mode_crop==1&choice==1&frac_Noncrop>0.9, msize(0.2)||scatter frac_Annual frac_Noncrop if mode_crop==1&choice==1&frac_Noncrop>0.9, msize(0.2)||scatter frac_OtherPerennial frac_Noncrop if frac_Noncrop>0.9&mode_crop==1&choice==1, msize(0.2)
+reg frac_FruitNut frac_Noncrop if mode_crop==1&choice==1&year==2010
+reg frac_Annual frac_Noncrop if mode_crop==1&choice==1&year==2010
+reg frac_OtherPerennial frac_Noncrop if mode_crop==1&choice==1&year==2010
+
+keep if choice==1&mode_crop==1
+xtile quant_noncrop=frac_Noncrop, n(4)
+
+tab quant_noncrop if year==2010, sum(frac_FruitNut)
+tab quant_noncrop if year==2010, sum(frac_Annual)
+tab quant_noncrop if year==2010, sum(frac_OtherPerennial)
+
+xtile quant_af=af_per_acre, n(5)
+tab quant_af if year==2016, sum(frac_FruitNut)
+tab quant_af if year==2016, sum(frac_Noncrop)
+tab quant_af if year==2016, sum(frac_Annual)
+tab quant_af if year==2016, sum(frac_OtherPerennial)
+
+scatter af_per_acre frac_Noncrop if choice==1&mode_crop==1, msize(0.3)
+graph bar frac_Noncrop frac_FruitNut frac_Annual frac_OtherPerennial, over(quant_af)
+reg af_per_acre frac_Noncrop
+restore
+}
+
+/////////////////////////////////////////////////////
+// Generate Investment, Disinvestment Dummies////////
+/////////////////////////////////////////////////////
+
+{
+preserve
+keep clu_id year choice mode_crop
+keep if choice==mode_crop
+drop choice
+encode clu_id, gen(clu_idtemp)
+xtset clu_idtemp year
+gen lagchoice=l.mode_crop
+drop clu_idtemp
+tempfile lagchoice
+save `lagchoice'
+restore
+
+merge m:1 clu_id year using "`lagchoice'"
+
+//Generate the dummies to estimate investment/disinvestment costs (annuals are unidentified)
+gen destroy_perennial=(choice==1|choice==2|choice==4)&(lagchoice==3)
+gen new_hay= (choice==4)|(lagchoice!=4)
+gen new_perennial=(choice==3)&(lagchoice!=3)
+}
+
+
+clogit modecrop bigcat_price_per_acre counterfactual_water_cost destroy_perennial new_hay new_perennial i.choice#i.year, group(clu_id)
+clogit modecrop bigcat_price_per_acre counterfactual_water_cost destroy_perennial new_hay new_perennial i.choice, group(clu_id)
+
+clogit modecrop bigcat_price_per_acre counterfactual_groundwater_cost destroy_perennial new_hay new_perennial i.choice#i.year, group(clu_id)
+clogit modecrop bigcat_price_per_acre counterfactual_groundwater_cost destroy_perennial new_hay new_perennial i.choice, group(clu_id)
+
+
+label var counterfactual_groundwater_cost "expected groundwater usage per acre in af-calculated using means by water district"
+label var counterfactual_water_cost "expected groundwater usage per acre in af - calculated using wd-level regs"
+label var bigcat_price_per_acre "average price per acre at the county-level"
+label var bigcat_price_per_acre_nosp "average price per acre with no spatial variation"
+
+//What if I enforce that groundwater_cost=0 for fallow land?
+preserve
+replace counterfactual_groundwater_cost=0 if choice==1
+clogit modecrop bigcat_price_per_acre counterfactual_groundwater_cost destroy_perennial new_hay new_perennial i.choice#i.year, group(clu_id)
+restore
+
+preserve
+replace counterfactual_water_cost=0 if choice==1
+clogit modecrop bigcat_price_per_acre counterfactual_water_cost destroy_perennial new_hay new_perennial i.choice#i.year, group(clu_id)
+restore
 
