@@ -112,6 +112,61 @@ save "$dirpath_data/pge_raw/meter_badge_number_data_20180827.dta", replace
 ************************************************
 
 
+** SEPTEMBER 2020 DATA (extends the sample period through 2019)
+
+
+*** load customer data and save as dta file
+import delimited "$dirpath_raw/PGE Sept2020/UCB_PUMP_BASE.csv", varn(1) stringc(_all) clear
+save "$dirpath_data/pge_raw/customer_data_202009.dta", replace
+
+*** load monthly billing data and save as dta file
+import delimited "$dirpath_raw/PGE Sept2020/UCB_PUMP_BILLING.csv", varn(1) stringc(_all) clear
+save "$dirpath_data/pge_raw/bill_data_202009.dta", replace
+
+*** load energy efficiency data and save as dta file
+import delimited "$dirpath_raw/PGE Sept2020/UCB_PUMP_EE.csv", varn(1) stringc(_all) clear
+save "$dirpath_data/pge_raw/energy_efficiency_data_202009.dta", replace
+
+*** load badge number data and save as dta file
+import delimited "$dirpath_raw/PGE Sept2020/UCB_PUMP_BADGE_TO_METER.csv", varn(1) stringc(_all) clear
+save "$dirpath_data/pge_raw/meter_badge_number_data_202009.dta", replace
+
+
+*** load pump test data and save as dta file
+import excel using "$dirpath_raw/PGE Sept2020/UCB_PUMP_TEST.xlsx", allstring firstrow clear
+save "$dirpath_data/pge_raw/pump_test_data_202009.dta", replace
+
+
+*** load excluded CCA data and save as dta file
+import delimited "$dirpath_raw/PGE Sept2020/UCB_EXCLUDED_CCA_DA.csv", varn(1) stringc(_all) clear
+save "$dirpath_data/pge_raw/excluded_cca_data_202009.dta", replace
+
+
+
+
+*** interval data
+local counter = 0
+forvalues i = 2/9 {
+  cd "$dirpath_data/pge_raw/pge_20200827_rn7630489143_00`i'"
+  local files: dir . files "*.csv"
+  foreach f in `files' {
+    insheet using "`f'",  clear
+  }
+  save "$dirpath_data/pge_raw/202009_interval/interval_`counter'.dta", replace
+  local counter = `counter' + 1
+}
+forvalues i = 10/69 {
+  cd "$dirpath_raw/pge_20200827_rn7630489143_0`i'"
+  local files: dir . files "*.csv"
+  foreach f in `files' {
+    insheet using "`f'",  clear
+  }
+  save "$dirpath_data/pge_raw/202009_interval/interval_`counter'.dta", replace
+  local counter = `counter' + 1
+}
+
+************************************************
+************************************************
 
 
 
