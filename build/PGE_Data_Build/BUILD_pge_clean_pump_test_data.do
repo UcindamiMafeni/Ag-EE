@@ -13,9 +13,24 @@ global dirpath_data "$dirpath/data"
 global dirpath_data_pge_raw "$dirpath_data/pge_raw"
 global dirpath_data_pge_cleaned "$dirpath_data/pge_cleaned"
 
+
+WHAT WE NEED
+
+totlift
+hp (not nameplate)
+ope
+mtrload (as an end-around way to get from hp_nameplate to hp)
+tdh (integer-valued totlift for APEP calcs)
+drwdwn (not a dealbreaker without)
+pumpmke
+mtrmke
+
+
+************************************************
 ************************************************
 
-***** PUMP TEST DATA
+** 1. Pump test data from March 2018 data pull
+{
 use "$dirpath_data_pge_raw/pump_test_data_20180322.dta", clear
 
 rename *, lower
@@ -241,7 +256,7 @@ replace namepltrpm = . if namepltrpm == 0
 replace namepltrpm = . if namepltrpm > 3600 // one extreme outlier here
 
 // about 4 issues with this
-replace ofruns = run if run <= ofruns
+replace ofruns = run if run > ofruns
 
 // should be in 0-1 units, a few are in 0-100
 replace measuredpower = measuredpower/100 if measuredpower > 1
@@ -495,7 +510,7 @@ la var hpi1 "Horsepower input 1 (of up to 3)"
 la var hpi2 "Horsepower input 2 (of up to 3)"
 la var hpi3 "Horsepower input 3 (of up to 3)"
 rename hp_numeric hp_nameplate
-la var hp_nameplate "Nameplate horsepower (all round numbers"
+la var hp_nameplate "Nameplate horsepower (all round numbers)"
 la var hp "Horsepower input to motor (measured)"
 la var hp_after "Horsepower input to motor after project (assumed)"
 drop temp*
@@ -688,4 +703,330 @@ drop TEMP_SORT
 
 compress
 save "$dirpath_data_pge_cleaned/apep_pump_test_data.dta", replace
+}
+
+************************************************
+************************************************
+
+use "$dirpath_data_pge_raw/pump_test_data_202009.dta", clear
+
+rename *, lower
+gen id = _n
+
+foreach var of varlist * {
+ label variable `var' ""
+}
+rename * M*
+rename Mtestdate testdate
+rename Mbadgenbr badgenbr
+
+gen test_date_stata = date(testdate,"DMY")
+format %td test_date_stata
+order test_date_stata
+assert test_date_stata!=.
+drop testdate
+
+rename badgenbr pge_badge_nbr
+unique test_date_stata pge_badge_nbr
+
+joinby test_date_stata pge_badge_nbr using "$dirpath_data_pge_cleaned/apep_pump_test_data.dta", unmatched(master)
+tab _merge
+hist test_date_stata if _merge==3
+drop *_after
+
+br test_date_stata pge_badge_nbr *gauge* if _merge==3
+destring Mgaugeheight Mgaugecorrection, replace
+assert Mgaugeheight==gaugeheight_ft if _merge==3
+assert Mgaugecorrection==gaugecor_ft if _merge==3
+drop gaugeheight_ft gaugecor_ft
+rename Mgaugecorrection gaugecor_ft
+rename Mgaugeheight gaugeheight_ft 
+assert gaugecor_ft==0 | gaugeheight_ft==0
+la var gaugecor_ft "Gauge correction (ft), an input to calculating total lift"
+la var gaugeheight_ft "Gauge height (ft), always zero if gaugecor_ft>0"
+
+br test_date_stata pge_badge_nbr *kw* if _merge==3
+destring Mkwdirect, replace
+replace Mkwdirect = . if Mkwdirect==0
+egen temp = max(Mkwdirect==kw_input_direct), by(test_date_stata pge_badge_nbr)
+assert temp==1 if _merge==3
+gen kw_matches = _merge==3 & Mkwdirect==kw_input_direct
+drop temp
+rename kw_input_direct Ukw_input_direct
+rename Mkwdirect kw_input_direct
+la var kw_input_direct "Direct-read kW input to motor (often missing)"
+
+br test_date_stata pge_badge_nbr *diam* kw_matches if _merge==3
+destring Mtestsectiondiameter, replace
+count if Mtestsectiondiameter!=pump_diameter & _merge==3
+br test_date_stata pge_badge_nbr *diam* kw_matches if _merge==3 & ///
+	Mtestsectiondiameter!=pump_diameter & kw_matches==1
+gen diam_matches = _merge==3 & Mtestsectiondiameter==pump_diameter
+rename pump_diameter Upump_diameter
+rename Mtestsectiondiameter pump_diameter
+la var pump_diameter "Diameter of pump (inches; section of pump tested)"
+	
+br test_date_stata pge_badge_nbr *motor* *mtr* kw_matches diam_matches if _merge==3
+destring Mmotoramps Mmotorefficiency, replace
+replace Mmotoramps = . if Mmotoramps==0
+replace Mmotorefficiency = . if Mmotorefficiency==0
+br test_date_stata pge_badge_nbr Mmotoramps Mmotorefficiency mtra mtreff ///
+	kw_matches diam_matches if _merge==3 & ///
+	Mmotoramps!=mtra 
+gen mtra_matches = _merge==3 & Mmotoramps==mtra
+gen mtreff_matches = _merge==3 & Mmotorefficiency==mtreff
+rename mtra Umtra
+rename mtreff Umtreff 
+rename Mmotoramps mtra
+rename Mmotorefficiency mtreff
+la var mtra "motor amps"
+la var mtreff "Motor efficiency (%)"	
+
+br test_date_stata pge_badge_nbr *run* *matches if _merge==3
+destring Mrun Mrunof, replace
+tab Mrun Mrunof	
+replace Mrunof = Mrun if Mrun > Mrunof
+tab Mrun run if _merge==3
+tab Mrunof nbr_of_runs if _merge==3
+gen run_matches = Mrun==run & _merge==3
+drop run nbr_of_runs
+rename Mrun run
+rename Mrunof nbr_of_runs
+la var run "Run number"
+la var nbr_of_runs "Total number of runs"
+ 
+br test_date_stata pge_badge_nbr *meterkh* *tacho* *sktime* *matches if _merge==3
+destring Mmeterkh Mrpmattachometer Mmeterdisktime, replace
+replace Mmeterkh = . if Mmeterkh==0
+replace Mrpmattachometer = . if Mrpmattachometer==0
+replace Mmeterdisktime = . if Mmeterdisktime==0
+count if Mmeterkh==meterkh & _merge==3
+count if Mrpmattachometer==rpm_tachometer & _merge==3 
+count if Mmeterdisktime==metrdsktime & _merge==3  
+gen meterkh_matches = Mmeterkh==meterkh & _merge==3
+gen rpm_tach_matches = Mrpmattachometer==rpm_tachometer & _merge==3 
+gen dsktime_matches = Mmeterdisktime==metrdsktime & _merge==3  
+drop meterkh rpm_tachometer metrdsktime
+rename Mmeterkh meterkh
+rename Mrpmattachometer rpm_tachometer
+rename Mmeterdisktime metrdsktime
+label variable meterkh "pge meter kh"
+label variable metrdsktime "meter disk time (seconds)"
+la var rpm_tachometer "RPM, at tachometer (almost always missing)"
+
+br test_date_stata pge_badge_nbr *rpm* *matches if _merge==3
+destring Mrpmatgearhead Mmeasurerpm, replace
+replace Mrpmatgearhead = . if Mrpmatgearhead==0
+replace Mmeasurerpm = . if Mmeasurerpm==0
+assert Mrpmatgearhead==rpm_gearhead if _merge==3
+gen rpm_nameplate_matches = _merge==3 & Mrpmatgearhead==rpm_gearhead
+drop rpm_nameplate rpm_gearhead
+rename Mrpmatgearhead rpm_gearhead
+rename Mmeasurerpm rpm_nameplate
+la var rpm_gearhead "RPM, at gearhead (almost always missing)"
+la var rpm_nameplate "RPM, nameplate"
+	
+br test_date_stata pge_badge_nbr *volts* *amp* *matches if _merge==3
+destring Mvolts* Mamps*, replace
+foreach v of varlist Mvolts* Mamps* {
+	replace `v' = . if `v'==0
+}
+gen volts_match = Mvolts12==volts12 & Mvolts13==volts13 & Mvolts23==volts23 & _merge==3
+gen amp_match = Mamps1==amp1 & Mamps2==amp2 & Mamps3==amp3 & _merge==3
+count if volts_match & _merge==3
+count if amp_match & _merge==3
+drop volts12 volts13 volts23 amp1 amp2 amp3
+rename Mvolts?? volts??
+rename Mamps? amp?
+la var volts12 "volts 1-2"
+la var volts13 "volts 1-3"
+la var volts23 "volts 2-3"
+la var amp1 "amps 1"
+la var amp2 "amps 2"
+la var amp3 "amps 3"
+
+br test_date_stata pge_badge_nbr *rev* *matches if _merge==3
+destring Mmeterdiskrevolutions, replace
+replace Mmeterdiskrevolutions = . if Mmeterdiskrevolutions==0
+count if Mmeterdiskrevolutions==metrdskrevs & _merge==3
+gen revs_matches = Mmeterdiskrevolutions==metrdskrevs & _merge==3
+drop metrdskrevs
+rename Mmeterdiskrevolutions metrdskrevs
+la var metrdskrevs "meter disk revolutions"
+
+br test_date_stata pge_badge_nbr *pf* *power* *matches if _merge==3
+destring Mpf Mmeaspf, replace
+replace Mpf = Mpf/100 if Mpf>1
+replace Mpf = . if Mpf==0 
+replace Mmeaspf = Mmeaspf/100 if Mmeaspf>1
+replace Mmeaspf = . if Mmeaspf==0 
+gen pf_matches = Mpf==pf & _merge==3
+gen measpf_matches = Mmeaspf==measuredpowerfactor & _merge==3
+tab pf_matches if _merge==3
+tab measpf_matche if _merge==3
+drop pf measuredpowerfactor
+rename Mpf pf
+rename Mmeaspf measuredpowerfactor
+la var pf "power factor"
+la var measuredpowerfactor "measured power factor"
+
+br test_date_stata pge_badge_nbr *discharge* *psi* *matches if _merge==3
+destring Mdischargepressure, replace
+replace Mdischargepressure = -Mdischargepressure if Mdischargepressure<0
+gen dchpres_matches = Mdischargepressure==dchpres_psi & _merge==3
+tab dchpres_matches if _merge==3
+drop dchpres_psi
+rename Mdischargepressure dchpres_psi
+la var dchpres_psi "Discharge pressure at gauge (psi; 1 psi = 2.31 feet of water head)"
+
+br test_date_stata pge_badge_nbr *wl *matches if _merge==3
+destring Mswl Mpwl Mrwl, replace
+replace Mpwl = -Mpwl if Mpwl<0
+replace Mswl = -Mswl if Mswl<0
+replace Mrwl = -Mrwl if Mrwl<0
+replace Mswl = . if Mswl==0
+replace Mrwl = . if Mrwl==0
+gen swl_matches = Mswl==swl & _merge==3
+gen rwl_matches = Mrwl==rwl & _merge==3
+gen pwl_matches = Mpwl==pwl & _merge==3
+tab swl_matches if _merge==3
+tab rwl_matches if _merge==3
+tab pwl_matches if _merge==3
+drop swl rwl pwl
+rename Mswl swl
+rename Mrwl rwl
+rename Mpwl pwl
+la var swl "Standing water level (ft), when the pump is not running"
+la var rwl "Recovered water level (ft), ~15 min after shutting off pump"
+la var pwl "Pumping water level (ft), stabilized under constant pumping conditions"
+
+br test_date_stata pge_badge_nbr *gpm* *flow* *matches if _merge==3
+destring Mphgpm Mcustomergpm, replace
+assert Mphgpm!=0
+replace Mcustomergpm = . if Mcustomergpm==0
+gen flow_gpm_matches = Mphgpm==flow_gpm & _merge==3
+gen flow_cust_gpm_matches = Mcustomergpm==flow_cust_gpm & _merge==3
+tab flow_gpm_matches flow_cust_gpm_matches if _merge==3
+rename flow_gpm Uflow_gpm
+rename flow_cust_gpm Uflow_cust_gpm
+rename Mphgpm flow_gpm 
+rename Mcustomergpm flow_cust_gpm
+la var flow_gpm "Pump flow rate, gallons per minute (measured)"
+la var flow_cust_gpm "Pump flow rate, gallons per minute (per customer's flow meter)"
+
+br test_date_stata pge_badge_nbr *hp* *matches if _merge==3
+destring Mhp, replace
+assert Mhp!=. & Mhp!=0
+gen hp_matches = Mhp==hp_nameplate & _merge==3
+tab hp_matches if _merge==3
+rename hp_nameplate Uhp_nameplate
+rename Mhp hp_nameplate
+la var hp_nameplate "Nameplate horsepower (all round numbers)"
+rename hpi? Uhpi?
+rename hp Uhp
+rename hp_matches HP_matches
+
+tab Mpowerco
+drop Mpowerco
+
+destring Mmeterconstant, replace
+foreach v of varlist * {
+	qui correlate Mmeterconstant `v' if _merge==3
+	if r(rho)>0.8 & r(rho)!=.{
+		di "`v'"
+	}
+}
+correlate Mmeterconstant otherlosses_ft if _merge==3
+	// no idea what this variable is
+rename Mmeterconstant meter_constant
+la var meter_constant "Meter constant ??"	
+
+
+	// CONSTRCUT drawdown
+	// should be PWL - RWL
+count if swl!=0 & swl!=rwl // RWL=SWL almost always, except where 0
+count if pwl<rwl & rwl!=.
+gen Mdrwdwn = pwl - rwl
+replace Mdrwdwn = -Mdrwdwn if Mdrwdwn < 0
+gen Mflag_bad_drwdwn = pwl<rwl & rwl!=.
+tab Mflag_bad_drwdwn flag_bad_drwdwn
+la var Mdrwdwn "Drawdown (ft), or the difference between RWL and PWL"
+la var Mflag_bad_drwdwn "Flag for drawdown inconsistent with PWL/RWL, b/c PWL < RWL!"
+order Mdrwdwn Mflag_bad_drwdwn, after(Mid)
+	
+	// CONSTRUCT dchlvl
+	// should be dchpres_psi * 2.31
+gen Mdchlvl_ft = dchpres_psi * 2.31
+la var Mdchlvl_ft "Discharge level at gauge (feet; 1 psi = 2.31 feet of water head)"
+order Mdchlvl_ft, after(Mflag_bad_drwdwn)	
+	
+	// CONSTRUCT totlift
+	// missing otherlosses, which is usually 0
+sum otherlosses, detail
+gen Mtotlift = 	pwl + Mdchlvl_ft + gaugecor_ft + gaugeheight_ft
+la var Mtotlift "Total lift (ft, reported)"
+order Mtotlift, after(Mdchlvl_ft)	
+	
+	// CONSTRUCT af24hrs
+gen Maf24hrs = flow_gpm*60*24/325900	
+la var Maf24hrs "Acre-feet per 24 hours, at the measured flow rate"
+order Maf24hrs, after(Mtotlift)
+
+	// CONSTRUCT ope
+	// HORSEPOWER FORMULA IS HP = (   FLOW    * TOTLIFT) / (39.60 * OPE)
+	//                              gall/min     feet                % 
+gen Mope = flow_gpm*Mtotlift/(39.60 * hp)	// 39.60, or with more sigfigs 39.568
+la var ope "Operating pump efficiency (%, measured)"
+order Mope, after(Maf24hrs)
+
+	// CONSTRUCT water_hp
+gen Mwater_hp = Mope*hp/100
+la var Mwater_hp "Water horsepower output of motor (measured)"
+order Mwater_hp, after(Mope)	
+	
+	// CONSTRUCT kw_input
+gen Mkw_input = hp*0.7457	
+la var Mkw_input "Kilowatt input to motor (1 HP = 0.746 kW)"
+order Mkw_input, after(Mwater_hp)
+
+	// CONSTRUCT kwhaf
+gen Mkwhaf = Maf24hrs/24
+la var Mkwhaf "Kilowatt-hours per acre-foot, given test conditions"
+order Mkwhaf, after(Mwater_hp)
+
+
+egen min_match = rowmin(*_matches) if _merge==3
+tab min_match if _merge==3
+egen max_min_match = max(min_match) if _merge==3, by(Mid)
+assert max_min_match==1 if _merge==3
+unique Mid if _merge==3
+	
+br Mid hp_nameplate Uhp_nameplate HP_matches min_match max_min_match _merge if _merge==3	
+	
+reg hp_nameplate Uhp if _merge==3 & min_match==1
+reg hp_nameplate Uhp if _merge==3 & min_match==1, nocons	
+	// HP nameplate is every so slightly higher (on average) than measured HP
+	// R^2 = 0.96
+correlate hp_nameplate Uhp if _merge==3 & min_match==1
+	// rho = 0.94
+	
+reg Mtotlift totlift if _merge==3 & min_match==1
+reg Mtotlift totlift if _merge==3 & min_match==1, nocons	
+	// lift is quite close, every so slightly higher (on average) than measured lift
+	// R^2 = 0.98
+correlate Mtotlift totlift if _merge==3 & min_match==1
+	// rho = 0.94
+	
+reg Mope ope if _merge==3 & min_match==1	, nocons
+reg Mope ope if _merge==3 & min_match==1
+correlate Mope ope if _merge==3 & min_match==1
+
+
+unique Mid	
+	
+sdsdgsd
+
+
+************************************************
+************************************************
 
