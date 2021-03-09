@@ -19,7 +19,7 @@ cd "$path_temp"
 local files: dir . files "*.dta"
 qui foreach f in `files' {
 	erase "`f'"
-}
+} 
 
 use "$path_out/sce_ag_rates_compiled.dta", clear
 
@@ -103,12 +103,14 @@ drop rank odd rank_2 id rank max
 replace rateschedule="TOU-PA3A" if rateschedule =="TOU-PA3B" & (voltage_dis_energy_3!=. | voltage_dis_energy_2 !=. | voltage_dis_energy_1!=.)
 replace rateschedule="TOU-PA3B" if rateschedule =="TOU-PA2B" & (voltage_dis_energy_3!=. | voltage_dis_energy_2 !=. | voltage_dis_energy_1!=.)
 drop if rateschedule=="TOU-PA3A" & rate_start_date==td(11aug2013)
+drop if rateschedule=="TOU-PA2B" & rate_start_date==td(17jan2018)
 replace interruptible_credit=0 if interruptible_credit==.
 replace ee_charge=0 if ee_charge==.
 replace ee_charge= 10.21374 if rateschedule=="TOU-PA-SOP" & voltage_cat==1 & rate_start_date>=td(01mar2009) & rate_start_date<=td(01jun2009)
 replace ee_charge= 9.99551 if rateschedule=="TOU-PA-SOP" & voltage_cat==2 & rate_start_date>=td(01mar2009) & rate_start_date<=td(01jun2009)
 replace ee_charge= 9.63234 if rateschedule=="TOU-PA-SOP" & voltage_cat==3 & rate_start_date>=td(01mar2009) & rate_start_date<=td(01jun2009)
 replace interruptible_credit=0 if interruptible_credit==.
+
 save "$path_temp/sce_ag_rates_compiled_edit.dta", replace
 use "$path_temp/sce_ag_rates_compiled_edit.dta", replace
 
@@ -137,6 +139,7 @@ gen new_ID=rateschedule+rate_start_date_st
 sort rateschedule rate_start_date bundled voltage_cat
 cap drop odd rank_2 id rank max rate_start_date_st
 save "$path_temp/sce_ag_rates_compiled_categories.dta", replace
+use "$path_temp/sce_ag_rates_compiled_categories.dta", replace
 
 *reshape wrt voltage category and append with TOU-PA2E
 
@@ -192,8 +195,10 @@ save "$path_temp/sce_ag_rates_compiled_full.dta", replace
 
 use "$path_temp/sce_ag_rates_compiled_edit_2.dta", clear
 keep if voltage_dis_energy_3!=. | voltage_dis_energy_2 !=. | voltage_dis_energy_1!=.
-gen pf_adjust_3=0
+*  pf_adjust voltage_dis_energy voltage_dis_load voltage_dis_hrly customercharge voltage_dis_load_sop_win_weekd ee_charge
+gen pf_adjust_3=pf_adjust_2
 gen voltage_dis_load_3=0
+gen not_reshaped=1
 append using "$path_temp/sce_ag_rates_compiled_full.dta"
 duplicates drop
 sort rateschedule rate_start_date rate_end_date bundled
@@ -206,6 +211,7 @@ lab var voltage_dis_energy_`i' "Voltage Discount for v cateogory `i', Energy ($/
 lab var voltage_dis_load_`i' "Voltage Discount for v cateogory `i', Connected Load ($/hp)"
 lab var voltage_dis_load_1_`i' "Voltage Discount for v cateogory `i', Demand ($/kW)- Facilities related"
 lab var voltage_dis_load_2_`i' "Voltage Discount for v cateogory `i', Demand ($/kW)- Time related"
+replace customercharge_`i'=customercharge if customercharge_`i'==. & customercharge!=. & not_reshaped==1
 }
 
 replace rateschedule="TOU-PA3B" if rateschedule=="TOU-PA2B" & bundled==1 & rate_start_date==td(07jul2014) & energycharge_sum_on_pk< 0.13931
@@ -292,6 +298,21 @@ replace `i'=0 if (rateschedule=="TOU-PA2-SOP-1" | rateschedule=="TOU-PA3-SOP-2" 
 replace `i'=-.00007 if (rateschedule=="TOU-PA2-SOP-1" | rateschedule=="TOU-PA3-SOP-2" | rateschedule=="TOU-PA3-SOP") & rate_start_date>=td(01jan2019) & rate_start_date<td(01jan2020)& bundled==1 
 }
 
+replace rate_end_date=td(31dec2018) if rate_start_date==td(01oct2018) & rateschedule=="TOU-PA2B"
+/*expand 2 if rate_start_date==td(01mar2019) & rateschedule=="TOU-PA2B"
+gen index=_n
+bysort rate_start_date rateschedule bundled: egen rank=rank(index)
+replace rate_start_date=td(01jan2019) if rate_start_date==td(01mar2019) & rateschedule=="TOU-PA2B" & rank==2
+replace rate_end_date=td(28feb2019) if rate_start_date==td(01jan2019) & rateschedule=="TOU-PA2B" & rank==2
+drop index rank*/
+append using "$path_rates/Jan 1019 TOUPA2B.dta"
+sort rateschedule rate_start_date rate_end_date bundle
+replace cal_climate_credit=0.00731 if rate_start_date==td(01jan2015) & rateschedule=="TOU-PA2A" & bundled==0
+replace cal_climate_credit=0.00680 if rate_start_date>td(01jan2015) & rateschedule=="TOU-PA2A" & rate_start_date<=td(31dec2015)  & bundled==0
+replace cal_climate_credit=0.00378 if rate_start_date>=td(01jan2016) & rateschedule=="TOU-PA2A" & rate_start_date<=td(31dec2016)  & bundled==0
+replace cal_climate_credit=0.00414 if rate_start_date>=td(01jan2017) & rateschedule=="TOU-PA2A" & rate_start_date<=td(31dec2017) & bundled==0
+replace energycharge_sum_off_pk=0.04097  if rateschedule=="TOU-PA2B" &  rate_start_date==td(24nov2015) & bundled==1
+
 ***********
 *Calculate marginal Prices
 ***********
@@ -300,14 +321,41 @@ replace `i'=-.00007 if (rateschedule=="TOU-PA2-SOP-1" | rateschedule=="TOU-PA3-S
 *find most disaggregated version of charges
 ***********
 
+*round off values to remove rounding errors due to conversion from excel
+
+foreach i in bundled energycharge_sum energycharge_win energycharge_dwr energycharge_dwr_sum energycharge_dwr_win ///
+ energycharge_sum_on_pk energycharge_sum_m_pk energycharge_sum_off_pk energycharge_win_on_pk energycharge_win_m_pk ///
+ energycharge_win_off_pk energycharge_dwr_sum_on_pk energycharge_dwr_sum_m_pk energycharge_dwr_sum_off_pk energycharge_dwr_win_on_pk ///
+ energycharge_dwr_win_m_pk energycharge_dwr_win_off_pk energycharge_dwr_win_sup_off_pk energycharge_win_sup_off_pk ///
+ energycharge_sum_sup_off_pk energycharge_dwr_sum_sup_off_pk customercharge three_ph_service voltage_dis_energy_1 ///
+ voltage_dis_energy_2 voltage_dis_energy_3 cal_alternative_discount cal_climate_credit voltage_cat energycharge ///
+ servicecharge off_peak_credit tou_option_meter_charge voltage_dis_energy voltage_dis_load wind_mach_credit tou_RTEM_meter_charge ///
+ demandcharge demandcharge_sum demandcharge_win voltage_dis_load_1 voltage_dis_load_2 pf_adjust voltage_dis_hrly ///
+ demandcharge_sum_on_pk demandcharge_sum_mid_pk demandcharge_sum_off_pk minimum_charge_sum minimum_charge_win ///
+ voltage_dis_load_sop_win_weekd voltage_dis_load_sop demandcharge_win_m_pk demandcharge_win_off_pk demandcharge_win_sup_off_pk ///
+ demandcharge_sum_sup_off_pk demandcharge_win_on_pk interruptible_credit ee_charge voltage_dis_load_1_1 voltage_dis_load_1_2 ///
+ voltage_dis_load_1_3 voltage_dis_load_2_1 voltage_dis_load_2_2 voltage_dis_load_2_3 demandcharge_win_mid_pk pf_adjust_2 ///
+ pf_adjust_1 pf_adjust_3 voltage_dis_load_3 customercharge_1 voltage_dis_hrly_1 voltage_dis_load_sop_win_weekd_1 ee_charge_1 ///
+ customercharge_2 voltage_dis_hrly_2 voltage_dis_load_sop_win_weekd_2 ee_charge_2 customercharge_3 voltage_dis_hrly_3 ///
+ voltage_dis_load_sop_win_weekd_3 ee_charge_3 voltage_dis_load_sop1 voltage_dis_load_sop2 voltage_dis_load_sop3 {
+ recast double `i', force 
+replace `i'=round(`i', 0.00001)
+}
+
+/* for TOU-PA-B in 2009==> servicecharge=facilities related demandcharge. back to normal in 2010
+demand charges can be broken down into facilities related and time related. facilities related are always stored as demandcharge
+time related is stored as demandcharge_sum or demandcharge_sum_on_pk or demandcharge_sum_mid_pk or demandcharge_sum_sup_off_pk. so you want to treat
+these two components separately and aggregate them into the final demandcharge. */
+
+replace demandcharge=servicecharge if rateschedule=="TOU-PA-B" & rate_start_date<=td(31dec2009) & bundled==0
+replace servicecharge=0 if rateschedule=="TOU-PA-B" & rate_start_date<=td(31dec2009) & bundled==0
+
 replace energycharge_sum_on_pk=energycharge_sum if energycharge_sum!=0 &  energycharge_sum!=.
 replace energycharge_sum_on_pk=energycharge if energycharge!=0 &  energycharge!=.
 
 replace demandcharge_sum_on_pk=demandcharge_sum if demandcharge_sum!=0 &  demandcharge_sum!=.
-replace demandcharge_sum_on_pk=demandcharge if demandcharge!=0 &  demandcharge!=.
 
 replace demandcharge_win_on_pk=demandcharge_win if demandcharge_win!=0 &  demandcharge_win!=.
-replace demandcharge_win_on_pk=demandcharge if demandcharge!=0 &  demandcharge!=.
 
 foreach i in sum win {
 replace energycharge_`i'_m_pk=energycharge_`i' if energycharge_`i'!=. & energycharge_`i'!=0
@@ -316,15 +364,10 @@ replace energycharge_`i'_off_pk=energycharge_`i' if energycharge_`i'!=. & energy
 replace energycharge_`i'_off_pk=energycharge if energycharge!=. & energycharge!=0
 replace energycharge_`i'_sup_off_pk=energycharge_`i' if energycharge_`i'!=. & energycharge_`i'!=0
 replace energycharge_`i'_sup_off_pk=energycharge if energycharge!=. & energycharge!=0
-cap replace demandcharge_`i'=demandcharge if demandcharge!=. & demandcharge!=0
 cap replace demandcharge_`i'_m_pk=demandcharge_`i' if demandcharge_`i'!=. & demandcharge_`i'!=0
-cap replace demandcharge_`i'_m_pk=demandcharge if demandcharge!=. & demandcharge!=0
 cap replace demandcharge_`i'_mid_pk=demandcharge_`i' if demandcharge_`i'!=. & demandcharge_`i'!=0
-cap replace demandcharge_`i'_mid_pk=demandcharge if demandcharge!=. & demandcharge!=0
 replace demandcharge_`i'_off_pk=demandcharge_`i' if demandcharge_`i'!=. & demandcharge_`i'!=0
-replace demandcharge_`i'_off_pk=demandcharge if demandcharge!=. & demandcharge!=0
 replace demandcharge_`i'_sup_off_pk=demandcharge_`i' if demandcharge_`i'!=. & demandcharge_`i'!=0
-replace demandcharge_`i'_sup_off_pk=demandcharge if demandcharge!=. & demandcharge!=0
 }
 
 replace energycharge_dwr_sum_on_pk=energycharge_dwr_sum if energycharge_dwr_sum!=0 &  energycharge_dwr_sum!=.
@@ -341,12 +384,15 @@ rename voltage_dis_load_sop_win_weekd_1 voltage_weekd_1
 rename voltage_dis_load_sop_win_weekd_2 voltage_weekd_2
 rename voltage_dis_load_sop_win_weekd_3 voltage_weekd_3
 
+
+
 foreach i in demandcharge demandcharge_sum demandcharge_win demandcharge_sum_on_pk demandcharge_sum_mid_pk demandcharge_sum_off_pk ///
 demandcharge_win_m_pk demandcharge_win_off_pk demandcharge_win_sup_off_pk demandcharge_sum_sup_off_pk demandcharge_win_on_pk voltage_dis_load_1_1 ///
 voltage_dis_load_1_2 voltage_dis_load_1_3 voltage_dis_load_2_1 voltage_dis_load_2_2 voltage_dis_load_2_3 demandcharge_win_mid_pk customercharge ///
 customercharge_1 customercharge_2 customercharge_3 voltage_dis_load_1 voltage_dis_load_2 voltage_dis_load_3 pf_adjust_1 pf_adjust_2 pf_adjust_3 ///
-voltage_weekd_1 voltage_weekd_2 voltage_weekd_3 interruptible_credit minimum_charge_sum minimum_charge_sum{
-replace `i'=0 if `i'==.
+voltage_weekd_1 voltage_weekd_2 voltage_weekd_3 interruptible_credit servicecharge voltage_dis_load_sop1 voltage_dis_load_sop2 voltage_dis_load_sop3 ///
+voltage_dis_energy_1 voltage_dis_energy_2 voltage_dis_energy_3 {
+replace `i'=0 if `i'==. | `i'==-999
 gen `i'_un= `i' if bundled==0
 bysort rateschedule rate_start_date: egen max = max(`i'_un)
 drop `i'_un
@@ -368,28 +414,28 @@ replace `i'=0 if bundled==0
 }
 
 
-replace voltage_dis_energy_1=cal_alternative_discount if voltage_dis_energy_1==. & rateschedule=="GS-1"
+replace fin_voltage_dis_energy_1=cal_alternative_discount if voltage_dis_energy_1==. & rateschedule=="GS-1"
 replace cal_alternative_discount=. if rateschedule=="GS-1" & cal_alternative_discount<1 & bundled==1
 replace cal_climate_credit=0 if cal_climate_credit==.
 
 foreach i in 1 2 3 {
-replace voltage_dis_energy_`i'=-voltage_dis_energy_`i'
+replace fin_voltage_dis_energy_`i'=-fin_voltage_dis_energy_`i'
 }
 
 *Calculate marginal prices: add charges and subtract credits.
 
 foreach i in sum_on_pk sum_m_pk sum_off_pk win_m_pk win_off_pk {
 foreach j in 1 2 3 {
-gen final_`i'_`j'=energycharge_`i'+energycharge_dwr_`i'+voltage_dis_energy_`j'+energycharge_`i'_un-cal_climate_credit-fin_interruptible_credit if bundled==1
-replace final_`i'_`j'=energycharge_`i'+energycharge_dwr_`i'+voltage_dis_energy_`j'-cal_climate_credit-fin_interruptible_credit if bundled==0
+gen final_`i'_`j'=energycharge_`i'+energycharge_dwr_`i'+fin_voltage_dis_energy_`j'+energycharge_`i'_un-cal_climate_credit-fin_interruptible_credit if bundled==1
+replace final_`i'_`j'=energycharge_`i'+energycharge_dwr_`i'+fin_voltage_dis_energy_`j'-cal_climate_credit-fin_interruptible_credit if bundled==0
 }
 }
 
 
-foreach i in  win_sup_off_pk {
+foreach i in  win_sup_off_pk sum_sup_off_pk {
 foreach j in 1 2 3 {
-gen final_`i'_`j'=energycharge_`i'+energycharge_dwr_`i'+voltage_dis_energy_`j'+energycharge_`i'_un-cal_climate_credit if bundled==1 & super==1
-replace final_`i'_`j'=energycharge_`i'+energycharge_dwr_`i'+voltage_dis_energy_`j'-cal_climate_credit if bundled==0 & super==1
+gen final_`i'_`j'=energycharge_`i'+energycharge_dwr_`i'+fin_voltage_dis_energy_`j'+energycharge_`i'_un-cal_climate_credit if bundled==1 & super==1
+replace final_`i'_`j'=energycharge_`i'+energycharge_dwr_`i'+fin_voltage_dis_energy_`j'-cal_climate_credit if bundled==0 & super==1
 }
 }
 
@@ -399,6 +445,7 @@ foreach i in 1 2 3 {
 lab var final_sum_on_pk_`i' "Marginal price summer on peak assuming voltage category `i' "
 lab var final_sum_m_pk_`i' "Marginal price summer mid peak assuming voltage category `i' "
 lab var final_sum_off_pk_`i' "Marginal price summer off peak assuming voltage category `i' "
+lab var final_sum_sup_off_pk_`i' "Marginal price summer super off peak assuming voltage category `i' "
 lab var final_win_m_pk_`i' "Marginal price winter mid peak assuming voltage category `i' "
 lab var final_win_off_pk_`i' "Marginal price winter off peak assuming voltage category `i' "
 lab var final_win_sup_off_pk_`i' "Marginal price winter super off peak assuming voltage category `i' "
@@ -412,10 +459,11 @@ fin_voltage_dis_load_1_1 fin_voltage_dis_load_1_2 fin_voltage_dis_load_1_3 fin_v
 fin_voltage_dis_load_2_2 fin_voltage_dis_load_2_3 fin_demandcharge_win_mid_pk fin_customercharge fin_customercharge_1 ///
 fin_customercharge_2 fin_customercharge_3 final_sum_on_pk_1 final_sum_on_pk_2 final_sum_on_pk_3 final_sum_m_pk_1 ///
 final_sum_m_pk_2 final_sum_m_pk_3 final_sum_off_pk_1 final_sum_off_pk_2 final_sum_off_pk_3 final_win_m_pk_1 ///
-final_win_m_pk_2 final_win_m_pk_3 final_win_off_pk_1 final_win_off_pk_2 final_win_off_pk_3 final_win_sup_off_pk_1 final_win_sup_off_pk_2 final_win_sup_off_pk_3 /// final_sum_sup_off_pk_1 /// final_sum_sup_off_pk_2 final_sum_sup_off_pk_3
+final_win_m_pk_2 final_win_m_pk_3 final_win_off_pk_1 final_win_off_pk_2 final_win_off_pk_3 final_win_sup_off_pk_1 final_win_sup_off_pk_2 final_win_sup_off_pk_3 /// 
+final_sum_sup_off_pk_1 final_sum_sup_off_pk_2 final_sum_sup_off_pk_3 fin_voltage_dis_load_sop1 fin_voltage_dis_load_sop2 fin_voltage_dis_load_sop3 ///
 fin_voltage_dis_load_1 fin_voltage_dis_load_2 fin_voltage_dis_load_3 fin_pf_adjust_1 fin_pf_adjust_2 fin_pf_adjust_3 ///
 ee_charge_1 ee_charge_2 ee_charge_3 fin_interruptible_credit fin_voltage_weekd_2 fin_voltage_weekd_3 fin_voltage_weekd_1 ///
-tou_option_meter_charge tou_RTEM_meter_charge servicecharge off_peak_credit wind_mach_credit fin_minimum_charge_sum fin_minimum_charge_win
+tou_option_meter_charge tou_RTEM_meter_charge fin_servicecharge off_peak_credit wind_mach_credit minimum_charge_sum minimum_charge_win
 
 save "$path_temp/Marginal_prices_batch_edit_1.dta", replace
 
@@ -441,7 +489,8 @@ gen yearly_date = year(date)
 gen monthly_date = month(date)
 gen daily_date = day(date)
 
-gen season="summer" if monthly_date>=6 & monthly_date<=9
+gen season="summer" if monthly_date>=6 & monthly_date<=9 
+replace season="summer" if monthly_date>=7 & monthly_date<=9 & (rateschedule=="TOU-PA2-SOP-1" | rateschedule=="TOU-PA3-SOP")
 replace season="winter" if season==""
 duplicates drop
 
@@ -585,58 +634,94 @@ duplicates drop
 *Off-Peak: All other hours for summer weekdays besides on peak and all other hours for summer weekends besides mid-peak, and 9 p.m. - 8 a.m for all winter days. 
 *Super-Off-Peak: 8 a.m. - 4 p.m. all winter
 gen weekday=1 if dow_num>=1 & dow_num<=5
+replace weekday=0 if weekday==.
 
-foreach i in 1 2 3 {
+gen on_peak=0
+gen mid_peak=0
+gen off_peak=0
+gen sup_off_peak=0
+
 ****Summer
 *on Peak
-gen Marginal_price_`i'=final_sum_on_pk_`i' if season=="summer" & weekday==1 & hour>=12 & hour<18
-*mid Peak
-replace Marginal_price_`i'=final_sum_m_pk_`i' if season=="summer" & weekday==1 & (hour>=8 & hour<12 | hour>=18 & hour<23 )
+replace on_peak=1 if super==0 & rateschedule!="TOU-PA2D" & season=="summer" & weekday==1 & hour>=12 & hour<18 & holiday==0
+*mid-peak
+replace mid_peak=1 if super==0 & rateschedule!="TOU-PA2D" & ///
+(season=="summer" & weekday==1 & (hour>=8 & hour<12 | hour>=18 & hour<23 ) & holiday==0)
 *off Peak
-replace Marginal_price_`i'=final_sum_off_pk_`i' if season=="summer" & weekday==1 & (hour<8 | hour==23) | season=="summer" & weekday==0 | season=="summer" & holiday==1
+replace off_peak=1 if super==0 & rateschedule!="TOU-PA2D" & ///
+ (season=="summer" & weekday==1 & (hour<8 | hour==23) | season=="summer" & weekday==0 | season=="summer" & holiday==1) 
 
 
 ****Winter
-*mid Peak
-replace Marginal_price_`i'=final_win_m_pk_`i' if season=="winter" & weekday==1 & (hour>=8 & hour<21)
+*mid-peak
+replace mid_peak=1 if super==0 & rateschedule!="TOU-PA2D" & season=="winter" & weekday==1 & (hour>=8 & hour<21) & holiday==0
 *off Peak
-replace Marginal_price_`i'=final_win_off_pk_`i' if season=="winter" & weekday==1 & (hour>=21 | hour<8) | season=="winter" & weekday==0 | season=="winter" & holiday==1
+replace off_peak=1 if super==0 & rateschedule!="TOU-PA2D" & ///
+(season=="winter" & weekday==1 & (hour>=21 | hour<8) | season=="winter" & weekday==0 | season=="winter" & holiday==1)
 
 ****Super off peak schedules
 
 ****Summer
 *on Peak
-replace Marginal_price_`i'=final_sum_on_pk_`i' if season=="summer" & holiday==0 & weekday==1 & hour>=13 & hour<17 & holiday==0 & super==1
-*super off Peak
-*replace Marginal_price_`i'=final_sum_sup_off_pk_`i' if (hour>=0 & hour<6) & season=="summer" & super==1
-*off Peak
-replace Marginal_price_`i'=final_sum_off_pk_`i' if Marginal_price_`i'==. & super==1 & season=="summer"
+replace on_peak=1 if rateschedule!="TOU-PA2D" & season=="summer" & weekday==1 & hour>=13 & hour<17 & holiday==0 & super==1
+*super-off Peak
+replace sup_off_peak=1 if rateschedule!="TOU-PA2D" & hour>=0 & hour<=5 & super==1 & season=="summer"
+*off-peak
+replace off_peak=1 if rateschedule!="TOU-PA2D" & super==1 & season=="summer" & ((hour<13 & hour>=6 | hour>=17) ///
+| hour>=13 & hour<17 & (weekday==0 |holiday==1))
 
 ****Winter
-*super off Peak
-replace Marginal_price_`i'=final_win_sup_off_pk_`i' if (hour>=0 & hour<6) & season=="winter" & super==1
-*off Peak
-replace Marginal_price_`i'=final_win_off_pk_`i' if Marginal_price_`i'==. & super==1 & season=="winter"
+*super-off Peak
+replace sup_off_peak=1 if rateschedule!="TOU-PA2D" & hour>=0 & hour<=5 & super==1 & season=="winter"
+*off-peak
+replace off_peak=1 if rateschedule!="TOU-PA2D" & super==1 & season=="winter" & hour>5
 
 
 ****TOU-PA2D
 
 **Summer
-*on Peak
-replace Marginal_price_`i'=final_sum_on_pk_`i' if season=="summer" & weekday==1 & hour>=16 & hour<21 & holiday==0 & rateschedule=="TOU-PA2D"
-*mid Peak
-replace Marginal_price_`i'=final_sum_m_pk_`i' if hour>=16 & hour<21 & season=="summer" & (weekday==0 | holiday==1) & rateschedule=="TOU-PA2D"
-*off Peak
-replace Marginal_price_`i'=final_sum_off_pk_`i' if season=="summer" & Marginal_price_`i'==. & rateschedule=="TOU-PA2D"
 
+*on Peak
+replace on_peak=1 if season=="summer" & rateschedule=="TOU-PA2D" & weekday==1 ///
+& hour>=16 & hour<21
+*mid-peak
+replace mid_peak=1 if season=="summer" & rateschedule=="TOU-PA2D" & weekday==0 ///
+& hour>=16 & hour<21
+*off-peak
+replace off_peak=1 if season=="summer" & rateschedule=="TOU-PA2D" & (hour>=21 | hour<16)
 
 **Winter
-*mid Peak
-replace Marginal_price_`i'=final_win_m_pk_`i' if hour>=16 & hour<21 & season=="winter" & rateschedule=="TOU-PA2D"
+*mid-peak
+replace mid_peak=1 if season=="winter" & hour>=16 & hour<21 & rateschedule=="TOU-PA2D"
 *off Peak
-replace Marginal_price_`i'=final_win_off_pk_`i' if season=="winter" & hour>=21 & hour<8 & rateschedule=="TOU-PA2D"
+replace off_peak=1 if season=="winter" & rateschedule=="TOU-PA2D" & (hour>=21 | hour<8)
 *super off Peak
-replace Marginal_price_`i'=final_win_sup_off_pk_`i' if season=="winter" & hour>=8 & hour<16 & rateschedule=="TOU-PA2D"
+replace sup_off_peak=1 if season=="winter" & hour>=8 & hour<16 & rateschedule=="TOU-PA2D"
+
+foreach i in 1 2 3 {
+gen Marginal_price_`i'=.
+
+*replace Marginal_price_`i'=.
+}
+
+foreach i in 1 2 3 {
+****Summer
+*on Peak
+replace Marginal_price_`i'=final_sum_on_pk_`i' if on_peak==1 & season=="summer"
+*mid Peak
+replace Marginal_price_`i'=final_sum_m_pk_`i' if mid_peak==1 & season=="summer"
+*off Peak
+replace Marginal_price_`i'=final_sum_off_pk_`i' if off_peak==1 & season=="summer" 
+*super off Peak
+replace Marginal_price_`i'=final_sum_sup_off_pk_`i' if sup_off_peak==1 & season=="summer"
+
+****Winter
+*mid Peak
+replace Marginal_price_`i'=final_win_m_pk_`i' if mid_peak==1 & season=="winter"
+*off Peak
+replace Marginal_price_`i'=final_win_off_pk_`i' if off_peak==1 & season=="winter"
+*super off Peak
+replace Marginal_price_`i'=final_win_sup_off_pk_`i' if sup_off_peak==1 & season=="winter"
 
 lab var Marginal_price_`i' "Marginal Price assuming Voltage Category `i'"
 }
@@ -644,66 +729,37 @@ lab var Marginal_price_`i' "Marginal Price assuming Voltage Category `i'"
 
 ****Summer
 *on Peak
-gen demandcharge=fin_demandcharge_sum_on_pk if season=="summer" & weekday==1 & hour>=12 & hour<18
+gen demandcharge=fin_demandcharge_sum_on_pk if on_peak==1 & season=="summer"
 *mid Peak
-replace demandcharge=fin_demandcharge_sum_on_pk if season=="summer" & weekday==1 & (hour>=8 & hour<12 | hour>=18 & hour<23 )
+replace demandcharge=fin_demandcharge_sum_mid_pk if mid_peak==1 & season=="summer"
 *off Peak
-replace demandcharge=fin_demandcharge_sum_off_pk if season=="summer" & weekday==1 & (hour<8 | hour==23) | season=="summer" & weekday==0 | season=="summer" & holiday==1
-
+replace demandcharge=fin_demandcharge_sum_off_pk if off_peak==1 & season=="summer" 
+*super off Peak
+replace demandcharge=fin_demandcharge_sum_sup_off_pk if sup_off_peak==1 & season=="summer" 
 
 ****Winter
 *mid Peak
-replace demandcharge=fin_demandcharge_win_m_pk if season=="winter" & weekday==1 & (hour>=8 & hour<21)
+replace demandcharge=fin_demandcharge_win_m_pk if mid_peak==1 & season=="winter"
 *off Peak
-replace demandcharge=fin_demandcharge_win_off_pk if season=="winter" & weekday==1 & (hour>=21 | hour<8) | season=="winter" & weekday==0 | season=="winter" & holiday==1
-
-****Super off peak schedules
-
-****Summer
-*on Peak
-replace demandcharge=fin_demandcharge_sum_on_pk if season=="summer" & holiday==0 & weekday==1 & hour>=13 & hour<17 & holiday==0 & super==1
+replace demandcharge=fin_demandcharge_win_off_pk if off_peak==1 & season=="winter"
 *super off Peak
-*replace demandcharg=fin_demandcharge_sum_sup_off_pk if (hour>=0 & hour<6) & season=="summer" & super==1
-*off Peak
-replace demandcharge=fin_demandcharge_sum_off_pk if demandcharge==. & super==1 & season=="summer"
+replace demandcharge=fin_demandcharge_win_sup_off_pk if sup_off_peak==1 & season=="winter"
 
-****Winter
-*super off Peak
-replace demandcharge=fin_demandcharge_win_sup_off_pk if (hour>=0 & hour<6) & season=="winter" & super==1
-*off Peak
-replace demandcharge=fin_demandcharge_win_off_pk if demandcharge==. & super==1 & season=="winter"
+rename fin_demandcharge demandcharge_facilities
 
+lab var demandcharge "Time related Demand Charge - $/kW of Billing Demand/Meter/Month"
+lab var demandcharge_facilities "Facilities related Demand Charge - $/kW of Billing Demand/Meter/Month"
 
-****TOU-PA2D
-
-**Summer
-*on Peak
-replace demandcharge=fin_demandcharge_sum_on_pk  if season=="summer" & weekday==1 & hour>=16 & hour<21 & holiday==0 & rateschedule=="TOU-PA2D"
-*mid Peak
-replace demandcharge=fin_demandcharge_sum_on_pk if hour>=16 & hour<21 & season=="summer" & (weekday==0 | holiday==1) & rateschedule=="TOU-PA2D"
-*off Peak
-replace demandcharge=fin_demandcharge_sum_off_pk if season=="summer" & demandcharge==. & rateschedule=="TOU-PA2D"
-
-
-**Winter
-*mid Peaks
-replace demandcharge=fin_demandcharge_win_m_pk if hour>=16 & hour<21 & season=="winter" & rateschedule=="TOU-PA2D"
-*off Peak
-replace demandcharge=fin_demandcharge_win_off_pk if season=="winter" & hour>=21 & hour<8 & rateschedule=="TOU-PA2D"
-*super off Peak
-replace demandcharge=fin_demandcharge_win_sup_off_pk if season=="winter" & hour>=8 & hour<16 & rateschedule=="TOU-PA2D"
-
-lab var demandcharge "Demand Charge - $/kW of Billing Demand/Meter/Month"
-
-foreach i in voltage_dis_load_1_1 voltage_dis_load_1_2 voltage_dis_load_1_3 minimum_charge_sum  ///
-voltage_dis_load_2_1 voltage_dis_load_2_2 voltage_dis_load_2_3 customercharge_3 minimum_charge_sum ///
+foreach i in voltage_dis_load_1_1 voltage_dis_load_1_2 voltage_dis_load_1_3 servicecharge ///
+voltage_dis_load_2_1 voltage_dis_load_2_2 voltage_dis_load_2_3 customercharge_3 ///
 customercharge_2 customercharge_1 pf_adjust_1 pf_adjust_2 pf_adjust_3 voltage_dis_load_1 ///
-voltage_dis_load_2 voltage_dis_load_3 voltage_weekd_1 voltage_weekd_3 voltage_weekd_2 interruptible_credit{
+voltage_dis_load_2 voltage_dis_load_3 voltage_weekd_1 voltage_weekd_3 voltage_weekd_2 interruptible_credit ///
+voltage_dis_load_sop1 voltage_dis_load_sop2 voltage_dis_load_sop3 {
 rename fin_`i' `i'
 }
 
 foreach i in 1 2 3 { 
-lab var voltage_weekd_`i' "Voltage Discount Summer for v category `i', On Peak and Winter Weekdays (4-9pm) Demand (URG - $/kW)"
+lab var voltage_weekd_`i' "Voltage Discount Summer for v category `i', On Peak and Winter Weekdays (URG - $/kW)"
 lab var pf_adjust_`i' "Power Factor Adjustment for v cateogory `i' ($/kVAR)"
 lab var voltage_dis_load_`i' "Voltage Discount for v cateogory `i', Connected Load ($/hp)"
 lab var voltage_dis_load_1_`i' "Voltage Discount for v cateogory `i', Demand ($/kW)- Facilities related"
@@ -715,17 +771,18 @@ drop customercharge_2 customercharge_3
 rename customercharge_1 customercharge
 la var minimum_charge_sum "Minimum Charge Summer - $/kW"
 la var minimum_charge_win "Minimum Charge Winter - $/kW"
-la var wind_mach_credit "Wind Machine Credit- $/hp"
+la var wind_mach_credit "Wind Machine Credit- $/kW"
 la var interruptible_credit "Interruptible Credit- $/kWh"
 la var customercharge "Customer Charge - $/Meter/Month"
 
-keep rateschedule date bundled Marginal_price_1 Marginal_price_2 Marginal_price_3 demandcharge ///
+keep rateschedule date rate_start_date rate_end_date bundled Marginal_price_1 Marginal_price_2 Marginal_price_3 demandcharge ///
 dow_num season hour voltage_dis_load_1_1 voltage_dis_load_1_2 voltage_dis_load_1_3  ///
 voltage_dis_load_2_1 voltage_dis_load_2_2 voltage_dis_load_2_3 customercharge ///
- pf_adjust_1 pf_adjust_2 pf_adjust_3 voltage_dis_load_1 minimum_charge_sum minimum_charge_sum ///
+ pf_adjust_1 pf_adjust_2 pf_adjust_3 voltage_dis_load_1 holiday on_peak mid_peak off_peak sup_off_peak ///
 voltage_dis_load_2 voltage_dis_load_3 ee_charge_1 ee_charge_2 ee_charge_3 interruptible_credit ///
 voltage_weekd_1 voltage_weekd_2 voltage_weekd_3 tou_option_meter_charge tou_RTEM_meter_charge ///
-servicecharge off_peak_credit wind_mach_credit minimum_charge_sum minimum_charge_win
+servicecharge off_peak_credit wind_mach_credit minimum_charge_sum minimum_charge_win demandcharge_facilities ///
+ voltage_dis_load_sop1 voltage_dis_load_sop2 voltage_dis_load_sop3
 
 duplicates drop
 
@@ -801,6 +858,10 @@ format rate_end_date4 %td
 replace rate_end_date= rate_end_date4 if rate_end_date==.
 drop rate_end_date2 rate_end_date3 rate_end_date4
 format rate_end_date %td
+foreach i in e_hot_sum_wkday v_hot_sum_wkday hot_sum_wkday mod_sum_wkday /// 
+mild_sum_wkday high_win_wkday low_win_wkday high_wkend low_wkend {
+replace `i'=round(`i', 0.00001)
+}
 save "$path_temp/RTP temp.dta", replace
 
 use "$path_temp/RTP temp.dta", replace
@@ -921,7 +982,7 @@ replace Marginal_price_`i'=final_low_wkend_`i' if Marginal_price_`i'==. & final_
 *low_wkend "Low cost weekend (<78)"
 
 order rateschedule date Marginal_price_1 Marginal_price_2 Marginal_price_3
-keep date Marginal_price_1 Marginal_price_2 Marginal_price_3 rateschedule dow_num season hour bundled
+keep date Marginal_price_1 Marginal_price_2 Marginal_price_3 rateschedule dow_num season hour bundled 
 duplicates drop 
 save "$path_temp/Marginal_prices_batch_2.dta", replace
 use "$path_temp/Marginal_prices_batch_1.dta", replace
@@ -934,18 +995,95 @@ drop if rateschedule=="PA-RTP" & bundled==1
 append using "$path_temp/Marginal_prices_batch_2_2.dta"
 sort rateschedule date bundled
 sort rateschedule date hour bundled 
-foreach i in servicecharge off_peak_credit tou_option_meter_charge wind_mach_credit tou_RTEM_meter_charge ///
+foreach i in  off_peak_credit tou_option_meter_charge wind_mach_credit tou_RTEM_meter_charge ///
  minimum_charge_sum minimum_charge_win ee_charge_1 ee_charge_2 ee_charge_3 {
 replace `i'=0 if `i'==.
 }
+foreach i in 1 2 3 {
+rename Marginal_price_`i' p_kwh_`i'
+lab var p_kwh_`i' "Hourly (avg) marginal price ($/kWh) assuming voltage category `i'"
+}
+
+***Demand charges
+*note: we only subtract demand credits and discounts from charges when charges>0
+
+gen weekday=1 if dow_num>=1 & dow_num<=5
+replace weekday=0 if weekday==.
+foreach i in 1 2 3 {
+gen v_weekend_`i'=0
+gen v_weekend_URG_`i'=0
+replace v_weekend_URG_`i'=voltage_weekd_`i' if bundled==1 & (season=="summer" & weekday==1 & hour>=12 & hour<18 | season=="winter" & weekday==1 & hour>=16 & hour<22)
+replace v_weekend_`i'=voltage_dis_load_sop`i' if season=="summer" & weekday==1 & hour>=12 & hour<18
+gen dem_time_`i'=demandcharge
+replace dem_time_`i'=demandcharge-voltage_dis_load_2_`i'-v_weekend_URG_`i'-v_weekend_`i' if demandcharge>0
+gen dem_fac_`i'=demandcharge_facilities
+replace dem_fac_`i'=demandcharge_facilities- voltage_dis_load_1_`i' if demandcharge_facilities>0
+gen KW_p`i'=dem_fac_`i'+dem_time_`i'-v_weekend_`i'
+*gen hp_p`i'=servicecharge-off_peak_credit -voltage_dis_load_`i'
+gen hp_p`i'=servicecharge
+replace hp_p`i'=servicecharge-voltage_dis_load_`i' if servicecharge>0
+replace hp_p`i'=servicecharge-off_peak_credit -voltage_dis_load_`i' if servicecharge>0 & (season=="summer" & weekday==1 & (hour<8 | hour==23) | season=="summer" & weekday==0 ///
+| season=="summer" & holiday==1 | season=="winter" & weekday==1 & (hour>=21 | hour<8) | season=="winter" & weekday==0 | season=="winter" & holiday==1)
+replace dem_time_`i'=demandcharge-voltage_dis_load_2_`i' if demandcharge>0
+la var dem_time_`i' "Net per KW time related demand charge for v category `i'"
+la var dem_fac_`i' "Net facilities related demand charge for v category `i'"
+la var KW_p`i' "Net per KW demand charge for v category `i'"
+la var hp_p`i' "Net per hp demand charge for v category `i'"
+}
+rename rateschedule tariff_sched_text
+
+foreach i in 1 2 3 {
+bysort tariff_sched_text date bundled: gegen dem_time_sum_on_pk_`i'1= max(dem_time_`i') if season=="summer" & on_peak==1
+bysort tariff_sched_text date bundled: gegen dem_time_sum_mid_pk_`i'1= max(dem_time_`i') if season=="summer" & mid_peak==1
+bysort tariff_sched_text date bundled: gegen dem_time_sum_off_pk_`i'1= max(dem_time_`i') if season=="summer" & off_peak==1
+bysort tariff_sched_text date bundled: gegen dem_time_win_mid_pk_`i'1= max(dem_time_`i') if season=="winter" & mid_peak==1
+bysort tariff_sched_text date bundled: gegen dem_time_win_off_pk_`i'1= max(dem_time_`i') if season=="winter" & off_peak==1
+bysort tariff_sched_text rate_start_date rate_end_date bundled: gegen dem_time_sum_on_pk_`i'= max(dem_time_sum_on_pk_`i'1) 
+bysort tariff_sched_text rate_start_date rate_end_date bundled: gegen dem_time_sum_mid_pk_`i'= max(dem_time_sum_mid_pk_`i'1) 
+bysort tariff_sched_text rate_start_date rate_end_date bundled: gegen dem_time_sum_off_pk_`i'= max(dem_time_sum_off_pk_`i'1)
+bysort tariff_sched_text rate_start_date rate_end_date bundled: gegen dem_time_win_mid_pk_`i'= max(dem_time_win_mid_pk_`i'1) 
+bysort tariff_sched_text rate_start_date rate_end_date bundled: gegen dem_time_win_off_pk_`i'= max(dem_time_win_off_pk_`i'1) 
+
+/*replace dem_time_sum_on_pk_`i'=0 if dem_time_sum_on_pk_`i'==.
+replace dem_time_sum_mid_pk_`i'=0 if dem_time_sum_mid_pk_`i'==.
+replace dem_time_sum_off_pk_`i'=0 if dem_time_sum_off_pk_`i'==.
+replace dem_time_win_mid_pk_`i'=0 if dem_time_win_mid_pk_`i'==.
+replace dem_time_win_off_pk_`i'=0 if dem_time_win_off_pk_`i'==.*/
+}
+foreach i in 1 2 3 {
+foreach j in dem_time_sum_on_pk_ dem_time_sum_mid_pk_ dem_time_sum_off_pk_ dem_time_win_mid_pk_ dem_time_win_off_pk_ {
+drop `j'`i'1
+replace `j'`i'=0 if `j'`i'==.
+}
+}
+
+*Fix suspected typos in in order to have correspondence with billing data 
+/*
+replace tariff_sched_text="TOU-PA-B-I" if  tariff_sched_text=="TOU-PA-B"
+replace tariff_sched_text="TPA2-SOP1" if tariff_sched_text=="TOU-PA2-SOP-1"
+*replace tariff_sched_text="TPA2-SOP2" if tariff_sched_text=="TOU-PA2-SOP-2" // OPtion 2 was never coded
+replace tariff_sched_text="TPA3-SOP1"  if tariff_sched_text=="TOU-PA3-SOP"
+replace tariff_sched_text="TPA3-SOP2" if tariff_sched_text=="TOU-PA3-SOP-2"
+*replace tariff_sched_text="TOU-PA3-SOP-1" if tariff_sched_text=="TOU-PA3-SOP" */
+lab var servicecharge "Service Charge - $/hp/Month"
+lab var bundled " Bundled Service applicable"
+*rename tariff_sched_text rt_sched_cd
+
 save "$path_out/marginal_prices_hourly_11112020.dta", replace
+use "$path_out/marginal_prices_hourly_11112020.dta", replace
+gen year = year(date)
+keep year tariff_sched_text
+duplicates drop
+save "$path_out/Marginal_price_schedules.dta", replace 
+use "$path_out/Marginal_price_schedules.dta", replace 
 
 *clean up
-cd "$path_temp"
+/*cd "$path_temp"
 local files: dir . files "*.dta"
 qui foreach f in `files' {
 	erase "`f'"
-}
+} /*
+
 
 
 
